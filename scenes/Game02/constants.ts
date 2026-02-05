@@ -19,9 +19,20 @@ export const ANNOUNCING_DURATION = 3000;
 export const CLICK_PADDING_RATIO = 0.6;
 export const CLICK_PADDING_MIN = 20;
 
+// HumanTrack HeadPose 설정
+export const HEADPOSE_YAW_RANGE_DEG = 50;    // 좌우 회전 범위 (±도)
+export const HEADPOSE_PITCH_RANGE_DEG = 40;  // 상하 회전 범위 (±도)
+export const HEADPOSE_DEADZONE = 0.08;       // 데드존 (정규화된 값)
+export const HEADPOSE_SMOOTH_ALPHA = 0.18;   // EMA 스무딩 계수
+export const HEADPOSE_STALE_MS = 800;        // 오래된 포즈 무시 시간 (ms)
+export const HEADPOSE_MAX_DELTA_DEG = 90;    // 최대 허용 각도 변화
+export const PITCH_OFFSET = 25.0;            // 피치 보정값 (카메라 위치 보정)
+
 // Settings for image generation mode
 export const SETTINGS = {
   // true: Use Gemini API to generate new images
   // false: Use local image sets from data/ImageSets/
   USE_API_MAKE_IMAGE: false,
+  // true: 헤드 포즈 디버그 정보 표시
+  DEBUG_MODE: false,
 } as const;

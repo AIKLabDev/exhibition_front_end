@@ -18,6 +18,14 @@ import {
   ANNOUNCING_DURATION,
   CLICK_PADDING_RATIO,
   CLICK_PADDING_MIN,
+  HEADPOSE_YAW_RANGE_DEG,
+  HEADPOSE_PITCH_RANGE_DEG,
+  HEADPOSE_DEADZONE,
+  HEADPOSE_SMOOTH_ALPHA,
+  HEADPOSE_STALE_MS,
+  HEADPOSE_MAX_DELTA_DEG,
+  PITCH_OFFSET,
+  SETTINGS,
 } from './constants';
 import { generateLocalGameScenario } from './localScenarioService';
 import ResultOverlay from './ResultOverlay';
@@ -123,6 +131,21 @@ const Game02: React.FC<Game02Props> = ({ onGameResult }) => {
     startTopLeftX: DEFAULT_CENTER_TOP_LEFT.x,
     startTopLeftY: DEFAULT_CENTER_TOP_LEFT.y,
     moved: false,
+  });
+
+  // HumanTrack HeadPose 상태
+  const headPoseRef = useRef<{ yaw: number; pitch: number; atMs: number } | null>(null);
+  const prevPoseRef = useRef<{ yaw: number; pitch: number } | null>(null);
+  const [headPoseStatus, setHeadPoseStatus] = useState<{
+    connected: boolean;
+    lastUpdate: number | null;
+    yaw: number | null;
+    pitch: number | null;
+  }>({
+    connected: false,
+    lastUpdate: null,
+    yaw: null,
+    pitch: null,
   });
 
   const isGameScreen =
@@ -284,6 +307,145 @@ const Game02: React.FC<Game02Props> = ({ onGameResult }) => {
       onGameResult('lose');
     }
   }, [state, onGameResult]);
+
+  // HumanTrack HeadPose 스트림 구독 (WebSocket 또는 HTTP polling)
+  useEffect(() => {
+    const applyPose = (data: unknown) => {
+      if (data === null || data === undefined) {
+        setHeadPoseStatus((prev) => ({ ...prev, connected: false }));
+        headPoseRef.current = null;
+        return;
+      }
+
+      const d = data as { yaw?: unknown; pitch?: unknown };
+      const yaw = Number(d?.yaw);
+      const pitch = Number(d?.pitch);
+
+      if (!Number.isFinite(yaw) || !Number.isFinite(pitch)) {
+        return;
+      }
+
+      const now = Date.now();
+      headPoseRef.current = { yaw, pitch, atMs: now };
+      if (!prevPoseRef.current) {
+        prevPoseRef.current = { yaw, pitch };
+      }
+      setHeadPoseStatus({
+        connected: true,
+        lastUpdate: now,
+        yaw,
+        pitch,
+      });
+    };
+
+    // Vite HMR WebSocket 사용 시도
+    const hot = (import.meta as { hot?: { on?: (event: string, handler: (data: unknown) => void) => void; off?: (event: string, handler: (data: unknown) => void) => void } }).hot;
+    if (hot?.on) {
+      const handler = (data: unknown) => applyPose(data);
+      hot.on('humantrack:pose', handler);
+      return () => {
+        try {
+          hot.off?.('humantrack:pose', handler);
+        } catch {
+          // ignore
+        }
+      };
+    }
+
+    // Fallback: HTTP polling
+    let cancelled = false;
+    const id = window.setInterval(async () => {
+      if (cancelled) return;
+      try {
+        const res = await fetch('/api/humantrack/pose', { cache: 'no-store' });
+        if (!res.ok) {
+          setHeadPoseStatus((prev) => ({ ...prev, connected: false }));
+          return;
+        }
+        const json = (await res.json()) as { pose?: unknown; ok?: boolean; age?: number };
+        if (json?.pose && json.pose !== null) {
+          applyPose(json.pose);
+        } else if (headPoseStatus.connected && json?.age && json.age > 2000) {
+          setHeadPoseStatus((prev) => ({ ...prev, connected: false }));
+        }
+      } catch {
+        setHeadPoseStatus((prev) => ({ ...prev, connected: false }));
+      }
+    }, 150);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [headPoseStatus.connected]);
+
+  // 게임 중 헤드포즈로 뷰포트 이동
+  useEffect(() => {
+    if (state !== Game02State.PLAYING) return;
+    let raf = 0;
+
+    const tick = () => {
+      raf = window.requestAnimationFrame(tick);
+      if (dragRef.current.active) return; // 드래그 중이면 무시
+
+      const pose = headPoseRef.current;
+      if (!pose) return;
+
+      const age = Date.now() - pose.atMs;
+      if (age > HEADPOSE_STALE_MS) {
+        if (headPoseStatus.connected) {
+          setHeadPoseStatus((prev) => ({ ...prev, connected: false }));
+        }
+        return;
+      }
+
+      let yaw = pose.yaw;
+      let pitch = pose.pitch + PITCH_OFFSET;
+
+      // 큰 변화 필터링
+      if (prevPoseRef.current) {
+        const normalizeAngleDelta = (current: number, prev: number): number => {
+          let delta = current - prev;
+          while (delta > 180) delta -= 360;
+          while (delta < -180) delta += 360;
+          return delta;
+        };
+
+        const yawDelta = normalizeAngleDelta(yaw, prevPoseRef.current.yaw);
+        const pitchDelta = normalizeAngleDelta(pitch, prevPoseRef.current.pitch);
+
+        if (Math.abs(yawDelta) > HEADPOSE_MAX_DELTA_DEG) {
+          yaw = prevPoseRef.current.yaw;
+        }
+        if (Math.abs(pitchDelta) > HEADPOSE_MAX_DELTA_DEG) {
+          pitch = prevPoseRef.current.pitch;
+        }
+      }
+
+      prevPoseRef.current = { yaw, pitch };
+
+      const maxX = 1 - viewWindow.w;
+      const maxY = 1 - viewWindow.h;
+
+      let nx = clamp(yaw / HEADPOSE_YAW_RANGE_DEG, -1, 1);
+      let ny = clamp(pitch / HEADPOSE_PITCH_RANGE_DEG, -1, 1);
+
+      if (Math.abs(nx) < HEADPOSE_DEADZONE) nx = 0;
+      if (Math.abs(ny) < HEADPOSE_DEADZONE) ny = 0;
+
+      const targetX = clamp(maxX / 2 + nx * (maxX / 2), 0, maxX);
+      const targetY = clamp(maxY / 2 + ny * (maxY / 2), 0, maxY);
+
+      setViewTopLeft((prev) => {
+        const newX = prev.x + (targetX - prev.x) * HEADPOSE_SMOOTH_ALPHA;
+        const newY = prev.y + (targetY - prev.y) * HEADPOSE_SMOOTH_ALPHA;
+        return { x: newX, y: newY };
+      });
+    };
+
+    raf = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(raf);
+  }, [state, viewWindow.h, viewWindow.w, headPoseStatus.connected]);
 
   // 뷰포트 클릭 처리
   const handleViewportClick = useCallback(
@@ -504,7 +666,40 @@ const Game02: React.FC<Game02Props> = ({ onGameResult }) => {
               </div>
             </div>
 
-            <div className="flex-1" />
+            {/* HeadPose 상태 (DEBUG_MODE일 때만) */}
+            {SETTINGS.DEBUG_MODE && (
+              <div className="rounded-[2rem] bg-zinc-900/60 border border-white/10 p-5">
+                <p className="text-sm font-black text-zinc-500 mb-2 italic">
+                  헤드 포즈
+                </p>
+                <div className="flex items-center gap-2 mb-2">
+                  <div
+                    className={`w-3 h-3 rounded-full ${
+                      headPoseStatus.connected
+                        ? 'bg-green-500 animate-pulse'
+                        : 'bg-red-500'
+                    }`}
+                  />
+                  <span className="text-sm font-bold text-white">
+                    {headPoseStatus.connected ? '연결됨' : '연결 안됨'}
+                  </span>
+                </div>
+                {headPoseStatus.yaw !== null && headPoseStatus.pitch !== null && (
+                  <div className="text-xs text-zinc-400 font-mono">
+                    <div>Yaw: {headPoseStatus.yaw.toFixed(1)}°</div>
+                    <div>Pitch: {(headPoseStatus.pitch + PITCH_OFFSET).toFixed(1)}°</div>
+                    {headPoseStatus.lastUpdate && (
+                      <div className="text-zinc-500 mt-1">
+                        {Math.round((Date.now() - headPoseStatus.lastUpdate) / 1000)}초 전
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* DEBUG_MODE가 false일 때만 공간 채우기 */}
+            {!SETTINGS.DEBUG_MODE && <div className="flex-1" />}
           </aside>
 
           {/* Main Image Area */}

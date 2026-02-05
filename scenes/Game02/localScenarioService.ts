@@ -220,10 +220,52 @@ function computeTargetBoxFromCrop(
   return [ymin, xmin, ymax, xmax];
 }
 
+/**
+ * MakedImageData 폴더에서 저장된 이미지 로드 시도
+ * (API 모드에서 생성된 이미지가 저장되어 있을 때 사용)
+ */
+async function tryLoadSavedMakedImageDataScenario(): Promise<{
+  scenario: GameScenario;
+  targetCropUrl: string;
+}> {
+  const bust = `?t=${Date.now()}`;
+  const posUrl = `/data/MakedImageData/Position.json${bust}`;
+  const fullUrl = `/data/MakedImageData/Full.png${bust}`;
+  const searchUrl = `/data/MakedImageData/Search.png${bust}`;
+
+  const [posData, fullImg] = await Promise.all([
+    fetchJson(posUrl),
+    loadImage(fullUrl),
+  ]);
+
+  const targetBox = parseTargetBoxFromPositionFile(posData);
+  const sceneImageBase64 = imageToBase64Png(fullImg);
+
+  const meta = posData as PositionFile;
+
+  return {
+    scenario: {
+      theme: meta.theme ?? 'MakedImageData',
+      targetObject: meta.targetObject ?? 'target',
+      sceneImageBase64,
+      targetBox,
+    },
+    targetCropUrl: searchUrl,
+  };
+}
+
 export async function generateLocalGameScenario(): Promise<{
   scenario: GameScenario;
   targetCropUrl: string;
 }> {
+  // 1) MakedImageData 폴더에 저장된 최신 데이터가 있으면 우선 사용
+  try {
+    return await tryLoadSavedMakedImageDataScenario();
+  } catch {
+    // ignore and fallback to ImageSets
+  }
+
+  // 2) ImageSets에서 랜덤 선택
   if (IMAGE_SETS.length === 0) {
     throw new Error('data/ImageSets/* 에서 이미지 세트를 찾지 못했습니다.');
   }
