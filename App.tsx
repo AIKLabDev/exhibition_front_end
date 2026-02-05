@@ -101,32 +101,35 @@ const App: React.FC = () => {
         <div className="absolute top-0 left-3/4 w-px h-full bg-gradient-to-b from-transparent via-blue-500 to-transparent" />
       </div>
 
-      <header className="absolute top-0 left-0 right-0 h-20 flex items-center justify-between px-16 z-50 bg-gradient-to-b from-black/80 to-transparent">
-        <div className="flex items-center gap-4">
-          <img src={logoUrl} alt="AIKOREA" className="h-12 w-auto object-contain object-left" />
-          <button
-            onClick={() => setIsDebugOpen(!isDebugOpen)}
-            className={`ml-4 px-4 py-1 rounded-md text-xs font-bold border transition-colors ${isDebugOpen ? 'bg-blue-600 border-blue-400' : 'bg-white/5 border-white/10 opacity-30'}`}
-          >
-            DEBUG
-          </button>
-        </div>
-        <div className={`flex items-center gap-3 px-6 py-2 rounded-full border ${status === ConnectionStatus.CONNECTED ? 'border-green-500/50 bg-green-500/10' : 'border-red-500/50 bg-red-500/10'
-          }`}>
-          <div className={`w-3 h-3 rounded-full ${status === ConnectionStatus.CONNECTED ? 'bg-green-500 animate-pulse' : 'bg-red-500'
-            }`} />
-          <span className="text-lg font-bold tracking-widest uppercase opacity-80">{status}</span>
-        </div>
-      </header>
+      {/* Logo Overlay - 투명 배경으로 레이어 위에 표시 */}
+      <div className="absolute top-6 left-16 z-[60] flex items-center gap-4">
+        <img src={logoUrl} alt="AIKOREA" className="h-12 w-auto object-contain object-left drop-shadow-lg" />
+        <button
+          onClick={() => setIsDebugOpen(!isDebugOpen)}
+          className={`px-4 py-1 rounded-md text-xs font-bold border transition-colors ${isDebugOpen ? 'bg-blue-600 border-blue-400' : 'bg-white/5 border-white/10 opacity-30'}`}
+        >
+          DEBUG
+        </button>
+      </div>
 
-      <main className="w-full h-full pt-20">
+      {/* Main Content - 전체 화면 사용 */}
+      <main className="w-full h-full">
         {renderScene()}
       </main>
 
       {/* Debug Panel */}
       {isDebugOpen && (
         <div className="absolute bottom-24 left-16 z-[100] bg-slate-900/95 border border-white/10 rounded-3xl p-8 shadow-2xl backdrop-blur-xl w-[450px]">
-          <h3 className="text-2xl font-black text-blue-400 mb-6 uppercase tracking-widest border-b border-white/10 pb-4">Scene Overrides</h3>
+          {/* Connection Status - Debug용 */}
+          <div className="flex items-center justify-between mb-6 pb-4 border-b border-white/10">
+            <h3 className="text-2xl font-black text-blue-400 uppercase tracking-widest">Scene Overrides</h3>
+            <div className={`flex items-center gap-2 px-4 py-1.5 rounded-full border text-sm ${status === ConnectionStatus.CONNECTED ? 'border-green-500/50 bg-green-500/10' : 'border-red-500/50 bg-red-500/10'
+              }`}>
+              <div className={`w-2 h-2 rounded-full ${status === ConnectionStatus.CONNECTED ? 'bg-green-500 animate-pulse' : 'bg-red-500'
+                }`} />
+              <span className="font-bold tracking-wider uppercase opacity-80">{status}</span>
+            </div>
+          </div>
           <div className="grid grid-cols-2 gap-3">
             {Object.values(Scene).map((scene) => (
               <button
