@@ -35,15 +35,14 @@ npm run dev
 ```
 Open the provided URL in Chrome/Edge (typically `http://localhost:5173`).
 
-## Protocol Details
+## Protocol
 
-### Inbound (Backend -> Frontend)
-- `STATE`: Transitions the UI to a specific scene.
-- `PROGRESS`: Updates current progress bars (0.0 to 1.0).
-- `ERROR`: Displays an overlay error screen.
+통신 규격은 **V2 프로토콜**을 사용합니다. 메시지 이름·페이로드 상세는 [PROTOCOL.md](./PROTOCOL.md)를 참고하세요.
 
-### Outbound (Frontend -> Backend)
-- `UI_EVENT`: Triggered by touch interactions (START, CANCEL, etc.).
+- **Backend → Frontend**: `SET_SCENE`, `PROGRESS_UPDATE`, `SYSTEM_ERROR`, `CAMERA_FRAME`
+- **Frontend → Backend**: `START`, `CANCEL`, `MINIGAME_SELECTED`, `GIFT_SELECTED`, `STYLE_SELECTED`, `GAME_ACTION`, `ANIMATION_COMPLETE`
+
+기본 WebSocket URL: `ws://127.0.0.1:8080`. 다른 주소 사용 시 `.env`에 `VITE_WS_URL=ws://호스트:포트` 설정.
 
 ## Resolution Note
 The application is hardcoded to a **2560x720** container. For actual production, ensure the browser runs in fullscreen/kiosk mode on a matching display.
