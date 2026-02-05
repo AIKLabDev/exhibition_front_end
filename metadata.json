@@ -1,0 +1,7 @@
+{
+  "name": "Kiosk Exhibition Frontend",
+  "description": "A high-resolution (2560x720) kiosk application for exhibition displays, featuring WebSocket integration for scene management and interactive minigames.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
