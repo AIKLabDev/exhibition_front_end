@@ -308,6 +308,14 @@ const Game02: React.FC<Game02Props> = ({ onGameResult }) => {
     }
   }, [state, onGameResult]);
 
+  // HumanTrack 온디맨드: 마운트 시 UDP 수신 시작, 언마운트 시 종료
+  useEffect(() => {
+    fetch('/api/humantrack/start', { method: 'POST' }).catch(() => {});
+    return () => {
+      fetch('/api/humantrack/stop', { method: 'POST' }).catch(() => {});
+    };
+  }, []);
+
   // HumanTrack HeadPose 스트림 구독 (WebSocket 또는 HTTP polling)
   useEffect(() => {
     const applyPose = (data: unknown) => {
