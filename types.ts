@@ -25,10 +25,10 @@ export interface WSMessageV2 {
 
 // Specific Data Payloads
 export interface CameraFrameData {
-  image: string;     // Base64 string
-  format: 'jpeg' | 'png' | 'webp';
-  width?: number;
-  height?: number;
+  image: string;     // Base64 string (JPEG/PNG payload, or raw RGB bytes for format 'raw')
+  format: 'jpeg' | 'png' | 'webp' | 'raw';
+  width?: number;    // Required for 'raw'
+  height?: number;   // Required for 'raw'
 }
 
 export interface SceneData {
@@ -42,13 +42,14 @@ export interface ProgressData {
   label?: string;
 }
 
-export type UIEventName = 
-  | 'START' 
-  | 'CANCEL' 
-  | 'MINIGAME_SELECTED' 
-  | 'GIFT_SELECTED' 
+export type UIEventName =
+  | 'START'
+  | 'CANCEL'
+  | 'MINIGAME_SELECTED'
+  | 'GIFT_SELECTED'
   | 'STYLE_SELECTED'
   | 'GAME_ACTION'
+  | 'GAME_RESULT'
   | 'ANIMATION_COMPLETE';
 
 export enum ConnectionStatus {

@@ -63,7 +63,13 @@ const App: React.FC = () => {
       case Scene.SELECT_MINIGAME:
         return <SelectMinigame onComplete={(game) => handleUIEvent('MINIGAME_SELECTED', { game })} />;
       case Scene.GAME01:
-        return <Game01 onAction={(action) => handleUIEvent('GAME_ACTION', { action })} />;
+        return (
+          <Game01
+            onGameResult={(result, userChoice, aiChoice) => {
+              handleUIEvent('GAME_RESULT', { result, userChoice, aiChoice });
+            }}
+          />
+        );
       case Scene.GAME_RESULT:
         return <GameResult result={gameResult} text={sceneText} />;
       case Scene.PICK_GIFT:
