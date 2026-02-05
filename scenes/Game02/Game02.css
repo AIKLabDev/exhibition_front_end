@@ -1,0 +1,161 @@
+/**
+ * Game02 (Find Object) Styles
+ * 전용 애니메이션 및 스타일
+ */
+
+/* Fonts */
+.font-korean-dynamic {
+  font-family: 'Black Han Sans', sans-serif;
+}
+
+.font-dynamic {
+  font-family: 'Luckiest Guy', cursive;
+}
+
+.font-pretendard {
+  font-family: 'Pretendard', sans-serif;
+}
+
+/* Pop-in animation for overlays */
+@keyframes game02-pop-in {
+  0% {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-game02-pop {
+  animation: game02-pop-in 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+/* Float animation for target image */
+@keyframes game02-float {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+.animate-game02-float {
+  animation: game02-float 3s ease-in-out infinite;
+}
+
+/* Timer warning pulse */
+@keyframes game02-timer-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-game02-timer-warning {
+  animation: game02-timer-pulse 1s ease-in-out infinite;
+}
+
+/* Click indicator ping */
+@keyframes game02-ping {
+  0% {
+    transform: scale(1);
+    opacity: 0.75;
+  }
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+.animate-game02-ping {
+  animation: game02-ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+/* Fade in animation */
+@keyframes game02-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-game02-fade-in {
+  animation: game02-fade-in 0.5s ease-out forwards;
+}
+
+/* Zoom in animation */
+@keyframes game02-zoom-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-game02-zoom-in {
+  animation: game02-zoom-in 0.5s ease-out forwards;
+}
+
+/* Bounce animation for verifying */
+@keyframes game02-bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-25%);
+  }
+}
+
+.animate-game02-bounce {
+  animation: game02-bounce 1s ease-in-out infinite;
+}
+
+/* Spin animation for loader */
+@keyframes game02-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-game02-spin {
+  animation: game02-spin 1s linear infinite;
+}
+
+/* Gradient border effect */
+.game02-gradient-border {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #6366f1 100%);
+  background-size: 200% 200%;
+}
+
+/* Glass effect */
+.game02-glass {
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Sidebar glass effect */
+.game02-sidebar {
+  background: rgba(9, 9, 11, 0.7);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}

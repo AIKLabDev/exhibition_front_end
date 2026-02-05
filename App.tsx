@@ -9,6 +9,7 @@ import Welcome from './scenes/Welcome';
 import QR from './scenes/QR';
 import SelectMinigame from './scenes/SelectMinigame';
 import Game01 from './scenes/Game01';
+import Game02 from './scenes/Game02';
 import GameResult from './scenes/GameResult';
 import PickGift from './scenes/PickGift';
 import LaserStyle from './scenes/LaserStyle';
@@ -67,6 +68,14 @@ const App: React.FC = () => {
           <Game01
             onGameResult={(result, userChoice, aiChoice) => {
               handleUIEvent('GAME_RESULT', { result, userChoice, aiChoice });
+            }}
+          />
+        );
+      case Scene.GAME02:
+        return (
+          <Game02
+            onGameResult={(result) => {
+              handleUIEvent('GAME_RESULT', { result });
             }}
           />
         );
