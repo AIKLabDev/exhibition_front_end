@@ -93,7 +93,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="relative w-[2560px] h-[720px] bg-black text-white overflow-hidden font-sans select-none">
+    <div className="relative w-screen h-screen bg-black text-white overflow-hidden font-sans select-none">
       {/* Background Ambience */}
       <div className="absolute inset-0 pointer-events-none opacity-20">
         <div className="absolute top-0 left-1/4 w-px h-full bg-gradient-to-b from-transparent via-blue-500 to-transparent" />
