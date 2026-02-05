@@ -1,0 +1,117 @@
+/* Exhibition kiosk theme – CSS variables */
+:root {
+  --welcome-bg-start: #0a0f1a;
+  --welcome-bg-mid: #0f172a;
+  --welcome-bg-end: #020617;
+  --welcome-glow: #06b6d4;
+  --welcome-glow-soft: rgba(6, 182, 212, 0.4);
+  --welcome-text: #f8fafc;
+  --welcome-subtitle: #e2e8f0;
+  --welcome-accent: #38bdf8;
+}
+
+/* Welcome scene: animated gradient background */
+.welcome-root {
+  background: linear-gradient(125deg,
+      var(--welcome-bg-start) 0%,
+      var(--welcome-bg-mid) 40%,
+      var(--welcome-bg-end) 100%);
+  background-size: 200% 200%;
+  animation: welcome-bg-shift 12s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .welcome-root {
+    animation: none;
+  }
+}
+
+@keyframes welcome-bg-shift {
+
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+/* Title: solid color so it’s always visible; glow via text-shadow animation */
+.welcome-title {
+  color: var(--welcome-text);
+  text-shadow: 0 0 20px var(--welcome-glow-soft);
+  animation: welcome-glow-breathe 3s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .welcome-title {
+    animation: none;
+  }
+}
+
+@keyframes welcome-glow-breathe {
+
+  0%,
+  100% {
+    text-shadow: 0 0 20px var(--welcome-glow-soft), 0 0 40px var(--welcome-glow-soft);
+  }
+
+  50% {
+    text-shadow: 0 0 32px var(--welcome-glow-soft), 0 0 60px var(--welcome-glow-soft);
+  }
+}
+
+/* Letter pop (optional stagger) */
+.welcome-letter {
+  display: inline-block;
+  animation: welcome-letter-pop 2.5s ease-in-out infinite;
+}
+
+.welcome-letter:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.welcome-letter:nth-child(2) {
+  animation-delay: 0.05s;
+}
+
+.welcome-letter:nth-child(3) {
+  animation-delay: 0.1s;
+}
+
+.welcome-letter:nth-child(4) {
+  animation-delay: 0.15s;
+}
+
+.welcome-letter:nth-child(5) {
+  animation-delay: 0.2s;
+}
+
+.welcome-letter:nth-child(6) {
+  animation-delay: 0.25s;
+}
+
+.welcome-letter:nth-child(7) {
+  animation-delay: 0.3s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .welcome-letter {
+    animation: none;
+  }
+}
+
+@keyframes welcome-letter-pop {
+
+  0%,
+  90%,
+  100% {
+    transform: scale(1);
+  }
+
+  95% {
+    transform: scale(1.03);
+  }
+}

@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 interface WelcomeProps {
@@ -6,25 +5,55 @@ interface WelcomeProps {
   text?: string;
 }
 
+const TITLE = 'AIKOREA';
+
 const Welcome: React.FC<WelcomeProps> = ({ onStart, text }) => {
+  const displayTitle = (text && text.trim()) ? text : TITLE;
+
   return (
-    <div className="h-full flex flex-col items-center justify-center bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-900/20 via-slate-900 to-slate-950">
-      <h1 className="text-8xl font-black mb-6 tracking-tight drop-shadow-lg text-center">
-        {text || "WELCOME TO EXHIBITION"}
-      </h1>
-      <p className="text-3xl text-blue-200/60 mb-16 tracking-wide">
-        Touch the screen to begin your experience
-      </p>
-      
-      <button 
-        onClick={onStart}
-        className="group relative px-20 py-10 bg-blue-600 hover:bg-blue-500 rounded-[2rem] transition-all active:scale-95 shadow-[0_20px_50px_rgba(37,99,235,0.3)]"
+    <div
+      className="welcome-root h-full flex flex-col items-center justify-center relative overflow-hidden"
+      style={{
+        boxShadow: 'inset 0 0 0 1px rgba(6, 182, 212, 0.15)',
+      }}
+    >
+      {/* Subtle horizontal lines for depth */}
+      <div className="absolute inset-0 pointer-events-none opacity-[0.06]">
+        <div className="absolute top-1/4 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[var(--welcome-glow)] to-transparent" />
+        <div className="absolute top-1/2 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[var(--welcome-glow)] to-transparent" />
+        <div className="absolute top-3/4 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[var(--welcome-glow)] to-transparent" />
+      </div>
+
+      <h1
+        className="welcome-title font-black mb-8 tracking-tight text-center uppercase"
+        style={{
+          fontSize: 'clamp(3rem, 8vw, 10rem)',
+          letterSpacing: '0.02em',
+        }}
       >
-        <span className="relative z-10 text-5xl font-black tracking-widest uppercase text-white">
-          START EXPERIENCE
+        {displayTitle.split('').map((char, i) => (
+          <span key={i} className="welcome-letter">
+            {char}
+          </span>
+        ))}
+      </h1>
+
+      <p
+        className="text-center font-medium tracking-wide max-w-[90%]"
+        style={{
+          fontSize: 'clamp(1.5rem, 3.5vw, 4.5rem)',
+          color: 'var(--welcome-subtitle)',
+          textShadow: '0 2px 20px rgba(0,0,0,0.5)',
+          lineHeight: 1.4,
+          marginBottom: '3rem',
+        }}
+      >
+        Game에 참가하시면{' '}
+        <span style={{ color: 'var(--welcome-accent)', fontWeight: 700 }}>
+          소정의 상품
         </span>
-        <div className="absolute inset-0 bg-white/20 blur-xl group-hover:blur-2xl transition-all rounded-[2rem]" />
-      </button>
+        을 드립니다.
+      </p>
     </div>
   );
 };
