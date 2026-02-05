@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Scene, WSMessageV2, ConnectionStatus, UIEventName, SceneData, ProgressData } from './types';
 import { wsService } from './services/websocketService';
+import logoUrl from './resources/AIK_logo_white.png';
 
 // Scenes
 import Welcome from './scenes/Welcome';
@@ -86,24 +87,19 @@ const App: React.FC = () => {
       </div>
 
       <header className="absolute top-0 left-0 right-0 h-20 flex items-center justify-between px-16 z-50 bg-gradient-to-b from-black/80 to-transparent">
-        <div className="flex items-center gap-6">
-          <div className="w-10 h-10 bg-blue-600 rounded-lg shadow-[0_0_20px_#2563eb]" />
-          <div className="text-3xl font-black tracking-tighter uppercase">
-            Exhibition <span className="text-blue-500">Robotics</span> System
-          </div>
-          <button 
+        <div className="flex items-center gap-4">
+          <img src={logoUrl} alt="AIKOREA" className="h-12 w-auto object-contain object-left" />
+          <button
             onClick={() => setIsDebugOpen(!isDebugOpen)}
             className={`ml-4 px-4 py-1 rounded-md text-xs font-bold border transition-colors ${isDebugOpen ? 'bg-blue-600 border-blue-400' : 'bg-white/5 border-white/10 opacity-30'}`}
           >
             DEBUG
           </button>
         </div>
-        <div className={`flex items-center gap-3 px-6 py-2 rounded-full border ${
-          status === ConnectionStatus.CONNECTED ? 'border-green-500/50 bg-green-500/10' : 'border-red-500/50 bg-red-500/10'
-        }`}>
-          <div className={`w-3 h-3 rounded-full ${
-            status === ConnectionStatus.CONNECTED ? 'bg-green-500 animate-pulse' : 'bg-red-500'
-          }`} />
+        <div className={`flex items-center gap-3 px-6 py-2 rounded-full border ${status === ConnectionStatus.CONNECTED ? 'border-green-500/50 bg-green-500/10' : 'border-red-500/50 bg-red-500/10'
+          }`}>
+          <div className={`w-3 h-3 rounded-full ${status === ConnectionStatus.CONNECTED ? 'bg-green-500 animate-pulse' : 'bg-red-500'
+            }`} />
           <span className="text-lg font-bold tracking-widest uppercase opacity-80">{status}</span>
         </div>
       </header>
@@ -121,9 +117,8 @@ const App: React.FC = () => {
               <button
                 key={scene}
                 onClick={() => setCurrentScene(scene)}
-                className={`text-left px-5 py-3 rounded-xl text-sm font-bold transition-all ${
-                  currentScene === scene ? 'bg-blue-600' : 'bg-white/5 hover:bg-white/10'
-                }`}
+                className={`text-left px-5 py-3 rounded-xl text-sm font-bold transition-all ${currentScene === scene ? 'bg-blue-600' : 'bg-white/5 hover:bg-white/10'
+                  }`}
               >
                 {scene}
               </button>

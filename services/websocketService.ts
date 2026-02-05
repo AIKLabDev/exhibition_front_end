@@ -4,14 +4,16 @@ import { WSMessageV2, UIEventName, CameraFrameData } from '../types';
 type MessageListener = (msg: WSMessageV2) => void;
 type FrameListener = (frame: CameraFrameData) => void;
 
+const defaultWsUrl = 'ws://127.0.0.1:8080';
+
 class WebSocketService {
   private socket: WebSocket | null = null;
-  private url: string = 'ws://127.0.0.1:8080';
+  private url: string = import.meta.env?.VITE_WS_URL ?? defaultWsUrl;
   private reconnectTimeout: number = 3000;
-  
+
   private messageListeners: Set<MessageListener> = new Set();
   private frameListeners: Set<FrameListener> = new Set();
-  private onStatusChangeCallback: (status: string) => void = () => {};
+  private onStatusChangeCallback: (status: string) => void = () => { };
 
   constructor() {
     this.connect();
@@ -30,7 +32,7 @@ class WebSocketService {
       this.socket.onmessage = (event) => {
         try {
           const msg: WSMessageV2 = JSON.parse(event.data);
-          
+
           // Handle Camera Frames separately for high-performance routing
           if (msg.header.name === 'CAMERA_FRAME') {
             this.frameListeners.forEach(fn => fn(msg.data as CameraFrameData));
