@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { wsService } from '../services/websocketService';
+import { backendWsService } from '../services/backendWebSocketService';
 import { CameraFrameData } from '../types';
 
 interface QRProps {
@@ -48,7 +48,7 @@ const QR: React.FC<QRProps> = ({ onCancel, text }) => {
   const fpsIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    const unsubscribe = wsService.addFrameListener((data) => {
+    const unsubscribe = backendWsService.addFrameListener((data) => {
       setFrame(data);
       setLastFrameTime(Date.now());
       frameCountRef.current += 1;

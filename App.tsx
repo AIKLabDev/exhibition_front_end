@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Scene, WSMessageV2, ConnectionStatus, UIEventName, SceneData, ProgressData } from './types';
-import { wsService } from './services/websocketService';
+import { backendWsService } from './services/backendWebSocketService';
 import logoUrl from './resources/AIK_logo_white.png';
 
 // Scenes
@@ -24,9 +24,9 @@ const App: React.FC = () => {
   const [isDebugOpen, setIsDebugOpen] = useState<boolean>(false);
 
   useEffect(() => {
-    wsService.setStatusCallback((newStatus) => setStatus(newStatus as ConnectionStatus));
+    backendWsService.setStatusCallback((newStatus) => setStatus(newStatus as ConnectionStatus));
 
-    const unsubscribe = wsService.addMessageListener((msg: WSMessageV2) => {
+    const unsubscribe = backendWsService.addMessageListener((msg: WSMessageV2) => {
       const { name } = msg.header;
       const data = msg.data;
 
@@ -52,7 +52,7 @@ const App: React.FC = () => {
   }, []);
 
   const handleUIEvent = useCallback((name: UIEventName, data?: any) => {
-    wsService.sendCommand(name, data);
+    backendWsService.sendCommand(name, data);
   }, []);
 
   const renderScene = () => {

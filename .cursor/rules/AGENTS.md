@@ -113,8 +113,8 @@ import './Game01.css';  // Only loaded when Game01 renders
 - **Resolution**: Fixed 2560x720 (ultrawide display on robot arm)
 - **Touch-first**: Large buttons, no hover-only interactions
 - **WebSocket**: Two connections
-  - `ws://127.0.0.1:8080` - C++ backend (scene control)
-  - `ws://localhost:9002` - Vision server (gesture detection)
+  - `ws://127.0.0.1:8080` - C++ backend (scene control, `backendWebSocketService`)
+  - `ws://localhost:9002` - Vision/Python (gesture etc., `scenes/Game01/visionWebSocket.ts`; Game02 등 공용화 검토 중)
 - **Scene-based**: UI is driven by `currentScene` state, controlled by backend
 
 ### Adding New Scenes/Minigames
@@ -171,9 +171,10 @@ npm run build        # Production build (outputs to dist/)
 |------|-------------|
 | `App.tsx` | Main app, scene routing |
 | `types.ts` | Shared TypeScript types |
-| `services/websocketService.ts` | C++ backend WebSocket |
+| `services/backendWebSocketService.ts` | C++ backend WebSocket |
 | `scenes/*/index.tsx` | Scene components |
 | `docs/installation.md` | Setup guide for new developers |
+| `docs/vision-python-websocket.md` | Vision/Python WS 아키텍처 (공통 vs 개별 모듈) |
 
 ### Debugging Tips
 

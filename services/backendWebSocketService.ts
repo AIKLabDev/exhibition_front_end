@@ -1,3 +1,7 @@
+/**
+ * WebSocket client for C++ backend communication.
+ * Handles scene control, progress updates, and camera frames (V2 protocol).
+ */
 
 import { WSMessageV2, UIEventName, CameraFrameData } from '../types';
 
@@ -6,7 +10,7 @@ type FrameListener = (frame: CameraFrameData) => void;
 
 const defaultWsUrl = 'ws://127.0.0.1:8080';
 
-class WebSocketService {
+class BackendWebSocketService {
   private socket: WebSocket | null = null;
   private url: string = import.meta.env?.VITE_WS_URL ?? defaultWsUrl;
   private reconnectTimeout: number = 3000;
@@ -25,7 +29,7 @@ class WebSocketService {
       this.socket = new WebSocket(this.url);
 
       this.socket.onopen = () => {
-        console.log('WS Connected (V2 Protocol)');
+        console.log('[Backend WS] Connected (V2 Protocol)');
         this.onStatusChangeCallback('CONNECTED');
       };
 
@@ -40,7 +44,7 @@ class WebSocketService {
             this.messageListeners.forEach(fn => fn(msg));
           }
         } catch (e) {
-          console.error('Failed to parse WS message', e);
+          console.error('[Backend WS] Failed to parse message', e);
         }
       };
 
@@ -50,11 +54,11 @@ class WebSocketService {
       };
 
       this.socket.onerror = (err) => {
-        console.error('WS Error', err);
+        console.error('[Backend WS] Error', err);
         this.socket?.close();
       };
     } catch (err) {
-      console.error('WS Connection failed', err);
+      console.error('[Backend WS] Connection failed', err);
       setTimeout(() => this.connect(), this.reconnectTimeout);
     }
   }
@@ -91,4 +95,4 @@ class WebSocketService {
   }
 }
 
-export const wsService = new WebSocketService();
+export const backendWsService = new BackendWebSocketService();
