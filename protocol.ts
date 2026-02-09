@@ -103,7 +103,7 @@ export const VisionMessageName = {
   RES_HAND_GESTURE: 'RES_HAND_GESTURE',
   GAME_START: 'GAME_START',
   GAME_STOP: 'GAME_STOP',
-  HEADPOSE: 'HEADPOSE',
+  HEAD_POSE: 'HEAD_POSE',
   ERROR: 'ERROR',
   ACK: 'ACK',
   /** Welcome 씬에서 human 감지 시 Python → 프론트. 프론트는 백엔드에 HUMAN_DETECTED 전달 → 백엔드가 SET_SCENE QR */
@@ -130,7 +130,7 @@ export interface VisionResultHandGesture {
   error_message?: string;
 }
 
-/** HEADPOSE 메시지의 data (Python → 프론트) */
+/** HEAD_POSE 메시지의 data (Python → 프론트) */
 export interface VisionHeadPoseData {
   yaw: number;
   pitch: number;
@@ -153,7 +153,7 @@ export const VisionMessageType = {
   RES_HAND_GESTURE: VisionMessageName.RES_HAND_GESTURE,
   GAME_START: VisionMessageName.GAME_START,
   GAME_STOP: VisionMessageName.GAME_STOP,
-  HEADPOSE: VisionMessageName.HEADPOSE,
+  HEAD_POSE: VisionMessageName.HEAD_POSE,
   HUMAN_DETECTED: VisionMessageName.HUMAN_DETECTED,
 } as const;
 export type VisionMessageTypeValue = (typeof VisionMessageType)[keyof typeof VisionMessageType];

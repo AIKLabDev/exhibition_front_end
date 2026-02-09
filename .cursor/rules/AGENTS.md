@@ -115,7 +115,7 @@ import './Game01.css';  // Only loaded when Game01 renders
 - **WebSocket**: Two connections
   - `ws://127.0.0.1:8080` - C++ backend (scene control, `services/backendWebSocketService.ts`)
   - `ws://localhost:9002` - Python 공통 모듈 (SET_SCENE + 감지, `services/visionWebSocketService.ts`). 백엔드 SET_SCENE 수신 시 프론트가 SET_SCENE_PY 전달, Game01/Game02는 `game_id`로 요청. 프로토콜은 `docs/vision-python-websocket.md` 참고.
-- **Game02 HumanTrack**: 브라우저는 UDP 불가 → 공통 Python이 headpose를 WebSocket(`type: 'headpose'`)으로 전송. Game02는 `visionWebSocketService.onPose()` 구독. (Vite UDP 플러그인 제거됨)
+- **Game02 HumanTrack**: 브라우저는 UDP 불가 → 공통 Python이 HEAD_POSE WebSocket(`type: 'HEAD_POSE'`)으로 전송. Game02는 `visionWebSocketService.onPose()` 구독. (Vite UDP 플러그인 제거됨)
 - **Scene-based**: UI is driven by `currentScene` state, controlled by backend
 
 ### Adding New Scenes/Minigames

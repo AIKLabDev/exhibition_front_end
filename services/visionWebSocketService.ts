@@ -286,7 +286,7 @@ export class VisionWebSocketService {
   /**
    * WebSocket onmessage에서 호출. Python에서 오는 모든 메시지는 여기서 한 번에 처리.
    * - RES_HAND_GESTURE: requestHandGesture()가 만든 Promise를 request_id로 찾아 resolve → await가 풀림.
-   * - GAME_START / GAME_STOP / HEADPOSE: 콜백 호출.
+   * - GAME_START / GAME_STOP / HEAD_POSE: 콜백 호출.
    * - 파싱/분기 제거 시 request-response 결과를 받을 수 없으므로 반드시 유지.
    */
   private handleMessage(data: string | ArrayBuffer): void {
@@ -315,7 +315,7 @@ export class VisionWebSocketService {
         this.onGameStartCallback?.();
       } else if (name === VisionMessageName.GAME_STOP) {
         this.onGameStopCallback?.();
-      } else if (name === VisionMessageName.HEADPOSE) {
+      } else if (name === VisionMessageName.HEAD_POSE) {
         const pose = payload as VisionHeadPoseData;
         if (typeof pose?.yaw === 'number' && typeof pose?.pitch === 'number') {
           this.onPoseCallback?.({ yaw: pose.yaw, pitch: pose.pitch });
