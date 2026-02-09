@@ -5,7 +5,10 @@ High-resolution (2560x720) kiosk application built with Vite, React, and TypeScr
 ## Architecture
 - **Vite + React 18**: Fast development and rendering.
 - **Tailwind CSS**: Utility-first styling for complex, responsive kiosk layouts.
-- **WebSocket (ws)**: Real-time communication with backend (C++/Qt or Mock Server).
+- **WebSocket (ws)**:
+  - **C++ 백엔드** (`backendWebSocketService`): 씬 제어, 진행률, 카메라 프레임 등. `ws://127.0.0.1:8080`
+  - **Python 공통 모듈** (`visionWebSocketService`): 씬 컨텍스트 전달, 감지 요청/응답. `ws://localhost:9002`. [프로토콜 상세](docs/vision-python-websocket.md)
+- **Game02 HumanTrack**: 브라우저는 UDP 미지원이므로, Python은 UDP로 전송하고 **Vite(Node)가 UDP 수신 후 WebSocket/HTTP로 브라우저에 전달**. [설명](docs/vision-python-websocket.md#3-udp와-브라우저-game02-humantrack)
 - **Scene-based Pattern**: State-driven UI transitions.
 
 ## Quick Start
@@ -97,7 +100,8 @@ npx tsx tools/mock-server.ts
 - **Backend → Frontend**: `SET_SCENE`, `PROGRESS_UPDATE`, `SYSTEM_ERROR`, `CAMERA_FRAME`
 - **Frontend → Backend**: `START`, `CANCEL`, `MINIGAME_SELECTED`, `GIFT_SELECTED`, `STYLE_SELECTED`, `GAME_ACTION`, `ANIMATION_COMPLETE`
 
-기본 WebSocket URL: `ws://127.0.0.1:8080`. 다른 주소 사용 시 `.env`에 `VITE_WS_URL=ws://호스트:포트` 설정.
+기본 WebSocket URL: `ws://127.0.0.1:8080`. 다른 주소 사용 시 `.env`에 `VITE_WS_URL=ws://호스트:포트` 설정.  
+Python Vision 프로토콜(컨텍스트, 감지 요청 등)은 [docs/vision-python-websocket.md](docs/vision-python-websocket.md) 참고.
 
 ## Resolution Note
 The application is hardcoded to a **2560x720** container. For actual production, ensure the browser runs in fullscreen/kiosk mode on a matching display.

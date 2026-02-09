@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Scene, WSMessageV2, ConnectionStatus, UIEventName, SceneData, ProgressData } from './types';
+import { SceneDefine, WSMessageV2, ConnectionStatus, UIEventName, SceneData, ProgressData } from './types';
 import { backendWsService } from './services/backendWebSocketService';
+import { getVisionWsService } from './services/visionWebSocketService';
 import logoUrl from './resources/AIK_logo_white.png';
 
 // Scenes
@@ -16,12 +17,16 @@ import LaserStyle from './scenes/LaserStyle';
 import LaserProcess from './scenes/LaserProcess';
 
 const App: React.FC = () => {
-  const [currentScene, setCurrentScene] = useState<Scene>(Scene.WELCOME);
+  const [currentScene, setCurrentScene] = useState<SceneDefine>(SceneDefine.WELCOME);
   const [status, setStatus] = useState<ConnectionStatus>(ConnectionStatus.DISCONNECTED);
   const [progress, setProgress] = useState<{ value: number; label: string }>({ value: 0, label: '' });
   const [sceneText, setSceneText] = useState<string>('');
   const [gameResult, setGameResult] = useState<'WIN' | 'LOSE'>('WIN');
   const [isDebugOpen, setIsDebugOpen] = useState<boolean>(false);
+  /** 백엔드 GAME_START 수신 시 증가 → Game01에 전달해 버튼 없이 시작 */
+  const [gameStartTrigger, setGameStartTrigger] = useState(0);
+  /** 백엔드 GAME_STOP 수신 시 증가 (필요 시 Game01 등에서 사용) */
+  const [gameStopTrigger, setGameStopTrigger] = useState(0);
 
   useEffect(() => {
     backendWsService.setStatusCallback((newStatus) => setStatus(newStatus as ConnectionStatus));
@@ -31,18 +36,29 @@ const App: React.FC = () => {
       const data = msg.data;
 
       switch (name) {
-        case 'SET_SCENE':
+        case 'SET_SCENE': {
           const sceneData = data as SceneData;
           setCurrentScene(sceneData.scene);
           setSceneText(sceneData.text || '');
           if (sceneData.result) setGameResult(sceneData.result);
+          // Python 공통 모듈에 현재 씬 전달 (프론트가 중간다리)
+          getVisionWsService().sendScene(sceneData);
           break;
+        }
         case 'PROGRESS_UPDATE':
           const progData = data as ProgressData;
           setProgress({ value: progData.value, label: progData.label || '' });
           break;
         case 'SYSTEM_ERROR':
-          alert(`System Error: ${data.message}`);
+          alert(`System Error: ${(data as { message?: string }).message ?? 'Unknown'}`);
+          break;
+        case 'GAME_START':
+          getVisionWsService().sendGameStart();
+          setGameStartTrigger((t) => t + 1);
+          break;
+        case 'GAME_STOP':
+          getVisionWsService().sendGameStop();
+          setGameStopTrigger((t) => t + 1);
           break;
       }
     });
@@ -57,21 +73,22 @@ const App: React.FC = () => {
 
   const renderScene = () => {
     switch (currentScene) {
-      case Scene.WELCOME:
+      case SceneDefine.WELCOME:
         return <Welcome onStart={() => handleUIEvent('START')} text={sceneText} />;
-      case Scene.QR:
+      case SceneDefine.QR:
         return <QR onCancel={() => handleUIEvent('CANCEL')} text={sceneText} />;
-      case Scene.SELECT_MINIGAME:
+      case SceneDefine.SELECT_MINIGAME:
         return <SelectMinigame onComplete={(game) => handleUIEvent('MINIGAME_SELECTED', { game })} />;
-      case Scene.GAME01:
+      case SceneDefine.GAME01:
         return (
           <Game01
             onGameResult={(result, userChoice, aiChoice) => {
               handleUIEvent('GAME_RESULT', { result, userChoice, aiChoice });
             }}
+            triggerStartFromBackend={gameStartTrigger}
           />
         );
-      case Scene.GAME02:
+      case SceneDefine.GAME02:
         return (
           <Game02
             onGameResult={(result) => {
@@ -79,13 +96,13 @@ const App: React.FC = () => {
             }}
           />
         );
-      case Scene.GAME_RESULT:
+      case SceneDefine.GAME_RESULT:
         return <GameResult result={gameResult} text={sceneText} />;
-      case Scene.PICK_GIFT:
+      case SceneDefine.PICK_GIFT:
         return <PickGift progress={progress.value} label={progress.label} />;
-      case Scene.LASER_STYLE:
+      case SceneDefine.LASER_STYLE:
         return <LaserStyle onSelect={(style) => handleUIEvent('STYLE_SELECTED', { style })} />;
-      case Scene.LASER_PROCESS:
+      case SceneDefine.LASER_PROCESS:
         return <LaserProcess progress={progress.value} label={progress.label} />;
       default:
         return <div className="text-4xl p-20">Scene Offline: {currentScene}</div>;
@@ -131,7 +148,7 @@ const App: React.FC = () => {
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            {Object.values(Scene).map((scene) => (
+            {Object.values(SceneDefine).map((scene) => (
               <button
                 key={scene}
                 onClick={() => setCurrentScene(scene)}

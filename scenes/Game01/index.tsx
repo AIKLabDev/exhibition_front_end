@@ -1,11 +1,28 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './Game01.css';
 import type { RpsChoice, RpsGameState, RpsResult, Game01Props } from './Game01.types';
-import { VisionWebSocket, classNameToChoice } from './visionWebSocket';
+import {
+  getVisionWsService,
+  type VisionWebSocketService,
+} from '../../services/visionWebSocketService';
 import HandDisplay from './HandDisplay';
 import Fireworks from './Fireworks';
 
-const Game01: React.FC<Game01Props> = ({ onGameResult }) => {
+/** 감지 결과 class_name → RpsChoice (Game01 전용) */
+function classNameToChoice(class_name: string): RpsChoice | null {
+  const n = class_name.toLowerCase().trim();
+  if (n === 'rock' || n === 'stone') return 'rock';
+  if (n === 'paper') return 'paper';
+  if (n === 'scissors' || n === 'scissor') return 'scissors';
+  return null;
+}
+
+export interface Game01PropsWithTrigger extends Game01Props {
+  /** 백엔드 GAME_START 수신 시 App이 증가시켜 전달. 0 → N 되면 버튼 없이 게임 시작 */
+  triggerStartFromBackend?: number;
+}
+
+const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFromBackend = 0 }) => {
   const [game, setGame] = useState<RpsGameState>({
     userChoice: null,
     aiChoice: null,
@@ -19,12 +36,12 @@ const Game01: React.FC<Game01Props> = ({ onGameResult }) => {
   const [hypeKey, setHypeKey] = useState(0);
   const [triggerEffect, setTriggerEffect] = useState<RpsResult | null>(null);
   const [wsConnected, setWsConnected] = useState(false);
-  const wsRef = useRef<VisionWebSocket | null>(null);
+  const wsRef = useRef<VisionWebSocketService | null>(null);
   const handleStartGameRef = useRef<(() => Promise<void>) | null>(null);
 
-  // Initialize Vision WebSocket connection
+  // Initialize Vision WebSocket connection (공통 Python 모듈, game_id 로 라우팅)
   useEffect(() => {
-    const ws = VisionWebSocket.getInstance('ws://localhost:9002');
+    const ws = getVisionWsService();
     wsRef.current = ws;
 
     ws.onConnect(() => {
@@ -40,16 +57,6 @@ const Game01: React.FC<Game01Props> = ({ onGameResult }) => {
     ws.onError((error) => {
       console.error('[Game01] Vision WebSocket error:', error);
       setWsConnected(false);
-    });
-
-    // Robot 제어 백엔드에서 game_start 수신 시 게임 시작
-    ws.onGameStart(() => {
-      console.log('[Game01] game_start from robot -> starting game');
-      handleStartGameRef.current?.();
-    });
-
-    ws.onGameStop(() => {
-      console.log('[Game01] game_stop from robot');
     });
 
     if (!ws.isConnected()) {
@@ -69,6 +76,13 @@ const Game01: React.FC<Game01Props> = ({ onGameResult }) => {
   useEffect(() => {
     handleStartGameRef.current = handleStartGame;
   });
+
+  // 백엔드 GAME_START 수신 시 App이 triggerStartFromBackend 증가 → 버튼 없이 시작
+  useEffect(() => {
+    if (triggerStartFromBackend > 0) {
+      handleStartGameRef.current?.();
+    }
+  }, [triggerStartFromBackend]);
 
   // 승패 판정
   const determineWinner = (user: RpsChoice, ai: RpsChoice): RpsResult => {
@@ -115,20 +129,20 @@ const Game01: React.FC<Game01Props> = ({ onGameResult }) => {
     setHypeKey(prev => prev + 1);
 
     // "보" 구간에서 detection 요청
-    let detectionPromise: ReturnType<VisionWebSocket['requestDetection']> | null = null;
+    let detectionPromise: ReturnType<VisionWebSocketService['requestDetection']> | null = null;
     for (let i = 0; i < sequence.length; i++) {
       await new Promise(r => setTimeout(r, sequence[i].delay));
       if (i < sequence.length - 1) {
         setGame(prev => ({ ...prev, hypeText: sequence[i + 1].text }));
         setHypeKey(prev => prev + 1);
         if (i + 1 === sequence.length - 1) {
-          detectionPromise = wsRef.current!.requestDetection();
+          detectionPromise = wsRef.current!.requestDetection({ game_id: 'GAME01' });
         }
       }
     }
 
     try {
-      const result = await (detectionPromise ?? wsRef.current!.requestDetection());
+      const result = await (detectionPromise ?? wsRef.current!.requestDetection({ game_id: 'GAME01' }));
 
       if (!result.success) {
         throw new Error(result.error_message || 'Detection failed');

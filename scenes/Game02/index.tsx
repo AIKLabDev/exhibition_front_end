@@ -28,6 +28,7 @@ import {
   SETTINGS,
 } from './constants';
 import { generateLocalGameScenario } from './localScenarioService';
+import { getVisionWsService } from '../../services/visionWebSocketService';
 import ResultOverlay from './ResultOverlay';
 import './Game02.css';
 
@@ -308,84 +309,25 @@ const Game02: React.FC<Game02Props> = ({ onGameResult }) => {
     }
   }, [state, onGameResult]);
 
-  // HumanTrack 온디맨드: 마운트 시 UDP 수신 시작, 언마운트 시 종료
+  // HumanTrack HeadPose: 공통 Python WebSocket으로 수신 (UDP 대체)
   useEffect(() => {
-    fetch('/api/humantrack/start', { method: 'POST' }).catch(() => {});
-    return () => {
-      fetch('/api/humantrack/stop', { method: 'POST' }).catch(() => {});
-    };
-  }, []);
+    const visionWs = getVisionWsService();
+    visionWs.connect().catch(() => {});
 
-  // HumanTrack HeadPose 스트림 구독 (WebSocket 또는 HTTP polling)
-  useEffect(() => {
-    const applyPose = (data: unknown) => {
-      if (data === null || data === undefined) {
-        setHeadPoseStatus((prev) => ({ ...prev, connected: false }));
-        headPoseRef.current = null;
-        return;
-      }
-
-      const d = data as { yaw?: unknown; pitch?: unknown };
-      const yaw = Number(d?.yaw);
-      const pitch = Number(d?.pitch);
-
-      if (!Number.isFinite(yaw) || !Number.isFinite(pitch)) {
-        return;
-      }
-
+    const applyPose = (data: { yaw: number; pitch: number }) => {
+      const { yaw, pitch } = data;
+      if (!Number.isFinite(yaw) || !Number.isFinite(pitch)) return;
       const now = Date.now();
       headPoseRef.current = { yaw, pitch, atMs: now };
-      if (!prevPoseRef.current) {
-        prevPoseRef.current = { yaw, pitch };
-      }
-      setHeadPoseStatus({
-        connected: true,
-        lastUpdate: now,
-        yaw,
-        pitch,
-      });
+      if (!prevPoseRef.current) prevPoseRef.current = { yaw, pitch };
+      setHeadPoseStatus({ connected: true, lastUpdate: now, yaw, pitch });
     };
 
-    // Vite HMR WebSocket 사용 시도
-    const hot = (import.meta as { hot?: { on?: (event: string, handler: (data: unknown) => void) => void; off?: (event: string, handler: (data: unknown) => void) => void } }).hot;
-    if (hot?.on) {
-      const handler = (data: unknown) => applyPose(data);
-      hot.on('humantrack:pose', handler);
-      return () => {
-        try {
-          hot.off?.('humantrack:pose', handler);
-        } catch {
-          // ignore
-        }
-      };
-    }
-
-    // Fallback: HTTP polling
-    let cancelled = false;
-    const id = window.setInterval(async () => {
-      if (cancelled) return;
-      try {
-        const res = await fetch('/api/humantrack/pose', { cache: 'no-store' });
-        if (!res.ok) {
-          setHeadPoseStatus((prev) => ({ ...prev, connected: false }));
-          return;
-        }
-        const json = (await res.json()) as { pose?: unknown; ok?: boolean; age?: number };
-        if (json?.pose && json.pose !== null) {
-          applyPose(json.pose);
-        } else if (headPoseStatus.connected && json?.age && json.age > 2000) {
-          setHeadPoseStatus((prev) => ({ ...prev, connected: false }));
-        }
-      } catch {
-        setHeadPoseStatus((prev) => ({ ...prev, connected: false }));
-      }
-    }, 150);
-
+    const unsubscribe = visionWs.onPose(applyPose);
     return () => {
-      cancelled = true;
-      window.clearInterval(id);
+      unsubscribe();
     };
-  }, [headPoseStatus.connected]);
+  }, []);
 
   // 게임 중 헤드포즈로 뷰포트 이동
   useEffect(() => {

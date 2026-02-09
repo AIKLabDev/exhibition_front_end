@@ -265,13 +265,13 @@ export default Game02;
 import Game02 from './scenes/Game02';
 
 // renderScene() 안에 추가:
-case Scene.GAME02:
+case SceneDefine.GAME02:
   return <Game02 onGameResult={(result) => handleUIEvent('GAME_RESULT', { result })} />;
 ```
 
 6. **types.ts에 Scene 추가**:
 ```typescript
-export enum Scene {
+export enum SceneDefine {
   // ... 기존 Scene들
   GAME02 = 'GAME02',
 }
@@ -279,9 +279,10 @@ export enum Scene {
 
 ### 참고 사항
 
-- **Game01** 폴더를 참고하면 Vision WebSocket 연동, 애니메이션, 결과 처리 패턴을 볼 수 있습니다
-- CSS는 게임별로 분리하여 충돌을 방지합니다
-- 결과는 `onGameResult` 콜백으로 C++ 백엔드에 전송됩니다
+- **Game01** 폴더를 참고하면 Vision WebSocket 연동(`services/visionWebSocketService`, `game_id`), 애니메이션, 결과 처리 패턴을 볼 수 있습니다.
+- **Python/Vision 프로토콜**(SET_SCENE_PY, request_detection, headpose, game_start/game_stop 등)은 [vision-python-websocket.md](vision-python-websocket.md)를 참고하세요.
+- CSS는 게임별로 분리하여 충돌을 방지합니다.
+- 결과는 `onGameResult` 콜백으로 C++ 백엔드에 전송됩니다.
 
 ---
 
