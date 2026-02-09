@@ -81,6 +81,7 @@ export class VisionWebSocketService {
   private ws: WebSocket | null = null;
   private url: string;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Backend와 동일 3초 간격으로 재연결 시도. disconnect() 호출 시에만 중단 */
   private reconnectDelay = 3000;
   private shouldReconnect = true;
   private pendingRequests = new Map<string, PendingRequest>();
@@ -149,8 +150,8 @@ export class VisionWebSocketService {
           reject(new Error('WebSocket connection error'));
         };
 
-        this.ws.onclose = (event) => {
-          console.log('[VisionWS] Disconnected', event.code, event.reason);
+        this.ws.onclose = () => {
+          console.log('[VisionWS] Disconnected');
           this.isConnecting = false;
           globalConnectPromise = null;
           if (globalWs === this.ws) globalWs = null;
@@ -161,7 +162,7 @@ export class VisionWebSocketService {
             p.reject(new Error('Connection closed'));
           });
           this.pendingRequests.clear();
-          if (this.shouldReconnect && event.code !== 1000) {
+          if (this.shouldReconnect) {
             this.scheduleReconnect();
           }
         };
@@ -341,9 +342,11 @@ export class VisionWebSocketService {
     if (this.reconnectTimer || globalReconnectScheduled) return;
     if (globalWs?.readyState === WebSocket.OPEN || globalWs?.readyState === WebSocket.CONNECTING) return;
     globalReconnectScheduled = true;
+    console.log(`[VisionWS] Reconnecting in ${this.reconnectDelay}ms...`);
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
       globalReconnectScheduled = false;
+      console.log('[VisionWS] Attempting reconnect...');
       this.connect().catch(() => this.scheduleReconnect());
     }, this.reconnectDelay);
   }

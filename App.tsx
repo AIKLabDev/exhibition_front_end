@@ -31,6 +31,11 @@ const App: React.FC = () => {
   const currentSceneRef = useRef(currentScene);
   currentSceneRef.current = currentScene;
 
+  // Vision WS는 앱 시작 시 바로 연결 시도 (재연결 포함). 그래야 백엔드 SET_SCENE 수신 시 sendScene 가능
+  useEffect(() => {
+    getVisionWsService().connect().catch(() => {});
+  }, []);
+
   useEffect(() => {
     backendWsService.setStatusCallback((newStatus) => setStatus(newStatus as ConnectionStatus));
 
