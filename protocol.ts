@@ -67,6 +67,8 @@ export const UIEventName = {
   GAME_ACTION: 'GAME_ACTION',
   GAME_RESULT: 'GAME_RESULT',
   ANIMATION_COMPLETE: 'ANIMATION_COMPLETE',
+  /** Vision에서 human 감지 시(Welcome 씬) 프론트가 백엔드에 알림 → 백엔드가 SET_SCENE QR 전송 */
+  HUMAN_DETECTED: 'HUMAN_DETECTED',
 } as const;
 export type UIEventNameType = (typeof UIEventName)[keyof typeof UIEventName];
 export type UIEventName = UIEventNameType;
@@ -104,6 +106,8 @@ export const VisionMessageName = {
   HEADPOSE: 'HEADPOSE',
   ERROR: 'ERROR',
   ACK: 'ACK',
+  /** Welcome 씬에서 human 감지 시 Python → 프론트. 프론트는 백엔드에 HUMAN_DETECTED 전달 → 백엔드가 SET_SCENE QR */
+  HUMAN_DETECTED: 'HUMAN_DETECTED',
 } as const;
 export type VisionMessageNameType = (typeof VisionMessageName)[keyof typeof VisionMessageName];
 
@@ -137,6 +141,11 @@ export interface VisionErrorData {
   message?: string;
 }
 
+/** HUMAN_DETECTED 메시지의 data (Python → 프론트, Welcome 씬에서 human 감지 시) */
+export interface VisionHumanDetectedData {
+  detected: boolean;
+}
+
 /** @deprecated VisionMessageType 대신 VisionMessageName 사용 */
 export const VisionMessageType = {
   SET_SCENE_PY: VisionMessageName.SET_SCENE,
@@ -145,5 +154,6 @@ export const VisionMessageType = {
   GAME_START: VisionMessageName.GAME_START,
   GAME_STOP: VisionMessageName.GAME_STOP,
   HEADPOSE: VisionMessageName.HEADPOSE,
+  HUMAN_DETECTED: VisionMessageName.HUMAN_DETECTED,
 } as const;
 export type VisionMessageTypeValue = (typeof VisionMessageType)[keyof typeof VisionMessageType];

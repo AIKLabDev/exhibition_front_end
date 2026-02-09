@@ -3,7 +3,7 @@
  * Handles scene control, progress updates, and camera frames (V2 protocol).
  */
 
-import { WSMessageV2, UIEventName, CameraFrameData } from '../types';
+import { WSMessageV2, UIEventName, CameraFrameData, Sender } from '../types';
 
 type MessageListener = (msg: WSMessageV2) => void;
 type FrameListener = (frame: CameraFrameData) => void;
@@ -85,7 +85,7 @@ class BackendWebSocketService {
         header: {
           id: crypto.randomUUID(),
           name: name,
-          sender: 'FRONTEND',
+          sender: Sender.FRONTEND,
           timestamp: Date.now()
         },
         data: data

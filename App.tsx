@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { SceneDefine, WSMessageV2, ConnectionStatus, UIEventName, SceneData, ProgressData } from './types';
 import { backendWsService } from './services/backendWebSocketService';
 import { getVisionWsService } from './services/visionWebSocketService';
@@ -27,6 +27,9 @@ const App: React.FC = () => {
   const [gameStartTrigger, setGameStartTrigger] = useState(0);
   /** 백엔드 GAME_STOP 수신 시 증가 (필요 시 Game01 등에서 사용) */
   const [gameStopTrigger, setGameStopTrigger] = useState(0);
+
+  const currentSceneRef = useRef(currentScene);
+  currentSceneRef.current = currentScene;
 
   useEffect(() => {
     backendWsService.setStatusCallback((newStatus) => setStatus(newStatus as ConnectionStatus));
@@ -64,6 +67,16 @@ const App: React.FC = () => {
     });
 
     // Ensure the cleanup function returns void as expected by useEffect.
+    return () => { unsubscribe(); };
+  }, []);
+
+  // Welcome 씬에서 Python이 human 감지 시 → 백엔드에 HUMAN_DETECTED 전달 → 백엔드가 SET_SCENE QR 보내면 씬 전환
+  useEffect(() => {
+    const vision = getVisionWsService();
+    const unsubscribe = vision.onHumanDetected((data) => {
+      if (currentSceneRef.current !== SceneDefine.WELCOME) return;
+      backendWsService.sendCommand('HUMAN_DETECTED', data);
+    });
     return () => { unsubscribe(); };
   }, []);
 

@@ -9,13 +9,13 @@
  */
 
 import type {
-  SceneDefine,
   WSMessageV2,
   VisionMessageNameType,
   SceneData,
   VisionReqHandGesture,
   VisionResultHandGesture,
   VisionHeadPoseData,
+  VisionHumanDetectedData,
 } from '../protocol';
 import {
   Sender,
@@ -23,7 +23,7 @@ import {
 } from '../protocol';
 
 // Re-export for consumers
-export type { SceneData, VisionReqHandGesture, VisionResultHandGesture, VisionHeadPoseData } from '../protocol';
+export type { SceneData, VisionReqHandGesture, VisionResultHandGesture, VisionHeadPoseData, VisionHumanDetectedData } from '../protocol';
 
 
 /** 프론트 → Python 전송 시 sender는 FRONTEND */
@@ -93,6 +93,7 @@ export class VisionWebSocketService {
   private onGameStartCallback?: () => void;
   private onGameStopCallback?: () => void;
   private onPoseCallback?: (payload: { yaw: number; pitch: number }) => void;
+  private onHumanDetectedCallback?: (data: VisionHumanDetectedData) => void;
 
   constructor(url: string) {
     this.url = url;
@@ -318,6 +319,12 @@ export class VisionWebSocketService {
         if (typeof pose?.yaw === 'number' && typeof pose?.pitch === 'number') {
           this.onPoseCallback?.({ yaw: pose.yaw, pitch: pose.pitch });
         }
+      } else if (name === VisionMessageName.HUMAN_DETECTED) {
+        const humanData = payload as VisionHumanDetectedData;
+        if (humanData && humanData.detected === true) {
+          this.onHumanDetectedCallback?.(humanData);
+          console.log('[VisionWS] HUMAN_DETECTED (forward to backend for SET_SCENE QR)');
+        }
       } else if (name === VisionMessageName.ERROR) {
         console.error('[VisionWS] Server error:', payload);
       } else if (name === VisionMessageName.ACK) {
@@ -361,5 +368,11 @@ export class VisionWebSocketService {
   onPose(cb: (payload: { yaw: number; pitch: number }) => void): () => void {
     this.onPoseCallback = cb;
     return () => { this.onPoseCallback = undefined; };
+  }
+
+  /** Welcome 씬에서 human 감지 시 Python이 보낸 HUMAN_DETECTED 구독. 프론트는 백엔드에 알린 뒤 백엔드가 SET_SCENE QR 전송. */
+  onHumanDetected(cb: (data: VisionHumanDetectedData) => void): () => void {
+    this.onHumanDetectedCallback = cb;
+    return () => { this.onHumanDetectedCallback = undefined; };
   }
 }

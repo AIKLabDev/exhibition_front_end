@@ -46,6 +46,7 @@ interface WSMessageV2 {
 | `STYLE_SELECTED` | 스타일 선택 (레이저 등) | `{ style: string }` |
 | `GAME_ACTION` | 게임 내 액션 | `{ action: string }` |
 | `ANIMATION_COMPLETE` | 애니메이션 완료 알림 | `{}` |
+| `HUMAN_DETECTED` | Welcome 씬에서 Vision이 human 감지 시 프론트가 전달. **백엔드는 수신 후 `SET_SCENE`으로 QR 씬 전환** | `{ detected: true }` |
 
 ---
 
@@ -111,3 +112,15 @@ interface WSMessageV2 {
 
 - **흐름**: Python 공통 모듈이 헤드포즈를 수집(UDP/로컬 등 자유)한 뒤, 프론트와의 WebSocket으로 `type: 'headpose'`, `yaw`, `pitch` 를 보낸다. Game02는 `visionWebSocketService.onPose(cb)`로 구독.
 - **과거**: Vite 플러그인이 UDP 수신 후 HMR WebSocket/HTTP로 브라우저에 전달하던 방식은 제거됨. 이제는 Python → WebSocket → 브라우저 한 경로만 사용.
+
+---
+
+## 4. Welcome → Human 감지 → QR 씬 전환
+
+1. **Frontend** Welcome 씬 표시. **Backend**가 `SET_SCENE` WELCOME 보냄 → **Frontend**가 **Python**에 `SET_SCENE`(현재 씬) 전달.
+2. **Python** (Welcome 씬 컨텍스트)에서 human 감지 시 **Python**이 **Frontend**에 `HUMAN_DETECTED` 전송. `data: { detected: true }`.
+3. **Frontend**는 `HUMAN_DETECTED` 수신 시, 현재 씬이 Welcome일 때만 **Backend**에 `HUMAN_DETECTED` 이벤트 전달 (`sendCommand('HUMAN_DETECTED', data)`).
+4. **Backend**는 `HUMAN_DETECTED` 수신 후 **Frontend**에 `SET_SCENE` QR 전송.
+5. **Frontend**는 기존대로 `SET_SCENE` 수신 시 QR 씬으로 전환.
+
+정리: **Python → Frontend (HUMAN_DETECTED) → Frontend → Backend (HUMAN_DETECTED) → Backend → Frontend (SET_SCENE QR)**. 씬 전환은 반드시 Backend의 SET_SCENE으로만 수행.

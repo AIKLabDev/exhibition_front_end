@@ -2,7 +2,7 @@
  * 공통 타입: 프로토콜은 protocol.ts, 여기는 앱 전역 타입만.
  */
 
-export { SceneDefine, BackendMessageName, VisionMessageName, VisionMessageType } from './protocol';
+export { SceneDefine, Sender, BackendMessageName, VisionMessageName, VisionMessageType } from './protocol';
 export type {
   WSMessageHeader,
   WSMessageV2,
