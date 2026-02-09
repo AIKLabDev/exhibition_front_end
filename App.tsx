@@ -96,7 +96,19 @@ const App: React.FC = () => {
       case SceneDefine.QR:
         return <QR onCancel={() => handleUIEvent('CANCEL')} text={sceneText} />;
       case SceneDefine.SELECT_MINIGAME:
-        return <SelectMinigame onComplete={(game) => handleUIEvent('MINIGAME_SELECTED', { game })} />;
+        return (
+          <SelectMinigame
+            onComplete={(game) => {
+              // RESERVE03/04/05 → 실제 게임 2개로 매칭 (백엔드에는 GAME01/GAME02만 전달)
+              const mapped =
+                game === 'GAME03' ? 'GAME01'
+                  : game === 'GAME04' ? 'GAME02'
+                    : game === 'GAME05' ? 'GAME01'
+                      : game;
+              handleUIEvent('MINIGAME_SELECTED', { game: mapped });
+            }}
+          />
+        );
       case SceneDefine.GAME01:
         return (
           <Game01
