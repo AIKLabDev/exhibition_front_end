@@ -117,12 +117,12 @@ export interface VisionReqHandGesture {
 /** DETECTION_RESULT 메시지의 data (Python → 프론트) */
 export interface VisionResultHandGesture {
   request_id: string;
-  success: boolean;
   game_id?: string;
   data: {
-    class_name: string;
+    gesture: string;
     confidence: number;
   };
+  success: boolean;
   error_message?: string;
 }
 

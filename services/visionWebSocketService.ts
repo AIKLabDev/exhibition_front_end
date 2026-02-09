@@ -26,12 +26,13 @@ import {
 export type { SceneData, VisionReqHandGesture, VisionResultHandGesture, VisionHeadPoseData } from '../protocol';
 
 
+/** 프론트 → Python 전송 시 sender는 FRONTEND */
 function buildVisionMessage(name: VisionMessageNameType, data: unknown): WSMessageV2 {
   return {
     header: {
       id: crypto.randomUUID(),
       name,
-      sender: Sender.VISION,
+      sender: Sender.FRONTEND,
       timestamp: Date.now(),
     },
     data,
@@ -238,23 +239,27 @@ export class VisionWebSocketService {
   }
 
   /**
-   * 감지 요청. game_id 를 넣으면 Python 쪽에서 해당 게임 파이프라인으로 라우팅. (WSMessageV2)
+   * 손동작 감지 요청 (request-response).
+   * - 여기서 REQ_HAND_GESTURE 메시지를 Python에 보내고, Promise를 반환.
+   * - Python이 처리 후 RES_HAND_GESTURE 메시지로 응답하면, handleMessage에서 수신해
+   *   request_id로 pendingRequests를 찾아 resolve(result)를 호출 → 이 Promise가 풀림.
+   * - 따라서 handleMessage의 RES_HAND_GESTURE 분기에서 parsing하고 resolve하는 것은 필수.
    */
-  async requestDetection(options?: { game_id?: string }): Promise<VisionReqHandGesture> {
+  async requestHandGesture(options?: { game_id?: string }): Promise<VisionResultHandGesture> {
     if (!this.isConnected()) {
       throw new Error('Not connected to vision server');
     }
 
     const requestId = `req_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
-    const data: VisionReqHandGesture = {
+    const reqData: VisionReqHandGesture = {
       request_id: requestId,
       game_id: options?.game_id,
     };
 
-    return new Promise<VisionReqHandGesture>((resolve, reject) => {
+    return new Promise<VisionResultHandGesture>((resolve, reject) => {
       const timeout = setTimeout(() => {
         this.pendingRequests.delete(requestId);
-        reject(new Error('Detection request timeout'));
+        reject(new Error('Hand gesture request timeout'));
       }, this.requestTimeout);
 
       this.pendingRequests.set(requestId, {
@@ -265,7 +270,7 @@ export class VisionWebSocketService {
       });
 
       try {
-        const msg = buildVisionMessage(VisionMessageName.REQ_HAND_GESTURE, data);
+        const msg = buildVisionMessage(VisionMessageName.REQ_HAND_GESTURE, reqData);
         this.ws!.send(JSON.stringify(msg));
         console.log('[VisionWS] Sent REQ_HAND_GESTURE:', requestId, options?.game_id ?? '');
       } catch (err) {
@@ -276,6 +281,12 @@ export class VisionWebSocketService {
     });
   }
 
+  /**
+   * WebSocket onmessage에서 호출. Python에서 오는 모든 메시지는 여기서 한 번에 처리.
+   * - RES_HAND_GESTURE: requestHandGesture()가 만든 Promise를 request_id로 찾아 resolve → await가 풀림.
+   * - GAME_START / GAME_STOP / HEADPOSE: 콜백 호출.
+   * - 파싱/분기 제거 시 request-response 결과를 받을 수 없으므로 반드시 유지.
+   */
   private handleMessage(data: string | ArrayBuffer): void {
     const raw =
       data instanceof ArrayBuffer

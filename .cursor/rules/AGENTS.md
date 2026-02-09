@@ -173,7 +173,7 @@ npm run build        # Production build (outputs to dist/)
 | `App.tsx` | Main app, scene routing |
 | `types.ts` | Shared TypeScript types |
 | `services/backendWebSocketService.ts` | C++ backend WebSocket |
-| `services/visionWebSocketService.ts` | Python 공통 모듈 (SET_SCENE_PY, request_detection + game_id) |
+| `services/visionWebSocketService.ts` | Python 공통 모듈 |
 | `scenes/*/index.tsx` | Scene components |
 | `docs/installation.md` | Setup guide for new developers |
 | `docs/vision-python-websocket.md` | Vision/Python 프로토콜 및 UDP(Vite 중계) 설명 |

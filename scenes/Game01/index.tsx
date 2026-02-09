@@ -8,9 +8,9 @@ import {
 import HandDisplay from './HandDisplay';
 import Fireworks from './Fireworks';
 
-/** 감지 결과 class_name → RpsChoice (Game01 전용) */
-function classNameToChoice(class_name: string): RpsChoice | null {
-  const n = class_name.toLowerCase().trim();
+/** 감지 결과 gesture → RpsChoice (Game01 전용) */
+function classNameToChoice(gesture: string): RpsChoice | null {
+  const n = gesture.toLowerCase().trim();
   if (n === 'rock' || n === 'stone') return 'rock';
   if (n === 'paper') return 'paper';
   if (n === 'scissors' || n === 'scissor') return 'scissors';
@@ -129,29 +129,29 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
     setHypeKey(prev => prev + 1);
 
     // "보" 구간에서 detection 요청
-    let detectionPromise: ReturnType<VisionWebSocketService['requestDetection']> | null = null;
+    let handGesturePromise: ReturnType<VisionWebSocketService['requestHandGesture']> | null = null;
     for (let i = 0; i < sequence.length; i++) {
       await new Promise(r => setTimeout(r, sequence[i].delay));
       if (i < sequence.length - 1) {
         setGame(prev => ({ ...prev, hypeText: sequence[i + 1].text }));
         setHypeKey(prev => prev + 1);
         if (i + 1 === sequence.length - 1) {
-          detectionPromise = wsRef.current!.requestDetection({ game_id: 'GAME01' });
+          handGesturePromise = wsRef.current!.requestHandGesture({ game_id: 'GAME01' });
         }
       }
     }
 
     try {
-      const result = await (detectionPromise ?? wsRef.current!.requestDetection({ game_id: 'GAME01' }));
+      const result = await (handGesturePromise ?? wsRef.current!.requestHandGesture({ game_id: 'GAME01' }));
 
       if (!result.success) {
         throw new Error(result.error_message || 'Detection failed');
       }
 
-      const userChoice = classNameToChoice(result.data.class_name);
+      const userChoice = classNameToChoice(result.data.gesture);
 
       if (!userChoice) {
-        throw new Error(`Unknown gesture: ${result.data.class_name}`);
+        throw new Error(`Unknown gesture: ${result.data.gesture}`);
       }
 
       console.log('[Game01] Detected gesture:', userChoice);
