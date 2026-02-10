@@ -8,6 +8,46 @@ import {
 import HandDisplay from './HandDisplay';
 import Fireworks from './Fireworks';
 
+// --- 사용자에게 표시할 메시지 (쉽게 수정 가능) ---
+const GAME01_MESSAGES = {
+  /** 대기 화면 */
+  idle: {
+    hypeText: "READY?",
+    aiComment: "Show me what you've got.",
+  },
+  /** Vision 서버 미연결 시 */
+  visionNotConnected: "Vision server not connected. Please check the connection.",
+  /** 카운트다운 문구 (가위 → 바위 → 보) */
+  countdown: ["SCISSORS", "ROCK", "PAPER"] as const,
+  /** 손 인식 중 */
+  calculating: "Calculating...",
+  /** 결과 - 승리 / 패배 / 무승부 */
+  result: {
+    win: { hypeText: "VICTORY!", aiComment: "You got me!" },
+    lose: { hypeText: "DEFEAT!", aiComment: "Better luck next time!" },
+    draw: { hypeText: "IT'S A DRAW!", aiComment: "Great minds think alike!" },
+  },
+  /** 인식 실패/오류 시 */
+  error: {
+    hypeText: "ERROR",
+    aiCommentFallback: "Failed to detect gesture. Please try again.",
+  },
+  /** 다음 라운드 준비 */
+  goAgain: {
+    hypeText: "GO AGAIN!",
+    aiComment: "I'll get you next time.",
+  },
+  /** UI 라벨 (스코어, 버튼 등) */
+  ui: {
+    human: "HUMAN",
+    aiCore: "AI CORE",
+    gameTitle: "ROCK PAPER SCISSORS",
+    nextRound: "NEXT ROUND",
+    startGame: "START GAME",
+    connecting: "CONNECTING...",
+  },
+} as const;
+
 /** 감지 결과 gesture → RpsChoice (Game01 전용) */
 function classNameToChoice(gesture: string): RpsChoice | null {
   const n = gesture.toLowerCase().trim();
@@ -29,8 +69,8 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
     status: 'idle',
     score: { user: 0, ai: 0 },
     lastResult: null,
-    hypeText: "READY?",
-    aiComment: "Show me what you've got.",
+    hypeText: GAME01_MESSAGES.idle.hypeText,
+    aiComment: GAME01_MESSAGES.idle.aiComment,
   });
 
   const [hypeKey, setHypeKey] = useState(0);
@@ -101,7 +141,7 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
       console.error('[Game01] Vision WebSocket not connected');
       setGame(prev => ({
         ...prev,
-        aiComment: "Vision server not connected. Please check the connection.",
+        aiComment: GAME01_MESSAGES.visionNotConnected,
       }));
       return;
     }
@@ -111,11 +151,7 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
     setTriggerEffect(null);
 
     // 카운트다운 시퀀스: "가위" -> "바위" -> "보"
-    const sequence = [
-      { text: "SCISSORS", delay: 500 },
-      { text: "ROCK", delay: 500 },
-      { text: "PAPER", delay: 500 },
-    ];
+    const sequence = GAME01_MESSAGES.countdown.map((text) => ({ text, delay: 500 }));
 
     setGame(prev => ({
       ...prev,
@@ -124,7 +160,7 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
       hypeText: sequence[0].text,
       lastResult: null,
       aiChoice: null,
-      aiComment: "Calculating...",
+      aiComment: GAME01_MESSAGES.calculating,
     }));
     setHypeKey(prev => prev + 1);
 
@@ -172,8 +208,8 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
           user: gameResult === 'win' ? prev.score.user + 1 : prev.score.user,
           ai: gameResult === 'lose' ? prev.score.ai + 1 : prev.score.ai,
         },
-        hypeText: gameResult === 'win' ? "VICTORY!" : gameResult === 'lose' ? "DEFEAT!" : "IT'S A DRAW!",
-        aiComment: gameResult === 'win' ? "You got me!" : gameResult === 'lose' ? "Better luck next time!" : "Great minds think alike!",
+        hypeText: gameResult === 'win' ? GAME01_MESSAGES.result.win.hypeText : gameResult === 'lose' ? GAME01_MESSAGES.result.lose.hypeText : GAME01_MESSAGES.result.draw.hypeText,
+        aiComment: gameResult === 'win' ? GAME01_MESSAGES.result.win.aiComment : gameResult === 'lose' ? GAME01_MESSAGES.result.lose.aiComment : GAME01_MESSAGES.result.draw.aiComment,
       }));
       setHypeKey(prev => prev + 1);
       setTriggerEffect(gameResult);
@@ -186,8 +222,8 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
       setGame(prev => ({
         ...prev,
         status: 'idle',
-        hypeText: "ERROR",
-        aiComment: error instanceof Error ? error.message : "Failed to detect gesture. Please try again.",
+        hypeText: GAME01_MESSAGES.error.hypeText,
+        aiComment: error instanceof Error ? error.message : GAME01_MESSAGES.error.aiCommentFallback,
       }));
       setHypeKey(prev => prev + 1);
     }
@@ -201,8 +237,8 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
       userChoice: null,
       aiChoice: null,
       lastResult: null,
-      hypeText: "GO AGAIN!",
-      aiComment: "I'll get you next time.",
+      hypeText: GAME01_MESSAGES.goAgain.hypeText,
+      aiComment: GAME01_MESSAGES.goAgain.aiComment,
     }));
     setTriggerEffect(null);
   };
@@ -221,7 +257,7 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
       {/* Score Header */}
       <div className="absolute top-24 w-full max-w-4xl flex justify-between items-center px-16 z-50 font-scifi">
         <div className="text-center">
-          <p className="text-xs text-blue-400 tracking-[0.3em] uppercase opacity-70">HUMAN</p>
+          <p className="text-xs text-blue-400 tracking-[0.3em] uppercase opacity-70">{GAME01_MESSAGES.ui.human}</p>
           <p className={`text-6xl font-bold text-glow-blue ${triggerEffect === 'win' ? 'animate-score-bounce' : ''}`}>
             {game.score.user}
           </p>
@@ -229,13 +265,13 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
 
         <div className="flex flex-col items-center">
           <div className="px-8 py-2 bg-white/5 border border-white/10 rounded-full backdrop-blur-xl mb-2">
-            <p className="text-sm text-slate-400 tracking-tighter uppercase font-bold">ROCK PAPER SCISSORS</p>
+            <p className="text-sm text-slate-400 tracking-tighter uppercase font-bold">{GAME01_MESSAGES.ui.gameTitle}</p>
           </div>
           <div className="h-px w-32 bg-gradient-to-r from-transparent via-slate-700 to-transparent"></div>
         </div>
 
         <div className="text-center">
-          <p className="text-xs text-red-400 tracking-[0.3em] uppercase opacity-70">AI CORE</p>
+          <p className="text-xs text-red-400 tracking-[0.3em] uppercase opacity-70">{GAME01_MESSAGES.ui.aiCore}</p>
           <p className={`text-6xl font-bold text-glow-red ${triggerEffect === 'lose' ? 'animate-score-bounce' : ''}`}>
             {game.score.ai}
           </p>
@@ -287,7 +323,7 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
                     'bg-white/10 border-white/30 hover:bg-white/20 shadow-[0_0_40px_rgba(255,255,255,0.2)]'}
               `}
             >
-              NEXT ROUND
+              {GAME01_MESSAGES.ui.nextRound}
             </button>
           )}
         </div>
@@ -307,7 +343,7 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
                 : 'bg-gray-600/20 border-gray-500/50 text-gray-400 cursor-not-allowed opacity-50'}
             `}
           >
-            {wsConnected ? 'START GAME' : 'CONNECTING...'}
+            {wsConnected ? GAME01_MESSAGES.ui.startGame : GAME01_MESSAGES.ui.connecting}
           </button>
         </div>
       )}
