@@ -46,6 +46,14 @@ const GAME01_MESSAGES = {
     startGame: "START GAME",
     connecting: "CONNECTING...",
   },
+  /** Python에서 받은 gesture → 화면에 표시할 문자열 (HUMAN 영역) */
+  gestureDisplay: {
+    rock: "ROCK",
+    paper: "PAPER",
+    scissors: "SCISSORS",
+    /** 아직 인식 전이거나 없을 때 */
+    none: "-",
+  },
 } as const;
 
 /** 감지 결과 gesture → RpsChoice (Game01 전용) */
@@ -260,6 +268,9 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
           <p className="text-xs text-blue-400 tracking-[0.3em] uppercase opacity-70">{GAME01_MESSAGES.ui.human}</p>
           <p className={`text-6xl font-bold text-glow-blue ${triggerEffect === 'win' ? 'animate-score-bounce' : ''}`}>
             {game.score.user}
+          </p>
+          <p className="mt-2 text-sm text-slate-400 tracking-wider uppercase">
+            {game.userChoice ? GAME01_MESSAGES.gestureDisplay[game.userChoice] : GAME01_MESSAGES.gestureDisplay.none}
           </p>
         </div>
 
