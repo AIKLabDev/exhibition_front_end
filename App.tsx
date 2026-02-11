@@ -23,6 +23,8 @@ const App: React.FC = () => {
   const [sceneText, setSceneText] = useState<string>('');
   const [gameResult, setGameResult] = useState<'WIN' | 'LOSE'>('WIN');
   const [isDebugOpen, setIsDebugOpen] = useState<boolean>(false);
+  /** Python(Vision) WebSocket 연결 여부 - 디버그 UI 표시용 */
+  const [pythonConnected, setPythonConnected] = useState(false);
   /** 백엔드 GAME_START 수신 시 증가 → Game01에 전달해 버튼 없이 시작 */
   const [gameStartTrigger, setGameStartTrigger] = useState(0);
   /** 백엔드 GAME_STOP 수신 시 증가 (필요 시 Game01 등에서 사용) */
@@ -33,7 +35,15 @@ const App: React.FC = () => {
 
   // Vision WS는 앱 시작 시 바로 연결 시도 (재연결 포함). 그래야 백엔드 SET_SCENE 수신 시 sendScene 가능
   useEffect(() => {
-    getVisionWsService().connect().catch(() => {});
+    getVisionWsService().connect().catch(() => { });
+  }, []);
+
+  // Python(Vision) 연결 상태 구독
+  useEffect(() => {
+    const vision = getVisionWsService();
+    setPythonConnected(vision.isConnected());
+    vision.onConnect(() => setPythonConnected(true));
+    vision.onDisconnect(() => setPythonConnected(false));
   }, []);
 
   useEffect(() => {
@@ -167,15 +177,27 @@ const App: React.FC = () => {
       {/* Debug Panel */}
       {isDebugOpen && (
         <div className="absolute bottom-24 left-16 z-[100] bg-slate-900/95 border border-white/10 rounded-3xl p-8 shadow-2xl backdrop-blur-xl w-[450px]">
-          {/* Connection Status - Debug용 */}
-          <div className="flex items-center justify-between mb-6 pb-4 border-b border-white/10">
-            <h3 className="text-2xl font-black text-blue-400 uppercase tracking-widest">Scene Overrides</h3>
-            <div className={`flex items-center gap-2 px-4 py-1.5 rounded-full border text-sm ${status === ConnectionStatus.CONNECTED ? 'border-green-500/50 bg-green-500/10' : 'border-red-500/50 bg-red-500/10'
-              }`}>
-              <div className={`w-2 h-2 rounded-full ${status === ConnectionStatus.CONNECTED ? 'bg-green-500 animate-pulse' : 'bg-red-500'
-                }`} />
-              <span className="font-bold tracking-wider uppercase opacity-80">{status}</span>
+          {/* Connection Status - Debug용: cpp(백엔드), python(Vision) */}
+          <div className="mb-6 pb-4 border-b border-white/10">
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider w-12 shrink-0">cpp</span>
+                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm flex-1 min-w-0 ${status === ConnectionStatus.CONNECTED ? 'border-green-500/50 bg-green-500/10' : 'border-red-500/50 bg-red-500/10'}`}>
+                  <div className={`w-2 h-2 rounded-full shrink-0 ${status === ConnectionStatus.CONNECTED ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+                  <span className="font-bold tracking-wider uppercase opacity-80 truncate">{status}</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider w-12 shrink-0">python</span>
+                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm flex-1 min-w-0 ${pythonConnected ? 'border-green-500/50 bg-green-500/10' : 'border-red-500/50 bg-red-500/10'}`}>
+                  <div className={`w-2 h-2 rounded-full shrink-0 ${pythonConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+                  <span className="font-bold tracking-wider uppercase opacity-80 truncate">{pythonConnected ? 'CONNECTED' : 'DISCONNECTED'}</span>
+                </div>
+              </div>
             </div>
+          </div>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-2xl font-black text-blue-400 uppercase tracking-widest">Scene Lists</h3>
           </div>
           <div className="grid grid-cols-2 gap-3">
             {Object.values(SceneDefine).map((scene) => (
