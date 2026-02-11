@@ -7,7 +7,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GameState, CardData, Game03Props, CardType } from './Game03.types';
-import { REVEAL_DURATION, SHUFFLE_DURATION, NUM_CARDS } from './constants';
+import { REVEAL_DURATION, SHUFFLE_DURATION, NUM_CARDS, GAME03_STRINGS } from './constants';
 import Card from './Card';
 import './Game03.css';
 
@@ -148,7 +148,7 @@ const Game03: React.FC<Game03Props> = ({ onGameResult }) => {
               className="bg-blue-600 hover:bg-blue-500 text-white font-black rounded-full shadow-lg transition-transform hover:scale-105 active:scale-95"
               style={{ fontSize: `${buttonFontSize}px`, padding: `${12 * scaleH}px ${40 * scaleW}px` }}
             >
-              START GAME
+              {GAME03_STRINGS.START_GAME}
             </motion.button>
           )}
 
@@ -161,7 +161,7 @@ const Game03: React.FC<Game03Props> = ({ onGameResult }) => {
               className="text-white font-black uppercase tracking-widest flex items-center gap-4"
               style={{ fontSize: `${titleFontSize}px` }}
             >
-              <span className="text-red-500">Memorize</span> the Heart Location!
+              <span className="text-red-500">{GAME03_STRINGS.MEMORIZE}</span> {GAME03_STRINGS.MEMORIZE_SUB}
             </motion.div>
           )}
 
@@ -177,7 +177,7 @@ const Game03: React.FC<Game03Props> = ({ onGameResult }) => {
                 className="text-blue-400 font-black uppercase tracking-tighter"
                 style={{ fontSize: `${titleFontSize}px` }}
               >
-                {shufflePhase < 0.3 ? 'Shuffling...' : shufflePhase < 0.7 ? 'FASTER!' : 'MAX SPEED!!'}
+                {shufflePhase < 0.3 ? GAME03_STRINGS.SHUFFLE_PHASE_1 : shufflePhase < 0.7 ? GAME03_STRINGS.SHUFFLE_PHASE_2 : GAME03_STRINGS.SHUFFLE_PHASE_3}
               </div>
               <div
                 className="bg-zinc-800 rounded-full overflow-hidden"
@@ -201,7 +201,7 @@ const Game03: React.FC<Game03Props> = ({ onGameResult }) => {
               className="text-white font-black uppercase tracking-widest animate-pulse"
               style={{ fontSize: `${titleFontSize}px` }}
             >
-              PICK THE HEART!
+              {GAME03_STRINGS.PICK_THE_HEART}
             </motion.div>
           )}
 
@@ -216,14 +216,14 @@ const Game03: React.FC<Game03Props> = ({ onGameResult }) => {
                 className={`font-black uppercase tracking-tighter ${isWinner ? 'text-green-500' : 'text-red-500'}`}
                 style={{ fontSize: `${resultFontSize}px` }}
               >
-                {isWinner ? 'YOU WIN! 🎉' : 'GAME OVER 💀'}
+                {isWinner ? GAME03_STRINGS.YOU_WIN : GAME03_STRINGS.GAME_OVER}
               </div>
               <button
                 onClick={initializeGame}
                 className="bg-zinc-700 hover:bg-zinc-600 text-white font-bold rounded-lg transition-colors"
                 style={{ fontSize: `${buttonFontSize}px`, padding: `${8 * scaleH}px ${20 * scaleW}px` }}
               >
-                Try Again
+                {GAME03_STRINGS.TRY_AGAIN}
               </button>
             </motion.div>
           )}
@@ -263,7 +263,7 @@ const Game03: React.FC<Game03Props> = ({ onGameResult }) => {
               className="text-zinc-600 font-bold italic"
               style={{ fontSize: `${20 * scaleH}px` }}
             >
-              Waiting to Start...
+              {GAME03_STRINGS.WAITING}
             </div>
           )}
         </div>

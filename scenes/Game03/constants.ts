@@ -1,8 +1,30 @@
 /**
  * Game03 (Heart Hunt) 상수
  * REVEAL: 하트 위치 암기 시간, SHUFFLE: 카드 셔플 시간
+ * 문자열은 여기서 한 곳에 모아 수정하기 쉽게 관리
  */
 
 export const REVEAL_DURATION = 2000; // 2초
 export const SHUFFLE_DURATION = 5000; // 5초
 export const NUM_CARDS = 5;
+
+/** Game03 UI 문자열 — 수정 시 이 객체만 편집 */
+export const GAME03_STRINGS = {
+  START_GAME: '게임 시작',
+  MEMORIZE: '❤️를',
+  MEMORIZE_SUB: '기억하세요!',
+  SHUFFLE_PHASE_1: '셔플 중...',
+  SHUFFLE_PHASE_2: '더 빨리!',
+  SHUFFLE_PHASE_3: '최고 속도!',
+  PICK_THE_HEART: '❤️를 맞춰보세요!',
+  YOU_WIN: '정답! 🎉',
+  GAME_OVER: '아쉽습니다 💀',
+  TRY_AGAIN: '다시 시작',
+  WAITING: '게임을 시작합니다...',
+  CARD_BACK_AI: 'AI',
+  CARD_HEART_LABEL: 'Heart',
+  CARD_BOMB_LABEL: 'Bomb',
+  CARD_CORNER_HEART: '❤️',
+  CARD_CORNER_BOMB: '💣',
+  CARD_LOGO_ALT: 'AI Korea',
+} as const;

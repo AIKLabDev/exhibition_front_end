@@ -7,6 +7,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { CardType } from './Game03.types';
+import { GAME03_STRINGS } from './constants';
 import logoUrl from '../../resources/AIK_logo_white.png';
 
 interface CardProps {
@@ -51,12 +52,12 @@ const Card: React.FC<CardProps> = ({ type, isFlipped, onClick, disabled, positio
             <div className="relative w-3/4 h-3/4 flex items-center justify-center">
               <img
                 src={logoUrl}
-                alt="AI Korea"
+                alt={GAME03_STRINGS.CARD_LOGO_ALT}
                 className="w-full h-auto object-contain brightness-125 contrast-125"
               />
             </div>
-            <div className="absolute top-2 left-2 text-blue-400 font-bold" style={{ fontSize: cornerSize }}>AI</div>
-            <div className="absolute bottom-2 right-2 text-blue-400 font-bold rotate-180" style={{ fontSize: cornerSize }}>AI</div>
+            <div className="absolute top-2 left-2 text-blue-400 font-bold" style={{ fontSize: cornerSize }}>{GAME03_STRINGS.CARD_BACK_AI}</div>
+            <div className="absolute bottom-2 right-2 text-blue-400 font-bold rotate-180" style={{ fontSize: cornerSize }}>{GAME03_STRINGS.CARD_BACK_AI}</div>
           </div>
         </div>
 
@@ -68,16 +69,16 @@ const Card: React.FC<CardProps> = ({ type, isFlipped, onClick, disabled, positio
           {type === CardType.HEART ? (
             <div className="flex flex-col items-center">
               <span className="animate-pulse" style={{ fontSize: emojiSize }}>❤️</span>
-              <span className="mt-2 text-red-600 font-black uppercase tracking-widest" style={{ fontSize: labelSize }}>Heart</span>
+              <span className="mt-2 text-red-600 font-black uppercase tracking-widest" style={{ fontSize: labelSize }}>{GAME03_STRINGS.CARD_HEART_LABEL}</span>
             </div>
           ) : (
             <div className="flex flex-col items-center">
               <span style={{ fontSize: emojiSize }}>💣</span>
-              <span className="mt-2 text-zinc-800 font-black uppercase tracking-widest" style={{ fontSize: labelSize }}>Bomb</span>
+              <span className="mt-2 text-zinc-800 font-black uppercase tracking-widest" style={{ fontSize: labelSize }}>{GAME03_STRINGS.CARD_BOMB_LABEL}</span>
             </div>
           )}
-          <div className={`absolute top-2 left-2 font-bold ${type === CardType.HEART ? 'text-red-600' : 'text-zinc-800'}`} style={{ fontSize: cornerSize }}>{type === CardType.HEART ? '❤️' : '💣'}</div>
-          <div className={`absolute bottom-2 right-2 font-bold rotate-180 ${type === CardType.HEART ? 'text-red-600' : 'text-zinc-800'}`} style={{ fontSize: cornerSize }}>{type === CardType.HEART ? '❤️' : '💣'}</div>
+          <div className={`absolute top-2 left-2 font-bold ${type === CardType.HEART ? 'text-red-600' : 'text-zinc-800'}`} style={{ fontSize: cornerSize }}>{type === CardType.HEART ? GAME03_STRINGS.CARD_CORNER_HEART : GAME03_STRINGS.CARD_CORNER_BOMB}</div>
+          <div className={`absolute bottom-2 right-2 font-bold rotate-180 ${type === CardType.HEART ? 'text-red-600' : 'text-zinc-800'}`} style={{ fontSize: cornerSize }}>{type === CardType.HEART ? GAME03_STRINGS.CARD_CORNER_HEART : GAME03_STRINGS.CARD_CORNER_BOMB}</div>
         </div>
       </motion.div>
     </motion.div>
