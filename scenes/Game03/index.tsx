@@ -212,10 +212,6 @@ const Game03: React.FC<Game03Props> = ({ onGameResult }) => {
           )}
         </div>
       </div>
-
-      <div className="mt-4 text-zinc-500 font-medium text-sm">
-        Powered by <span className="text-blue-500 font-bold">AI Korea</span>
-      </div>
     </div>
   );
 };
