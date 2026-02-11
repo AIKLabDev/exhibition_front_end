@@ -11,6 +11,7 @@ import QR from './scenes/QR';
 import SelectMinigame from './scenes/SelectMinigame';
 import Game01 from './scenes/Game01';
 import Game02 from './scenes/Game02';
+import Game03 from './scenes/Game03';
 import GameResult from './scenes/GameResult';
 import PickGift from './scenes/PickGift';
 import LaserStyle from './scenes/LaserStyle';
@@ -109,12 +110,11 @@ const App: React.FC = () => {
         return (
           <SelectMinigame
             onComplete={(game) => {
-              // RESERVE03/04/05 → 실제 게임 2개로 매칭 (백엔드에는 GAME01/GAME02만 전달)
+              // GAME03(Heart Hunt)은 그대로 전달, RESERVE04/05 → GAME01/GAME02 매칭
               const mapped =
-                game === 'GAME03' ? 'GAME01'
-                  : game === 'GAME04' ? 'GAME02'
-                    : game === 'GAME05' ? 'GAME01'
-                      : game;
+                game === 'GAME04' ? 'GAME02'
+                  : game === 'GAME05' ? 'GAME01'
+                    : game;
               handleUIEvent('MINIGAME_SELECTED', { game: mapped });
             }}
           />
@@ -131,6 +131,14 @@ const App: React.FC = () => {
       case SceneDefine.GAME02:
         return (
           <Game02
+            onGameResult={(result) => {
+              handleUIEvent('GAME_RESULT', { result });
+            }}
+          />
+        );
+      case SceneDefine.GAME03:
+        return (
+          <Game03
             onGameResult={(result) => {
               handleUIEvent('GAME_RESULT', { result });
             }}
