@@ -197,8 +197,7 @@ const Game04: React.FC<Game04Props> = ({ onGameResult }) => {
               </div>
             </div>
             {/* 체력 */}
-            <div className="flex flex-col items-center">
-              <div className="text-green-500 font-mono font-bold mb-1 tracking-widest" style={{ fontSize: Math.round(10 * scaleH) }}>{GAME04_STRINGS.HEALTH_LABEL}</div>
+            <div className="flex flex-row items-center">
               <HealthBar health={health} scaleH={scaleH} />
             </div>
             {/* 타이머 */}
@@ -210,14 +209,13 @@ const Game04: React.FC<Game04Props> = ({ onGameResult }) => {
           </div>
 
           {/* 중앙 대형 타이머 */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center">
+          <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center">
             <div className={`font-black font-mono italic tracking-tighter opacity-20 select-none transform -skew-x-12 transition-colors duration-300 ${timeLeft < 5 ? 'text-red-500 animate-ping' : 'text-cyan-400'}`} style={{ fontSize: timerFontSize, filter: 'blur(2px)' }}>
               {Math.ceil(timeLeft)}
             </div>
             <div className={`absolute font-black font-mono italic tracking-tighter select-none transform -skew-x-12 transition-all duration-300 ${timeLeft < 5 ? 'text-red-600 scale-110 drop-shadow-[0_0_25px_rgba(255,0,0,0.8)]' : 'text-cyan-500 drop-shadow-[0_0_15px_rgba(0,255,255,0.6)]'}`} style={{ fontSize: timerFontSize }}>
               {Math.ceil(timeLeft)}
             </div>
-            <div className="mt-2 text-cyan-500 font-mono tracking-[1em] opacity-50 uppercase font-bold" style={{ fontSize: Math.round(10 * scaleH) }}>{GAME04_STRINGS.TIMER_LABEL}</div>
           </div>
 
           {/* 십자선 */}
@@ -266,7 +264,7 @@ const Game04: React.FC<Game04Props> = ({ onGameResult }) => {
             {isVictory ? GAME04_STRINGS.VICTORY_TITLE : GAME04_STRINGS.DEFEAT_TITLE}
           </h2>
           <div
-            className={`font-mono border-b-4 ${isVictory ? 'border-green-400' : 'border-red-400'}`}
+            className={`font-black border-b-4 ${isVictory ? 'border-green-400' : 'border-red-400'}`}
             style={{ fontSize: `${titleFontSize * 0.8}px`, paddingBottom: `${8 * scaleH}px`, marginBottom: `${32 * scaleH}px` }}
           >
             {GAME04_STRINGS.SCORE_PREFIX}{finalScore}
