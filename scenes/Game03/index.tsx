@@ -45,7 +45,6 @@ const Game03: React.FC<Game03Props> = ({ onGameResult }) => {
   const CARD_GAP = Math.round(60 * scaleW);
 
   const headerHeight = Math.round(100 * scaleH);
-  const footerHeight = Math.round(48 * scaleH);
   const titleFontSize = Math.round(36 * scaleH);
   const resultFontSize = Math.round(56 * scaleH);
   const buttonFontSize = Math.round(24 * scaleH);
@@ -267,14 +266,6 @@ const Game03: React.FC<Game03Props> = ({ onGameResult }) => {
             </div>
           )}
         </div>
-      </div>
-
-      {/* 섹션 3: 푸터 (비율 높이) */}
-      <div
-        className="flex-shrink-0 flex items-center justify-center text-zinc-500"
-        style={{ height: `${footerHeight}px`, fontSize: `${14 * scaleH}px` }}
-      >
-
       </div>
     </div>
   );
