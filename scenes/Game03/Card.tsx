@@ -56,8 +56,8 @@ const Card: React.FC<CardProps> = ({ type, isFlipped, onClick, disabled, positio
                 className="w-full h-auto object-contain brightness-125 contrast-125"
               />
             </div>
-            <div className="absolute top-2 left-2 text-blue-400 font-bold" style={{ fontSize: cornerSize }}>{GAME03_STRINGS.CARD_BACK_AI}</div>
-            <div className="absolute bottom-2 right-2 text-blue-400 font-bold rotate-180" style={{ fontSize: cornerSize }}>{GAME03_STRINGS.CARD_BACK_AI}</div>
+            {/*<div className="absolute top-2 left-2 text-blue-400 font-bold" style={{ fontSize: cornerSize }}>{GAME03_STRINGS.CARD_BACK_AI}</div> */}
+            {/*<div className="absolute bottom-2 right-2 text-blue-400 font-bold rotate-180" style={{ fontSize: cornerSize }}>{GAME03_STRINGS.CARD_BACK_AI}</div> */}
           </div>
         </div>
 
