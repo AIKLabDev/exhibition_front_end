@@ -1,0 +1,17 @@
+/**
+ * Game03 (Heart Hunt) 전용 스타일
+ * 카드 3D 뒤집기 보조 (backface-visibility)
+ */
+
+.game03-card-inner {
+  transform-style: preserve-3d;
+}
+
+.game03-card-back,
+.game03-card-front {
+  backface-visibility: hidden;
+}
+
+.game03-card-front {
+  transform: rotateY(180deg);
+}

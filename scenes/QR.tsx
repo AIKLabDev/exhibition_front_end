@@ -105,12 +105,6 @@ const QR: React.FC<QRProps> = ({ onCancel, text }) => {
                 <div className="absolute bottom-0 right-0 w-16 h-16 border-b-8 border-r-8 border-blue-500 rounded-br-3xl" />
               </div>
             </div>
-
-            <div className="absolute top-12 left-12 px-6 py-2 bg-blue-600/80 rounded-full backdrop-blur-md flex items-center gap-3">
-              <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-              <span className="text-white font-black tracking-widest text-xs uppercase">Server Stream Active</span>
-              <span className="text-blue-200 font-mono text-sm tabular-nums">{fps} FPS</span>
-            </div>
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center p-12 text-center max-w-2xl bg-slate-950/50 w-full h-full">
@@ -126,6 +120,11 @@ const QR: React.FC<QRProps> = ({ onCancel, text }) => {
       {/* Right: Instructions */}
       <div className="h-full bg-slate-900 border-l border-white/10 p-16 flex flex-col relative z-10 shadow-[-50px_0_100px_rgba(0,0,0,0.5)]">
         <div className="flex-1 flex flex-col justify-center">
+          <div className="absolute top-12 left-12 px-6 py-2 bg-blue-600/80 rounded-full backdrop-blur-md flex items-center gap-3">
+            <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+            <span className="text-white font-black tracking-widest text-xs uppercase">Server Stream Active</span>
+            <span className="text-blue-200 font-mono text-sm tabular-nums">{fps} FPS</span>
+          </div>
           <h2 className="text-7xl font-black mb-8 leading-tight tracking-tighter uppercase italic">
             QR Code<br />
             <span className="text-blue-500">인식 중</span>

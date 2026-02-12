@@ -1,0 +1,29 @@
+/**
+ * Game04 (Zombie Defender) 전용 스타일
+ */
+
+@keyframes game04-shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-10px) translateY(5px); }
+  20%, 40%, 60%, 80% { transform: translateX(10px) translateY(-5px); }
+}
+
+.animate-game04-shake {
+  animation: game04-shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+@keyframes game04-gradient-x {
+  0% { background-position: 0% 50% }
+  50% { background-position: 100% 50% }
+  100% { background-position: 0% 50% }
+}
+
+.animate-game04-gradient-x {
+  background-size: 200% 200%;
+  animation: game04-gradient-x 3s ease infinite;
+}
+
+@keyframes game04-confetti-fall {
+  0% { transform: translateY(0) rotate(0deg); opacity: 0.8; }
+  100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+}
