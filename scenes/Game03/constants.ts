@@ -24,7 +24,7 @@ export const GAME03_STRINGS = {
   CARD_BACK_AI: 'AI',
   CARD_HEART_LABEL: 'Heart',
   CARD_BOMB_LABEL: 'Bomb',
-  CARD_CORNER_HEART: '❤️',
-  CARD_CORNER_BOMB: '💣',
+  CARD_HEART_ICON: '❤️',
+  CARD_BOMB_ICON: '💣',
   CARD_LOGO_ALT: 'AI Korea',
 } as const;

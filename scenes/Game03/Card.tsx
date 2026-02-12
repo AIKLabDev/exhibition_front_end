@@ -68,17 +68,17 @@ const Card: React.FC<CardProps> = ({ type, isFlipped, onClick, disabled, positio
         >
           {type === CardType.HEART ? (
             <div className="flex flex-col items-center">
-              <span className="animate-pulse" style={{ fontSize: emojiSize }}>❤️</span>
+              <span className="animate-pulse" style={{ fontSize: emojiSize }}>{GAME03_STRINGS.CARD_HEART_ICON}</span>
               <span className="mt-2 text-red-600 font-black uppercase tracking-widest" style={{ fontSize: labelSize }}>{GAME03_STRINGS.CARD_HEART_LABEL}</span>
             </div>
           ) : (
             <div className="flex flex-col items-center">
-              <span style={{ fontSize: emojiSize }}>💣</span>
+              <span style={{ fontSize: emojiSize }}>{GAME03_STRINGS.CARD_BOMB_ICON}</span>
               <span className="mt-2 text-zinc-800 font-black uppercase tracking-widest" style={{ fontSize: labelSize }}>{GAME03_STRINGS.CARD_BOMB_LABEL}</span>
             </div>
           )}
-          <div className={`absolute top-2 left-2 font-bold ${type === CardType.HEART ? 'text-red-600' : 'text-zinc-800'}`} style={{ fontSize: cornerSize }}>{type === CardType.HEART ? GAME03_STRINGS.CARD_CORNER_HEART : GAME03_STRINGS.CARD_CORNER_BOMB}</div>
-          <div className={`absolute bottom-2 right-2 font-bold rotate-180 ${type === CardType.HEART ? 'text-red-600' : 'text-zinc-800'}`} style={{ fontSize: cornerSize }}>{type === CardType.HEART ? GAME03_STRINGS.CARD_CORNER_HEART : GAME03_STRINGS.CARD_CORNER_BOMB}</div>
+          <div className={`absolute top-2 left-2 font-bold ${type === CardType.HEART ? 'text-red-600' : 'text-zinc-800'}`} style={{ fontSize: cornerSize }}>{type === CardType.HEART ? GAME03_STRINGS.CARD_HEART_ICON : GAME03_STRINGS.CARD_BOMB_ICON}</div>
+          <div className={`absolute bottom-2 right-2 font-bold rotate-180 ${type === CardType.HEART ? 'text-red-600' : 'text-zinc-800'}`} style={{ fontSize: cornerSize }}>{type === CardType.HEART ? GAME03_STRINGS.CARD_HEART_ICON : GAME03_STRINGS.CARD_BOMB_ICON}</div>
         </div>
       </motion.div>
     </motion.div>
