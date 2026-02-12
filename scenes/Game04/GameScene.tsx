@@ -125,7 +125,7 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, se
   );
   const zombiesData = useRef(
     Array.from({ length: MAX_ZOMBIES }).map((_, i) => ({
-      active: false, pos: new THREE.Vector3(0, -500, 0), speed: 0, id: i, wobbleOffset: Math.random() * 100,
+      active: false, pos: new THREE.Vector3(0, -500, 0), speed: 0, id: i, wobbleOffset: Math.random() * 100, scale: 1,  // 스폰 시 랜덤으로 덮어씀
     }))
   );
   const particlesData = useRef(
@@ -288,6 +288,17 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, se
           const angle = -Math.PI / 2 + (Math.random() - 0.5) * MAX_SPAWN_ANGLE * 2;
           zombie.pos.set(Math.cos(angle) * SPAWN_RADIUS, FLOOR_LEVEL, Math.sin(angle) * SPAWN_RADIUS);
           zombie.speed = ZOMBIE_BASE_SPEED + progress * 15;
+
+          const LOW_SCALE_WEIGHT = 0.75;  // 75% 확률로 1~2 구간
+          const LOW_SCALE_MIN = 1.0;
+          const LOW_SCALE_MAX = 5.0;
+          const HIGH_SCALE_MIN = 5.0;
+          const HIGH_SCALE_MAX = 10.0;
+
+          zombie.scale =
+            Math.random() < LOW_SCALE_WEIGHT
+              ? LOW_SCALE_MIN + Math.random() * (LOW_SCALE_MAX - LOW_SCALE_MIN)
+              : HIGH_SCALE_MIN + Math.random() * (HIGH_SCALE_MAX - HIGH_SCALE_MIN);
         }
       }
 
@@ -404,12 +415,14 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, se
           dummy.lookAt(lookTarget);
           const baseRotation = dummy.rotation.clone();
 
-          const bodyY = 0.75;
-          const headY = 1.45;
-          const armsY = 1.1;
-          const zombieScale = 1.0;
+          const feetY = 0.4;
+          const bodyY = 0.35;
+          const headY = 1.05;
+          const armsY = 0.7;
+          const zombieScale = z.scale;
+
           // Body
-          dummy.position.y = z.pos.y + bodyY + runBob;
+          dummy.position.y = z.pos.y + feetY + bodyY * zombieScale + runBob;
           dummy.rotation.set(baseRotation.x, baseRotation.y, baseRotation.z + runWobble);
           dummy.rotateX(-0.4);
           dummy.scale.set(zombieScale, zombieScale, zombieScale);
@@ -417,7 +430,7 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, se
           zombieBodyRef.current.setMatrixAt(i, dummy.matrix);
 
           // Head
-          dummy.position.y = z.pos.y + headY + runBob;
+          dummy.position.y = z.pos.y + feetY + headY * zombieScale + runBob;
           dummy.rotation.set(baseRotation.x, baseRotation.y, baseRotation.z + runWobble * 0.5);
           dummy.rotateX(-0.2);
           dummy.scale.set(zombieScale, zombieScale, zombieScale);
@@ -425,7 +438,7 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, se
           zombieHeadRef.current.setMatrixAt(i, dummy.matrix);
 
           // Arms
-          dummy.position.y = z.pos.y + armsY + runBob;
+          dummy.position.y = z.pos.y + feetY + armsY * zombieScale + runBob;
           dummy.rotation.set(baseRotation.x, baseRotation.y, baseRotation.z + runWobble);
           dummy.rotateX(-0.4);
           dummy.scale.set(zombieScale, zombieScale, zombieScale);
