@@ -93,7 +93,7 @@ export class VisionWebSocketService {
   private onErrorCallback?: (error: Error) => void;
   private onGameStartCallback?: () => void;
   private onGameStopCallback?: () => void;
-  private onPoseCallback?: (payload: { yaw: number; pitch: number }) => void;
+  private onPoseCallback?: (payload: VisionHeadPoseData) => void;
   private onHumanDetectedCallback?: (data: VisionHumanDetectedData) => void;
 
   constructor(url: string) {
@@ -316,9 +316,15 @@ export class VisionWebSocketService {
       } else if (name === VisionMessageName.GAME_STOP) {
         this.onGameStopCallback?.();
       } else if (name === VisionMessageName.HEAD_POSE) {
-        const pose = payload as VisionHeadPoseData;
-        if (typeof pose?.yaw === 'number' && typeof pose?.pitch === 'number') {
-          this.onPoseCallback?.({ yaw: pose.yaw, pitch: pose.pitch });
+        const msg = payload as { primary?: { yaw?: number; pitch?: number; forward?: number; center_depth_m?: number | null } };
+        const primary = msg?.primary;
+        if (primary != null && typeof primary.yaw === 'number' && typeof primary.pitch === 'number') {
+          this.onPoseCallback?.({
+            yaw: primary.yaw,
+            pitch: primary.pitch,
+            forward: primary.forward,
+            center_depth_m: primary.center_depth_m ?? undefined,
+          });
         }
       } else if (name === VisionMessageName.HUMAN_DETECTED) {
         const humanData = payload as VisionHumanDetectedData;
@@ -367,8 +373,8 @@ export class VisionWebSocketService {
     this.onGameStopCallback = cb;
   }
 
-  /** Game02 HumanTrack: 헤드포즈 스트림 구독 (Python이 headpose 타입으로 전송) */
-  onPose(cb: (payload: { yaw: number; pitch: number }) => void): () => void {
+  /** Game02 HumanTrack: 헤드포즈 스트림 구독 (Python HEAD_POSE, primary.yaw/pitch/forward/center_depth_m) */
+  onPose(cb: (payload: VisionHeadPoseData) => void): () => void {
     this.onPoseCallback = cb;
     return () => { this.onPoseCallback = undefined; };
   }

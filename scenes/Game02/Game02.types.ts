@@ -5,6 +5,7 @@
 
 export enum Game02State {
   INTRO = 'INTRO',
+  ALIGNING = 'ALIGNING',  // 게임 시작 클릭 후 얼굴 정렬 대기 (3초 고정)
   GENERATING = 'GENERATING',
   ANNOUNCING = 'ANNOUNCING',
   PLAYING = 'PLAYING',

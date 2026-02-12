@@ -54,6 +54,9 @@ export const BackendMessageName = {
   CAMERA_FRAME: 'CAMERA_FRAME',
   GAME_START: 'GAME_START',
   GAME_STOP: 'GAME_STOP',
+  GAME02_ALIGNMENT_COMPLETE: 'GAME02_ALIGNMENT_COMPLETE',
+  /** Game02 뷰 제어: 백엔드(C++)가 기준 로봇 대비 yaw, pitch 전송 (Python HEAD_POSE 대체) */
+  HEAD_POSE: 'HEAD_POSE',
 } as const;
 export type BackendMessageNameType = (typeof BackendMessageName)[keyof typeof BackendMessageName];
 
@@ -69,6 +72,10 @@ export const UIEventName = {
   ANIMATION_COMPLETE: 'ANIMATION_COMPLETE',
   /** Vision에서 human 감지 시(Welcome 씬) 프론트가 백엔드에 알림 → 백엔드가 SET_SCENE QR 전송 */
   HUMAN_DETECTED: 'HUMAN_DETECTED',
+  /** Game02 헤드포즈(yaw, pitch, forward, center_depth_m) → Exhibition에서 로봇 제어 등에 사용 */
+  GAME02_HEAD_POSE: 'GAME02_HEAD_POSE',
+  /** Game02: 게임 시작 클릭 후 얼굴 정렬 UI 진입. Exhibition이 정렬 phase 시작 */
+  GAME02_ALIGNMENT_START: 'GAME02_ALIGNMENT_START',
 } as const;
 export type UIEventNameType = (typeof UIEventName)[keyof typeof UIEventName];
 export type UIEventName = UIEventNameType;
@@ -130,10 +137,14 @@ export interface VisionResultHandGesture {
   error_message?: string;
 }
 
-/** HEAD_POSE 메시지의 data (Python → 프론트) */
+/** HEAD_POSE 메시지의 data (Python → 프론트). Python은 primary 안에 담아 보냄. */
 export interface VisionHeadPoseData {
   yaw: number;
   pitch: number;
+  /** 얼굴 방향 전방 벡터 (선택) */
+  forward?: number;
+  /** 코 중심점 깊이(m). 선택, 없으면 null */
+  center_depth_m?: number | null;
 }
 
 /** ERROR 메시지의 data (Python → 프론트) */

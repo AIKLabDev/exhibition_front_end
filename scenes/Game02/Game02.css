@@ -96,6 +96,22 @@
   animation: game02-fade-in 0.5s ease-out forwards;
 }
 
+/* 게임 시작 버튼 - 동그란 원 커졌다 작아졌다 펄스 */
+@keyframes game02-start-pulse {
+  0%, 100% {
+    transform: scale(0.9);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 0.9;
+  }
+}
+
+.animate-game02-start-pulse {
+  animation: game02-start-pulse 1.5s ease-in-out infinite;
+}
+
 /* Zoom in animation */
 @keyframes game02-zoom-in {
   from {

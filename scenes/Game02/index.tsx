@@ -28,14 +28,49 @@ import {
   SETTINGS,
 } from './constants';
 import { generateLocalGameScenario } from './localScenarioService';
-import { getVisionWsService } from '../../services/visionWebSocketService';
+import { backendWsService } from '../../services/backendWebSocketService';
+import type { CameraFrameData } from '../../types';
+import { BackendMessageName } from '../../protocol';
 import ResultOverlay from './ResultOverlay';
+import ruleBgImg from '../../images/Game02 Rule.png';
 import './Game02.css';
 
 const DEFAULT_CENTER_TOP_LEFT = {
   x: (1 - 1 / VIEW_ZOOM) / 2,
   y: (1 - 1 / VIEW_ZOOM) / 2,
 };
+
+/** Decode base64 raw RGB to ImageData and draw on canvas (얼굴 정렬 UI용) */
+function drawRawToCanvas(
+  canvas: HTMLCanvasElement | null,
+  base64: string,
+  width: number,
+  height: number
+): void {
+  if (!canvas || !width || !height) return;
+  try {
+    const binary = atob(base64);
+    const len = binary.length;
+    const rgb = new Uint8Array(len);
+    for (let i = 0; i < len; i++) rgb[i] = binary.charCodeAt(i);
+    const rgba = new Uint8ClampedArray(width * height * 4);
+    for (let i = 0; i < width * height; i++) {
+      rgba[i * 4] = rgb[i * 3];
+      rgba[i * 4 + 1] = rgb[i * 3 + 1];
+      rgba[i * 4 + 2] = rgb[i * 3 + 2];
+      rgba[i * 4 + 3] = 255;
+    }
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      const imageData = new ImageData(rgba, width, height);
+      ctx.putImageData(imageData, 0, 0);
+    }
+  } catch {
+    // ignore
+  }
+}
 
 function clamp(n: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, n));
@@ -101,6 +136,8 @@ const Game02: React.FC<Game02Props> = ({ onGameResult }) => {
   const [lastClick, setLastClick] = useState<{ x: number; y: number } | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const viewportRef = useRef<HTMLDivElement | null>(null);
+  const [alignFrame, setAlignFrame] = useState<CameraFrameData | null>(null);
+  const alignCanvasRef = useRef<HTMLCanvasElement>(null);
 
   const [viewportAspect, setViewportAspect] = useState<number>(DEFAULT_SCENE_ASPECT);
   const viewWindow = useMemo(
@@ -213,7 +250,13 @@ const Game02: React.FC<Game02Props> = ({ onGameResult }) => {
     []
   );
 
-  // 새 게임 시작
+  // 게임 시작 클릭 → 얼굴 정렬 UI로 진입 (정렬 완료 시 startNewGame은 백엔드 신호로 호출)
+  const requestGameStartWithAlignment = useCallback(() => {
+    setState(Game02State.ALIGNING);
+    backendWsService.sendCommand('GAME02_ALIGNMENT_START', {});
+  }, []);
+
+  // 새 게임 시작 (시나리오 생성 → ANNOUNCING → PLAYING)
   const startNewGame = useCallback(async () => {
     setState(Game02State.GENERATING);
     setLastClick(null);
@@ -309,25 +352,43 @@ const Game02: React.FC<Game02Props> = ({ onGameResult }) => {
     }
   }, [state, onGameResult]);
 
-  // HumanTrack HeadPose: 공통 Python WebSocket으로 수신 (UDP 대체)
+  // Backend → GAME02_ALIGNMENT_COMPLETE 수신 시 게임 시작, HEAD_POSE 수신 시 뷰용 yaw/pitch 갱신
   useEffect(() => {
-    const visionWs = getVisionWsService();
-    visionWs.connect().catch(() => {});
+    const unsub = backendWsService.addMessageListener((msg) => {
+      const name = msg.header?.name;
+      if (name === BackendMessageName.GAME02_ALIGNMENT_COMPLETE) {
+        startNewGame();
+      } else if (name === BackendMessageName.HEAD_POSE) {
+        const data = msg.data as { yaw?: number; pitch?: number };
+        if (data != null && Number.isFinite(data.yaw) && Number.isFinite(data.pitch)) {
+          const now = Date.now();
+          headPoseRef.current = { yaw: data.yaw!, pitch: data.pitch!, atMs: now };
+          if (!prevPoseRef.current) prevPoseRef.current = { yaw: data.yaw!, pitch: data.pitch! };
+          setHeadPoseStatus({
+            connected: true,
+            lastUpdate: now,
+            yaw: data.yaw!,
+            pitch: data.pitch!,
+          });
+        }
+      }
+    });
+    return () => { unsub(); };
+  }, [startNewGame]);
 
-    const applyPose = (data: { yaw: number; pitch: number }) => {
-      const { yaw, pitch } = data;
-      if (!Number.isFinite(yaw) || !Number.isFinite(pitch)) return;
-      const now = Date.now();
-      headPoseRef.current = { yaw, pitch, atMs: now };
-      if (!prevPoseRef.current) prevPoseRef.current = { yaw, pitch };
-      setHeadPoseStatus({ connected: true, lastUpdate: now, yaw, pitch });
-    };
-
-    const unsubscribe = visionWs.onPose(applyPose);
-    return () => {
-      unsubscribe();
-    };
-  }, []);
+  // 얼굴 정렬 UI: 백엔드 카메라 프레임 구독
+  useEffect(() => {
+    if (state !== Game02State.ALIGNING) return;
+    const unsub = backendWsService.addFrameListener((data) => {
+      setAlignFrame(data);
+    });
+    return () => { unsub(); };
+  }, [state]);
+  useEffect(() => {
+    const isRaw = alignFrame?.format === 'raw' && alignFrame?.width != null && alignFrame?.height != null;
+    if (isRaw && alignFrame)
+      drawRawToCanvas(alignCanvasRef.current, alignFrame.image, alignFrame.width!, alignFrame.height!);
+  }, [alignFrame?.image, alignFrame?.width, alignFrame?.height]);
 
   // 게임 중 헤드포즈로 뷰포트 이동
   useEffect(() => {
@@ -494,22 +555,37 @@ const Game02: React.FC<Game02Props> = ({ onGameResult }) => {
 
   return (
     <div
-      className={`h-full w-full bg-black overflow-hidden relative selection:bg-indigo-500 ${
-        isGameScreen ? 'flex flex-row' : 'flex flex-col items-center justify-center p-4'
-      }`}
+      className={`h-full w-full bg-black overflow-hidden relative selection:bg-indigo-500 ${isGameScreen ? 'flex flex-row' : 'flex flex-col items-center justify-center p-4'
+        }`}
     >
-      {/* 1. Intro Screen */}
+      {/* 1. Intro Screen - Game02 Rule 배경 + 게임 시작 버튼 영역 클릭 */}
       {state === Game02State.INTRO && (
-        <div className="text-center z-10 animate-game02-zoom-in">
+        <div className="absolute inset-0 z-10 flex flex-col">
+          {/* 배경 이미지 */}
+          <div
+            className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+            style={{ backgroundImage: `url(${ruleBgImg})` }}
+          />
+          {/* 게임 시작 버튼 클릭 → 얼굴 정렬 UI로 진입 후 정렬 완료 시 게임 시작 */}
           <button
-            onClick={startNewGame}
-            className="group px-16 py-8 bg-indigo-600 hover:bg-indigo-500 rounded-[3rem] font-black text-5xl transition-all hover:scale-110 active:scale-95 shadow-[0_0_80px_rgba(79,70,229,0.5)] text-white"
+            type="button"
+            onClick={requestGameStartWithAlignment}
+            className="absolute left-[40%] right-[40%] top-[85%] h-[12%] cursor-pointer flex items-center justify-center"
+            aria-label="게임 시작"
           >
-            시작
+            {/* 눌러서 시작한다는 느낌의 투명 원 펄스 효과 */}
+            <span
+              className="absolute w-24 h-24 rounded-full border-4 border-white/40 animate-game02-start-pulse pointer-events-none"
+              aria-hidden
+            />
+            <span
+              className="absolute w-20 h-20 rounded-full border-2 border-indigo-400/50 animate-game02-start-pulse pointer-events-none"
+              style={{ animationDelay: '0.4s' }}
+              aria-hidden
+            />
           </button>
-
           {generationError && (
-            <div className="mt-8 max-w-3xl text-left mx-auto rounded-[2rem] border border-rose-500/40 bg-zinc-900/80 p-6 backdrop-blur-2xl shadow-2xl">
+            <div className="absolute bottom-24 left-1/2 -translate-x-1/2 max-w-3xl text-left rounded-[2rem] border border-rose-500/40 bg-zinc-900/80 p-6 backdrop-blur-2xl shadow-2xl z-20">
               <p className="text-rose-300 font-black text-2xl mb-3">
                 이미지 로드 실패
               </p>
@@ -531,7 +607,58 @@ const Game02: React.FC<Game02Props> = ({ onGameResult }) => {
         </div>
       )}
 
-      {/* 2. Generating Screen */}
+      {/* 2. Aligning Screen - vision + 스캔 박스 + "화면에 3초이상 얼굴을 고정해주세요" */}
+      {state === Game02State.ALIGNING && (
+        <div className="absolute inset-0 z-10 flex flex-col bg-slate-900">
+          <div className="flex-1 relative grid grid-cols-[1fr_400px] min-h-0">
+            <div className="relative bg-black overflow-hidden flex items-center justify-center">
+              {alignFrame ? (
+                <div className="w-full h-full relative">
+                  {alignFrame.format === 'raw' && alignFrame.width != null && alignFrame.height != null ? (
+                    <canvas
+                      ref={alignCanvasRef}
+                      className="w-full h-full object-cover"
+                      style={{ display: 'block', width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  ) : (
+                    <img
+                      src={`data:image/${alignFrame.format || 'jpeg'};base64,${alignFrame.image}`}
+                      alt="카메라"
+                      className="w-full h-full object-cover"
+                    />
+                  )}
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="relative w-[400px] h-[400px] border-4 border-indigo-500/60 rounded-[2rem]">
+                      <div className="absolute top-0 left-0 w-12 h-12 border-t-4 border-l-4 border-indigo-400 rounded-tl-2xl" />
+                      <div className="absolute top-0 right-0 w-12 h-12 border-t-4 border-r-4 border-indigo-400 rounded-tr-2xl" />
+                      <div className="absolute bottom-0 left-0 w-12 h-12 border-b-4 border-l-4 border-indigo-400 rounded-bl-2xl" />
+                      <div className="absolute bottom-0 right-0 w-12 h-12 border-b-4 border-r-4 border-indigo-400 rounded-br-2xl" />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center p-12 text-center">
+                  <div className="w-20 h-20 border-4 border-slate-600 border-t-indigo-500 rounded-full animate-spin mb-6" />
+                  <p className="text-xl text-slate-400">카메라 연결 대기 중...</p>
+                </div>
+              )}
+            </div>
+            <div className="border-l border-white/10 p-12 flex flex-col justify-center">
+              <h2 className="text-4xl font-black text-white mb-6 tracking-tight">
+                얼굴을 맞춰주세요
+              </h2>
+              <p className="text-2xl text-indigo-300 font-bold mb-8">
+                화면에 3초이상 얼굴을 고정해주세요
+              </p>
+              <p className="text-slate-400 text-lg">
+                로봇이 카메라를 맞춘 뒤 게임이 시작됩니다.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3. Generating Screen */}
       {state === Game02State.GENERATING && (
         <div className="text-center z-10 animate-game02-fade-in">
           {/* Spinner */}
@@ -582,11 +709,10 @@ const Game02: React.FC<Game02Props> = ({ onGameResult }) => {
                   남은시간
                 </p>
                 <div
-                  className={`text-7xl font-black font-mono leading-none ${
-                    timeLeft < 30
-                      ? 'text-rose-500 animate-game02-timer-warning'
-                      : 'text-white'
-                  }`}
+                  className={`text-7xl font-black font-mono leading-none ${timeLeft < 30
+                    ? 'text-rose-500 animate-game02-timer-warning'
+                    : 'text-white'
+                    }`}
                 >
                   {formatTime(timeLeft)}
                 </div>
@@ -624,11 +750,10 @@ const Game02: React.FC<Game02Props> = ({ onGameResult }) => {
                 </p>
                 <div className="flex items-center gap-2 mb-2">
                   <div
-                    className={`w-3 h-3 rounded-full ${
-                      headPoseStatus.connected
-                        ? 'bg-green-500 animate-pulse'
-                        : 'bg-red-500'
-                    }`}
+                    className={`w-3 h-3 rounded-full ${headPoseStatus.connected
+                      ? 'bg-green-500 animate-pulse'
+                      : 'bg-red-500'
+                      }`}
                   />
                   <span className="text-sm font-bold text-white">
                     {headPoseStatus.connected ? '연결됨' : '연결 안됨'}
@@ -678,9 +803,8 @@ const Game02: React.FC<Game02Props> = ({ onGameResult }) => {
                   src={`data:image/png;base64,${scenario.sceneImageBase64}`}
                   alt="Scene"
                   draggable={false}
-                  className={`absolute top-0 left-0 max-w-none max-h-none select-none ${
-                    state === Game02State.VERIFYING ? 'brightness-50 blur-sm' : ''
-                  }`}
+                  className={`absolute top-0 left-0 max-w-none max-h-none select-none ${state === Game02State.VERIFYING ? 'brightness-50 blur-sm' : ''
+                    }`}
                   style={{
                     width: `${100 / viewWindow.w}%`,
                     height: `${100 / viewWindow.h}%`,
