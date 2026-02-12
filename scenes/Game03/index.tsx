@@ -210,7 +210,7 @@ const Game03: React.FC<Game03Props> = ({ onGameResult }) => {
               key="result-text"
               initial={{ opacity: 0, scale: 0.5 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="flex flex-col items-center gap-3"
+              className="flex flex-row items-center gap-3"
             >
               <div
                 className={`font-black uppercase tracking-tighter ${isWinner ? 'text-green-500' : 'text-red-500'}`}
