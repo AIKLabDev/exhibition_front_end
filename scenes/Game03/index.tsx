@@ -40,16 +40,16 @@ const Game03: React.FC<Game03Props> = ({ onGameResult }) => {
   const scaleH = viewportHeight / BASE_HEIGHT;
 
   // SelectMinigame 카드와 동일 기준: 380px → 비율 적용 (터치에 맞게 크게)
-  const CARD_WIDTH = Math.round(380 * scaleW);
-  const CARD_HEIGHT = Math.round(380 * scaleH);
+  const CARD_WIDTH = Math.round(420 * scaleW);
+  const CARD_HEIGHT = CARD_WIDTH * 1.16;
   const CARD_GAP = Math.round(60 * scaleW);
 
-  const headerHeight = Math.round(100 * scaleH);
+  const headerHeight = Math.round(120 * scaleH);
   const titleFontSize = Math.round(36 * scaleH);
   const resultFontSize = Math.round(56 * scaleH);
-  const buttonFontSize = Math.round(24 * scaleH);
-  const progressBarWidth = Math.round(240 * scaleW);
-  const progressBarHeight = Math.round(8 * scaleH);
+  const buttonFontSize = Math.round(56 * scaleH);
+  const progressBarWidth = Math.round(1101 * scaleW);
+  const progressBarHeight = Math.round(16 * scaleH);
 
   const initializeGame = useCallback(() => {
     const newCards: CardData[] = Array.from({ length: NUM_CARDS }, (_, i) => ({
@@ -91,6 +91,7 @@ const Game03: React.FC<Game03Props> = ({ onGameResult }) => {
         return;
       }
 
+      /* suffer speed up */
       const currentInterval = 500 - progress * 440;
 
       setCards((prev) => {
@@ -233,7 +234,7 @@ const Game03: React.FC<Game03Props> = ({ onGameResult }) => {
       <div className="flex-1 min-h-0 flex items-center justify-center overflow-hidden">
         <div
           className="relative flex justify-center items-center w-full"
-          style={{ gap: CARD_GAP, paddingLeft: `${32 * scaleW}px`, paddingRight: `${32 * scaleW}px` }}
+          style={{ gap: CARD_GAP, paddingLeft: `${CARD_GAP * scaleW}px`, paddingRight: `${CARD_GAP * scaleW}px` }}
         >
           {cards.length > 0 ? (
             cards.map((card) => (
