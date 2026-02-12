@@ -17,7 +17,7 @@ export const MIN_SPAWN_INTERVAL = 80; // ms
 /** Game04 UI 문자열 — 수정 시 이 객체만 편집 */
 export const GAME04_STRINGS = {
   TITLE: '좀비고속도로',
-  SUBTITLE: '머리로 조준 • 20초 생존 • 목표 구역 도달',
+  SUBTITLE: '얼굴을 움직여 조준하세요 • 20초 동안 생존',
   CONNECTING: '[ 조준 시스템 초기화 중 ]',
   START_BUTTON: '시작',
   SCORE_LABEL: '점수',
