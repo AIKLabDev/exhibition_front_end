@@ -1,0 +1,34 @@
+/**
+ * Game04 (Zombie Defender) 상수
+ * 문자열은 GAME04_STRINGS에 모아 수정 편의
+ */
+
+// 게임 설정
+export const GAME_DURATION = 20; // 생존 시간 (초)
+export const PLAYER_HEIGHT = 1.6;
+export const SPAWN_RADIUS = 35;
+export const BULLET_SPEED = 60;
+export const ZOMBIE_BASE_SPEED = 8;
+export const FIRE_RATE = 90; // ms 간격
+export const PLAYER_MAX_HEALTH = 5;
+export const INITIAL_SPAWN_INTERVAL = 600; // ms
+export const MIN_SPAWN_INTERVAL = 80; // ms
+
+/** Game04 UI 문자열 — 수정 시 이 객체만 편집 */
+export const GAME04_STRINGS = {
+  TITLE: '좀비고속도로',
+  SUBTITLE: 'Aim with your head • Survive for 20 Seconds • Reach the Zone',
+  CONNECTING: '[ INITIALIZING TARGETING SYSTEMS ]',
+  START_BUTTON: 'ENGAGE',
+  SCORE_LABEL: 'SCORE',
+  HEALTH_LABEL: 'VEHICLE INTEGRITY',
+  TIMER_LABEL: 'Seconds to Evac',
+  VICTORY_TITLE: 'SURVIVED',
+  DEFEAT_TITLE: 'WRECKED',
+  SCORE_PREFIX: 'SCORE: ',
+  RETRY_WIN: 'Drive Again',
+  RETRY_LOSE: 'Retry',
+  MOUSE_FALLBACK: 'MANUAL TARGETING',
+  MOUSE_ACTIVE: 'MOUSE OVERRIDE ACTIVE',
+  HEAD_TRACKING: 'HEAD TRACKING ONLINE',
+} as const;

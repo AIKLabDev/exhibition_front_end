@@ -10,7 +10,7 @@ const SelectMinigame: React.FC<SelectMinigameProps> = ({ onComplete }) => {
     { id: 'GAME01', name: 'ROCK PAPER SCISSORS', icon: '✊', color: 'from-orange-500 to-red-600' },
     { id: 'GAME02', name: 'SPEED TAPPING', icon: '⚡', color: 'from-purple-500 to-indigo-600' },
     { id: 'GAME03', name: 'HEART HUNT', icon: '❤️', color: 'from-green-500 to-teal-600' },
-    { id: 'GAME04', name: 'RESERVE04', icon: '🧠', color: 'from-pink-500 to-rose-600' },
+    { id: 'GAME04', name: 'ZOMBIE DEFENDER', icon: '🧟', color: 'from-pink-500 to-rose-600' },
     { id: 'GAME05', name: 'RESERVE05', icon: '🛰️', color: 'from-cyan-500 to-blue-600' },
   ];
 
