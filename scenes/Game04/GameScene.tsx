@@ -404,27 +404,31 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, se
           dummy.lookAt(lookTarget);
           const baseRotation = dummy.rotation.clone();
 
+          const bodyY = 0.75;
+          const headY = 1.45;
+          const armsY = 1.1;
+          const zombieScale = 1.0;
           // Body
-          dummy.position.y = z.pos.y + 0.75 + runBob;
+          dummy.position.y = z.pos.y + bodyY + runBob;
           dummy.rotation.set(baseRotation.x, baseRotation.y, baseRotation.z + runWobble);
           dummy.rotateX(-0.4);
-          dummy.scale.set(1, 1, 1);
+          dummy.scale.set(zombieScale, zombieScale, zombieScale);
           dummy.updateMatrix();
           zombieBodyRef.current.setMatrixAt(i, dummy.matrix);
 
           // Head
-          dummy.position.y = z.pos.y + 1.45 + runBob;
+          dummy.position.y = z.pos.y + headY + runBob;
           dummy.rotation.set(baseRotation.x, baseRotation.y, baseRotation.z + runWobble * 0.5);
           dummy.rotateX(-0.2);
-          dummy.scale.set(1, 1, 1);
+          dummy.scale.set(zombieScale, zombieScale, zombieScale);
           dummy.updateMatrix();
           zombieHeadRef.current.setMatrixAt(i, dummy.matrix);
 
           // Arms
-          dummy.position.y = z.pos.y + 1.1 + runBob;
+          dummy.position.y = z.pos.y + armsY + runBob;
           dummy.rotation.set(baseRotation.x, baseRotation.y, baseRotation.z + runWobble);
           dummy.rotateX(-0.4);
-          dummy.scale.set(1, 1, 1);
+          dummy.scale.set(zombieScale, zombieScale, zombieScale);
           dummy.updateMatrix();
           zombieArmsRef.current.setMatrixAt(i, dummy.matrix);
         } else {
