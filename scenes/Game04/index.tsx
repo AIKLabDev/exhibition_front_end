@@ -91,7 +91,7 @@ const Game04: React.FC<Game04Props> = ({ onGameResult }) => {
   useEffect(() => {
     const visionWs = getVisionWsService();
     if (!visionWs.isConnected()) {
-      visionWs.connect().catch(() => {});
+      visionWs.connect().catch(() => { });
     }
 
     const unsubscribe = visionWs.onPose((data) => {

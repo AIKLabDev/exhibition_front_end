@@ -136,27 +136,33 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, se
 
   const bulletMeshRef = useRef<THREE.InstancedMesh>(null);
   const particleMeshRef = useRef<THREE.InstancedMesh>(null);
+
   const zombieBodyRef = useRef<THREE.InstancedMesh>(null);
   const zombieHeadRef = useRef<THREE.InstancedMesh>(null);
   const zombieArmsRef = useRef<THREE.InstancedMesh>(null);
+
   const gunGroupRef = useRef<THREE.Group>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
 
   const shakeIntensity = useRef(0);
   const gameEndedTriggered = useRef(false);
+
   const lastFireTime = useRef(0);
   const lastSpawnTime = useRef(0);
   const startTime = useRef(0);
   const localScore = useRef(0);
   const lastReportedTime = useRef(GAME_DURATION + 1);
+
   const audioCtxRef = useRef<AudioContext | null>(null);
 
   const playSound = (type: 'shoot' | 'hit' | 'damage') => {
     if (!audioCtxRef.current) {
       audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
     }
+
     const ctx = audioCtxRef.current;
     if (ctx.state === 'suspended') ctx.resume();
+
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain);
@@ -209,6 +215,7 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, se
       lastReportedTime.current = GAME_DURATION + 1;
       shakeIntensity.current = 0;
       gameEndedTriggered.current = false;
+
       bulletsData.current.forEach((b) => { b.active = false; b.pos.set(0, -500, 0); });
       zombiesData.current.forEach((z) => { z.active = false; z.pos.set(0, -500, 0); });
       particlesData.current.forEach((p) => { p.active = false; p.pos.set(0, -500, 0); });
@@ -230,7 +237,9 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, se
     } else {
       camera.position.set(0, 0.6, 0);
     }
+
     camera.rotation.y = THREE.MathUtils.lerp(camera.rotation.y, -yaw, 0.2);
+
     if (gunGroupRef.current) {
       gunGroupRef.current.rotation.copy(camera.rotation);
       gunGroupRef.current.position.copy(camera.position);
@@ -270,6 +279,7 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, se
       // 좀비 스폰
       const progress = elapsed / GAME_DURATION;
       const currentSpawnInterval = THREE.MathUtils.lerp(INITIAL_SPAWN_INTERVAL, MIN_SPAWN_INTERVAL, progress);
+
       if (now - lastSpawnTime.current > currentSpawnInterval) {
         lastSpawnTime.current = now;
         const zombie = zombiesData.current.find((z) => !z.active);
@@ -304,6 +314,7 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, se
       // 좀비 물리 + 충돌
       const playerPos = new THREE.Vector2(0, 0);
       const zombiePos = new THREE.Vector2();
+
       for (let i = 0; i < MAX_ZOMBIES; i++) {
         const z = zombiesData.current[i];
         if (z.active) {
@@ -312,6 +323,7 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, se
           dir.normalize();
           z.pos.addScaledVector(dir, z.speed * delta);
 
+          // 1. Check Collision with Player (Damage)
           zombiePos.set(z.pos.x, z.pos.z);
           if (zombiePos.distanceTo(playerPos) < 5.0) {
             z.active = false;
@@ -322,9 +334,11 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, se
             continue;
           }
 
+          // 2. Check Collision with Bullets
           for (let j = 0; j < MAX_BULLETS; j++) {
             const b = bulletsData.current[j];
             if (!b.active) continue;
+
             const hitDist = b.pos.distanceTo(new THREE.Vector3(z.pos.x, z.pos.y + 1, z.pos.z));
             if (hitDist < 2.5) {
               b.active = false;
@@ -344,8 +358,14 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, se
     if (bulletMeshRef.current) {
       for (let i = 0; i < MAX_BULLETS; i++) {
         const b = bulletsData.current[i];
-        if (b.active) { dummy.position.copy(b.pos); dummy.scale.set(1, 1, 1); }
-        else { dummy.position.set(0, -500, 0); dummy.scale.set(0, 0, 0); }
+        if (b.active) {
+          dummy.position.copy(b.pos);
+          dummy.scale.set(1, 1, 1);
+        }
+        else {
+          dummy.position.set(0, -500, 0);
+          dummy.scale.set(0, 0, 0);
+        }
         dummy.rotation.set(0, 0, 0);
         dummy.updateMatrix();
         bulletMeshRef.current.setMatrixAt(i, dummy.matrix);
@@ -360,7 +380,11 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, se
           dummy.position.copy(p.pos);
           dummy.scale.set(p.scale * p.life, p.scale * p.life, p.scale * p.life);
           dummy.rotation.set(Math.random(), Math.random(), Math.random());
-        } else { dummy.position.set(0, -500, 0); dummy.scale.set(0, 0, 0); }
+        }
+        else {
+          dummy.position.set(0, -500, 0);
+          dummy.scale.set(0, 0, 0);
+        }
         dummy.updateMatrix();
         particleMeshRef.current.setMatrixAt(i, dummy.matrix);
       }
@@ -369,15 +393,18 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, se
 
     if (zombieBodyRef.current && zombieHeadRef.current && zombieArmsRef.current) {
       const lookTarget = new THREE.Vector3(camera.position.x, FLOOR_LEVEL, camera.position.z);
+
       for (let i = 0; i < MAX_ZOMBIES; i++) {
         const z = zombiesData.current[i];
         if (z.active) {
           const runWobble = Math.sin(time * 15 + z.wobbleOffset) * 0.15;
           const runBob = Math.abs(Math.sin(time * 15 + z.wobbleOffset)) * 0.2;
+
           dummy.position.copy(z.pos);
           dummy.lookAt(lookTarget);
           const baseRotation = dummy.rotation.clone();
 
+          // Body
           dummy.position.y = z.pos.y + 0.75 + runBob;
           dummy.rotation.set(baseRotation.x, baseRotation.y, baseRotation.z + runWobble);
           dummy.rotateX(-0.4);
@@ -385,6 +412,7 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, se
           dummy.updateMatrix();
           zombieBodyRef.current.setMatrixAt(i, dummy.matrix);
 
+          // Head
           dummy.position.y = z.pos.y + 1.45 + runBob;
           dummy.rotation.set(baseRotation.x, baseRotation.y, baseRotation.z + runWobble * 0.5);
           dummy.rotateX(-0.2);
@@ -392,6 +420,7 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, se
           dummy.updateMatrix();
           zombieHeadRef.current.setMatrixAt(i, dummy.matrix);
 
+          // Arms
           dummy.position.y = z.pos.y + 1.1 + runBob;
           dummy.rotation.set(baseRotation.x, baseRotation.y, baseRotation.z + runWobble);
           dummy.rotateX(-0.4);
@@ -416,6 +445,7 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, se
   return (
     <>
       <Group ref={gunGroupRef}>
+        {/* Simple Gun Model Visualization */}
         <Mesh position={[0.2, -0.3, -0.2]}>
           <BoxGeometry args={[0.1, 0.1, 0.5]} />
           <MeshStandardMaterial color="#444" />
@@ -426,16 +456,19 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, se
         </Mesh>
       </Group>
 
+      {/* Bullets - Glow Effect */}
       <InstancedMesh ref={bulletMeshRef} args={[undefined, undefined, MAX_BULLETS]} frustumCulled={false}>
         <SphereGeometry args={[0.08, 6, 6]} />
         <MeshBasicMaterial color={COLOR_BULLET} toneMapped={false} />
       </InstancedMesh>
 
+      {/* Particles - Transparent */}
       <InstancedMesh ref={particleMeshRef} args={[undefined, undefined, MAX_PARTICLES]} frustumCulled={false}>
         <BoxGeometry args={[0.1, 0.1, 0.1]} />
         <MeshBasicMaterial color={COLOR_PARTICLE} transparent opacity={0.8} />
       </InstancedMesh>
 
+      {/* Zombie Parts */}
       <InstancedMesh ref={zombieBodyRef} args={[undefined, undefined, MAX_ZOMBIES]} frustumCulled={false}>
         <BoxGeometry args={[0.5, 0.7, 0.3]} />
         <MeshStandardMaterial color={COLOR_ZOMBIE_SHIRT} />
