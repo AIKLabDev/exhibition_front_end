@@ -165,7 +165,7 @@ const Game04: React.FC<Game04Props> = ({ onGameResult }) => {
 
   const hudFontSize = Math.round(20 * scaleH);
   const timerFontSize = Math.round(140 * scaleH);
-  const titleFontSize = Math.round(60 * scaleH);
+  const titleFontSize = Math.round(150 * scaleH);
   const buttonFontSize = Math.round(20 * scaleH);
 
   return (
@@ -239,7 +239,7 @@ const Game04: React.FC<Game04Props> = ({ onGameResult }) => {
           >
             {GAME04_STRINGS.TITLE}
           </h1>
-          <p className="text-gray-400 max-w-xl text-center font-mono uppercase tracking-widest" style={{ fontSize: `${12 * scaleH}px`, marginBottom: `${32 * scaleH}px` }}>
+          <p className="text-gray-400 max-w-full text-center font-black uppercase tracking-widest" style={{ fontSize: `${titleFontSize * 0.3}px`, marginBottom: `${32 * scaleH}px` }}>
             {GAME04_STRINGS.SUBTITLE}
           </p>
           <button
@@ -253,29 +253,37 @@ const Game04: React.FC<Game04Props> = ({ onGameResult }) => {
         </div>
       )}
 
-      {/* 게임 오버 화면 */}
+      {/* 게임 오버 화면: 타이틀 중앙, 점수·다시시작 우측 */}
       {gameOver && (
-        <div className={`absolute inset-0 z-30 flex flex-col items-center justify-center backdrop-blur-md text-white ${isVictory ? 'bg-green-900/90' : 'bg-red-900/90'}`}>
+        <div className={`absolute inset-0 z-30 flex flex-col justify-center backdrop-blur-md text-white ${isVictory ? 'bg-green-900/90' : 'bg-red-900/90'}`}>
           {isVictory && <Confetti />}
-          <h2
-            className={`font-black transform -skew-x-12 ${isVictory ? 'text-green-100' : 'text-red-100'}`}
-            style={{ fontSize: `${titleFontSize * 1.3}px`, marginBottom: `${16 * scaleH}px` }}
-          >
-            {isVictory ? GAME04_STRINGS.VICTORY_TITLE : GAME04_STRINGS.DEFEAT_TITLE}
-          </h2>
-          <div
-            className={`font-black border-b-4 ${isVictory ? 'border-green-400' : 'border-red-400'}`}
-            style={{ fontSize: `${titleFontSize * 0.8}px`, paddingBottom: `${8 * scaleH}px`, marginBottom: `${32 * scaleH}px` }}
-          >
-            {GAME04_STRINGS.SCORE_PREFIX}{finalScore}
+          {/* 타이틀: 중앙 */}
+          <div className="w-full flex justify-center">
+            <h2
+              className={`font-black transform -skew-x-12 ${isVictory ? 'text-green-100' : 'text-red-100'}`}
+              style={{ fontSize: `${titleFontSize * 1.3}px`, marginBottom: `${24 * scaleH}px` }}
+            >
+              {isVictory ? GAME04_STRINGS.VICTORY_TITLE : GAME04_STRINGS.DEFEAT_TITLE}
+            </h2>
           </div>
-          <button
-            onClick={startGame}
-            className={`bg-white font-black hover:bg-gray-200 transition-colors z-10 uppercase tracking-widest ${isVictory ? 'text-green-900' : 'text-red-900'}`}
-            style={{ fontSize: `${buttonFontSize}px`, padding: `${16 * scaleH}px ${40 * scaleW}px` }}
-          >
-            {isVictory ? GAME04_STRINGS.RETRY_WIN : GAME04_STRINGS.RETRY_LOSE}
-          </button>
+          {/* 점수·버튼: 우측 정렬 */}
+          <div className="w-full flex justify-end" style={{ paddingRight: `${80 * scaleW}px` }}>
+            <div className="flex flex-col items-end gap-4">
+              <div
+                className={`font-black border-b-4 ${isVictory ? 'border-green-400' : 'border-red-400'}`}
+                style={{ fontSize: `${titleFontSize * 0.8}px`, paddingBottom: `${8 * scaleH}px` }}
+              >
+                {GAME04_STRINGS.SCORE_PREFIX}{finalScore}
+              </div>
+              <button
+                onClick={startGame}
+                className={`bg-white font-black hover:bg-gray-200 transition-colors z-10 uppercase tracking-widest ${isVictory ? 'text-green-900' : 'text-red-900'}`}
+                style={{ fontSize: `${buttonFontSize}px`, padding: `${16 * scaleH}px ${40 * scaleW}px` }}
+              >
+                {isVictory ? GAME04_STRINGS.RETRY_WIN : GAME04_STRINGS.RETRY_LOSE}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
