@@ -219,10 +219,10 @@ const Game04: React.FC<Game04Props> = ({ onGameResult }) => {
           </div>
 
           {/* 십자선 */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 border border-white/40 rounded-full flex items-center justify-center z-30">
-            <div className="w-1 h-1 bg-red-500 rounded-full shadow-[0_0_10px_red]" />
-            <div className="absolute w-full h-[1px] bg-white/20" />
-            <div className="absolute h-full w-[1px] bg-white/20" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 border border-white/80 rounded-full flex items-center justify-center z-30">
+            <div className="absolute w-full h-[2px] bg-white/40" />
+            <div className="absolute h-full w-[2px] bg-white/40" />
+            <div className="w-2 h-2 bg-red-500 rounded-full shadow-[0_0_10px_red]" />
           </div>
 
           {/* 좌우 비네팅 */}
