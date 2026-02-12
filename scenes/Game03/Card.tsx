@@ -21,10 +21,14 @@ interface CardProps {
   height: number;
 }
 
+const GOLDEN_RATIO = 1.618;
+
 const Card: React.FC<CardProps> = ({ type, isFlipped, onClick, disabled, positionIndex, width, height }) => {
-  const emojiSize = Math.round(height * 0.28);
+  const cornerSize = Math.round(height * 0.08);
+  /*const emojiSize = Math.round(height * 0.42);*/
+  const emojiSize = cornerSize * Math.pow(GOLDEN_RATIO, 4);
   const labelSize = Math.round(height * 0.06);
-  const cornerSize = Math.round(height * 0.045);
+
   const borderPx = Math.max(3, Math.round(width * 0.012));
   const paddingPx = Math.round(width * 0.04);
 
