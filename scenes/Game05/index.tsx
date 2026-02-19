@@ -495,7 +495,10 @@ const Game05: React.FC<Game05Props> = ({ onGameResult }) => {
     };
 
     const drawHP = () => {
-      const barW = 20, barH = 14, gap = 4, startX = 10, startY = 8;
+      // TIME(W/2)과 SCORE(W-10) 사이에 HP 바 중앙 배치 (로고와 겹치지 않도록)
+      const barW = 20, barH = 14, gap = 4, startY = 8;
+      const hpBarTotalWidth = MAX_HP * barW + (MAX_HP - 1) * gap;
+      const startX = Math.round((W / 2 + (W - 10)) / 2 - hpBarTotalWidth / 2);
       for (let i = 0; i < MAX_HP; i++) {
         const x = startX + i * (barW + gap);
         if (i < s.hp) {
