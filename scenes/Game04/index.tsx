@@ -106,7 +106,7 @@ const HealthBar = ({ health, scaleH }: { health: number; scaleH: number }) => {
   );
 };
 
-const Game04: React.FC<Game04Props> = ({ onGameResult }) => {
+const Game04: React.FC<Game04Props> = ({ onGameResult, inputMode: forceInputMode }) => {
   const [gameStarted, setGameStarted] = useState(false);
   const [gameOver, setGameOver] = useState(false);
   const [finalScore, setFinalScore] = useState(0);
@@ -114,9 +114,14 @@ const Game04: React.FC<Game04Props> = ({ onGameResult }) => {
   const [health, setHealth] = useState(PLAYER_MAX_HEALTH);
   const [timeLeft, setTimeLeft] = useState(GAME_DURATION);
   const [isDamaged, setIsDamaged] = useState(false);
-  const [inputMode, setInputMode] = useState<'head' | 'mouse'>('head');
+  const [inputMode, setInputMode] = useState<'head' | 'mouse'>(forceInputMode ?? 'head');
   const [nearbyZombies, setNearbyZombies] = useState<NearbyZombieRadar[]>([]);
   const resultReportedRef = useRef(false);
+
+  // 디버그에서 강제 모드가 바뀌면 내부 inputMode 동기화
+  useEffect(() => {
+    if (forceInputMode != null) setInputMode(forceInputMode);
+  }, [forceInputMode]);
 
   const headRotationRef = useRef({ yaw: 0, pitch: 0 });
 
@@ -135,7 +140,7 @@ const Game04: React.FC<Game04Props> = ({ onGameResult }) => {
   const scaleW = viewportWidth / BASE_WIDTH;
   const scaleH = viewportHeight / BASE_HEIGHT;
 
-  // Vision WebSocket HEAD_POSE 구독 (Game02 패턴)
+  // vision websocket for human head direction
   useEffect(() => {
     const visionWs = getVisionWsService();
     if (!visionWs.isConnected()) {
@@ -145,36 +150,35 @@ const Game04: React.FC<Game04Props> = ({ onGameResult }) => {
     const unsubscribe = visionWs.onGame04Direction((data) => {
       const { yaw, pitch } = data;
       if (!Number.isFinite(yaw) || !Number.isFinite(pitch)) return;
-      // yaw가 도(degree)로 오면 라디안으로 변환
+      if (forceInputMode === 'mouse') return; // 디버그에서 mouse 강제 시 헤드 데이터 무시
       const yawRad = (yaw / HEAD_YAW_RANGE_DEG) * (HEAD_YAW_RANGE_DEG * Math.PI / 180);
       headRotationRef.current = { yaw: yawRad, pitch: 0 };
       setInputMode('head');
     });
 
     return () => { unsubscribe(); };
-  }, []);
+  }, [forceInputMode]);
 
-  // 마우스 폴백 (HEAD_POSE 안 올 때도 테스트 가능)
+  // 마우스 폴백 (디버그에서 mouse 선택 시 또는 HEAD_POSE 미수신 시)
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      if (inputMode === 'head')
-        return; // HEAD_POSE 들어오면 마우스 무시
-
+      if (inputMode === 'head') return;
       const x = (e.clientX / window.innerWidth) * 2 - 1;
       headRotationRef.current = { yaw: x * MOUSE_YAW_RAD, pitch: 0 };
     };
     window.addEventListener('mousemove', handleMouseMove);
 
-    // 3초 안에 HEAD_POSE 안 오면 마우스 모드
-    const timer = setTimeout(() => {
-      setInputMode((prev) => prev === 'head' ? 'mouse' : prev);
-    }, 3000);
+    // 강제 모드가 없을 때만: 3초 안에 HEAD_POSE 안 오면 마우스 모드
+    const timer =
+      forceInputMode == null
+        ? setTimeout(() => setInputMode((prev) => (prev === 'head' ? 'mouse' : prev)), 3000)
+        : undefined;
 
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
-      clearTimeout(timer);
+      if (timer != null) clearTimeout(timer);
     };
-  }, [inputMode]);
+  }, [inputMode, forceInputMode]);
 
   const startGame = useCallback(() => {
     setGameStarted(true);

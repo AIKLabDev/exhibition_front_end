@@ -32,6 +32,8 @@ const App: React.FC = () => {
   const [gameStartTrigger, setGameStartTrigger] = useState(0);
   /** 백엔드 GAME_STOP 수신 시 증가 (필요 시 Game01 등에서 사용) */
   const [gameStopTrigger, setGameStopTrigger] = useState(0);
+  /** GAME04 디버그용: 조준 입력 모드 (mouse | head) */
+  const [game04InputMode, setGame04InputMode] = useState<'mouse' | 'head'>('head');
 
   const currentSceneRef = useRef(currentScene);
   currentSceneRef.current = currentScene;
@@ -144,6 +146,7 @@ const App: React.FC = () => {
       case SceneDefine.GAME04:
         return (
           <Game04
+            inputMode={game04InputMode}
             onGameResult={(result) => {
               handleUIEvent('GAME_RESULT', { result });
             }}
@@ -198,7 +201,7 @@ const App: React.FC = () => {
       {/* Debug Panel */}
       {isDebugOpen && (
         <div className="absolute bottom-24 left-16 z-[100] bg-slate-900/95 border border-white/10 rounded-3xl p-8 shadow-2xl backdrop-blur-xl w-[450px]">
-          {/* Connection Status - Debug용: cpp(백엔드), python(Vision) */}
+          {/* Connection Status - Debug용: cpp(백엔드), python(Vision). GAME04일 때 입력 모드 토글 */}
           <div className="mb-6 pb-4 border-b border-white/10">
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-2">
@@ -207,6 +210,24 @@ const App: React.FC = () => {
                   <div className={`w-2 h-2 rounded-full shrink-0 ${status === ConnectionStatus.CONNECTED ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
                   <span className="font-bold tracking-wider uppercase opacity-80 truncate">{status}</span>
                 </div>
+                {currentScene === SceneDefine.GAME04 && (
+                  <div className="flex rounded-lg border border-white/20 overflow-hidden shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setGame04InputMode('mouse')}
+                      className={`px-3 py-1.5 text-xs font-bold transition-colors ${game04InputMode === 'mouse' ? 'bg-blue-600 text-white' : 'bg-white/5 text-zinc-400 hover:bg-white/10'}`}
+                    >
+                      Mouse
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setGame04InputMode('head')}
+                      className={`px-3 py-1.5 text-xs font-bold transition-colors ${game04InputMode === 'head' ? 'bg-blue-600 text-white' : 'bg-white/5 text-zinc-400 hover:bg-white/10'}`}
+                    >
+                      Head
+                    </button>
+                  </div>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider w-12 shrink-0">python</span>
