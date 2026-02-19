@@ -42,6 +42,7 @@ export enum SceneDefine {
   GAME02 = 'GAME02',
   GAME03 = 'GAME03',
   GAME04 = 'GAME04',
+  GAME05 = 'GAME05',
   GAME_RESULT = 'GAME_RESULT',
   PICK_GIFT = 'PICK_GIFT',
   LASER_STYLE = 'LASER_STYLE',

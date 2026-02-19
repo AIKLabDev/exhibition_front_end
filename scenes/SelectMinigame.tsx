@@ -11,7 +11,7 @@ const SelectMinigame: React.FC<SelectMinigameProps> = ({ onComplete }) => {
     { id: 'GAME02', name: 'FIND WALLY', icon: '⚡', color: 'from-purple-500 to-indigo-600' },
     { id: 'GAME03', name: 'HEART HUNT', icon: '❤️', color: 'from-green-500 to-teal-600' },
     { id: 'GAME04', name: 'ZOMBIE DEFENDER', icon: '🧟', color: 'from-pink-500 to-rose-600' },
-    { id: 'GAME05', name: 'RESERVE05', icon: '🛰️', color: 'from-cyan-500 to-blue-600' },
+    { id: 'GAME05', name: 'PLATFORMER', icon: '🏃', color: 'from-cyan-500 to-blue-600' },
   ];
 
   // 15 repetitions for a long smooth track
