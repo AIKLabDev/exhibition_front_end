@@ -16,6 +16,7 @@ import type {
   VisionResultHandGesture,
   VisionHeadPoseData,
   VisionHumanDetectedData,
+  VisionGame04DirectionData,
 } from '../protocol';
 import {
   Sender,
@@ -95,6 +96,7 @@ export class VisionWebSocketService {
   private onGameStopCallback?: () => void;
   private onPoseCallback?: (payload: VisionHeadPoseData) => void;
   private onHumanDetectedCallback?: (data: VisionHumanDetectedData) => void;
+  private onGame04DirectionCallback?: (data: VisionGame04DirectionData) => void;
 
   constructor(url: string) {
     this.url = url;
@@ -332,6 +334,12 @@ export class VisionWebSocketService {
           this.onHumanDetectedCallback?.(humanData);
           console.log('[VisionWS] HUMAN_DETECTED (forward to backend for SET_SCENE QR)');
         }
+      } else if (name === VisionMessageName.GAME04_DIRECTION) {
+        const directionData = payload as VisionGame04DirectionData;
+        if (directionData && directionData.direction === 'LEFT' || directionData.direction === 'RIGHT') {
+          this.onGame04DirectionCallback?.(directionData);
+          //console.log('[VisionWS] GAME04_DIRECTION:', directionData.direction, directionData.yaw, directionData.pitch);
+        }
       } else if (name === VisionMessageName.ERROR) {
         console.error('[VisionWS] Server error:', payload);
       } else if (name === VisionMessageName.ACK) {
@@ -383,5 +391,9 @@ export class VisionWebSocketService {
   onHumanDetected(cb: (data: VisionHumanDetectedData) => void): () => void {
     this.onHumanDetectedCallback = cb;
     return () => { this.onHumanDetectedCallback = undefined; };
+  }
+  onGame04Direction(cb: (data: VisionGame04DirectionData) => void): () => void {
+    this.onGame04DirectionCallback = cb;
+    return () => { this.onGame04DirectionCallback = undefined; };
   }
 }

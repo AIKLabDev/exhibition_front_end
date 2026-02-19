@@ -1,8 +1,7 @@
 /**
  * Game04: Zombie Defender (좀비고속도로)
  * Three.js 3D 슈팅 게임. 머리(또는 마우스)로 조준, 자동 발사.
- * HEAD_POSE는 visionWebSocketService.onPose()로 수신 (Game02와 동일 패턴).
- * 카메라/MediaPipe는 제거하고 Vision Python 공통 모듈에서 yaw/pitch를 받아옴.
+ * visionWebSocketService.onGame04DirectionCallback()로 HEAD_DIRECTION(좌우) 수신
  */
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
@@ -143,7 +142,7 @@ const Game04: React.FC<Game04Props> = ({ onGameResult }) => {
       visionWs.connect().catch(() => { });
     }
 
-    const unsubscribe = visionWs.onPose((data) => {
+    const unsubscribe = visionWs.onGame04Direction((data) => {
       const { yaw, pitch } = data;
       if (!Number.isFinite(yaw) || !Number.isFinite(pitch)) return;
       // yaw가 도(degree)로 오면 라디안으로 변환
@@ -158,7 +157,9 @@ const Game04: React.FC<Game04Props> = ({ onGameResult }) => {
   // 마우스 폴백 (HEAD_POSE 안 올 때도 테스트 가능)
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      if (inputMode === 'head') return; // HEAD_POSE 들어오면 마우스 무시
+      if (inputMode === 'head')
+        return; // HEAD_POSE 들어오면 마우스 무시
+
       const x = (e.clientX / window.innerWidth) * 2 - 1;
       headRotationRef.current = { yaw: x * MOUSE_YAW_RAD, pitch: 0 };
     };

@@ -118,6 +118,8 @@ export const VisionMessageName = {
   ACK: 'ACK',
   /** Welcome 씬에서 human 감지 시 Python → 프론트. 프론트는 백엔드에 HUMAN_DETECTED 전달 → 백엔드가 SET_SCENE QR */
   HUMAN_DETECTED: 'HUMAN_DETECTED',
+  /** GAME04 씬에서 python vision module이 head의 왼쪽 오른쪽 방향만 제시 */
+  GAME04_DIRECTION: 'GAME04_DIRECTION',
 } as const;
 export type VisionMessageNameType = (typeof VisionMessageName)[keyof typeof VisionMessageName];
 
@@ -160,6 +162,13 @@ export interface VisionHumanDetectedData {
   detected: boolean;
 }
 
+export interface VisionGame04DirectionData {
+  direction: 'LEFT' | 'RIGHT';
+  yaw: number;
+  pitch: number;
+}
+
+
 /** @deprecated VisionMessageType 대신 VisionMessageName 사용 */
 export const VisionMessageType = {
   SET_SCENE_PY: VisionMessageName.SET_SCENE,
@@ -169,5 +178,6 @@ export const VisionMessageType = {
   GAME_STOP: VisionMessageName.GAME_STOP,
   HEAD_POSE: VisionMessageName.HEAD_POSE,
   HUMAN_DETECTED: VisionMessageName.HUMAN_DETECTED,
+  GAME04_DIRECTION: VisionMessageName.GAME04_DIRECTION,
 } as const;
 export type VisionMessageTypeValue = (typeof VisionMessageType)[keyof typeof VisionMessageType];
