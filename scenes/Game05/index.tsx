@@ -345,15 +345,21 @@ const Game05: React.FC<Game05Props> = ({ onGameResult }) => {
         setGameStateUI('playing');
       } else if (s.gameState === 'playing') {
         startAttack();
-      } else if (s.gameState === 'result') {
-        s.gameState = 'title';
-        s.titleBlinkTimer = 0;
-        setGameStateUI('title');
-        resultReportedRef.current = false;
       }
+      // result 상태에서는 키/터치로 재시작하지 않음 → "다시 시작" 버튼만 사용
     },
     [resetGame, startAttack]
   );
+
+  /** 결과 화면에서 "다시 시작" 버튼 클릭 시 타이틀로 복귀 */
+  const handleRestart = useCallback(() => {
+    const s = stateRef.current;
+    s.gameState = 'title';
+    s.resultTimer = 0;
+    s.titleBlinkTimer = 0;
+    setGameStateUI('title');
+    resultReportedRef.current = false;
+  }, []);
 
   // 게임 루프
   useEffect(() => {
@@ -539,7 +545,7 @@ const Game05: React.FC<Game05Props> = ({ onGameResult }) => {
       }
     };
 
-    const drawResult = (dt: number) => {
+    const drawResult = () => {
       const img = s.resultType === 'win' ? assets.winImg : assets.defeatImg;
       if (!img.complete) return;
       ctx.drawImage(img, 0, 0, W, H);
@@ -549,10 +555,6 @@ const Game05: React.FC<Game05Props> = ({ onGameResult }) => {
       ctx.shadowColor = '#000';
       ctx.shadowBlur = 4;
       ctx.fillText('SCORE: ' + s.score, W / 2, H - 40);
-      s.titleBlinkTimer += dt;
-      if (Math.floor(s.titleBlinkTimer * 2.5) % 2 === 0) {
-        ctx.fillText('PRESS ANY KEY', W / 2, H - 18);
-      }
       ctx.shadowBlur = 0;
     };
 
@@ -580,15 +582,7 @@ const Game05: React.FC<Game05Props> = ({ onGameResult }) => {
       }
 
       if (s.gameState === 'result') {
-        s.resultTimer += dt;
-        drawResult(dt);
-        if (s.resultTimer >= 10) {
-          s.gameState = 'title';
-          s.resultTimer = 0;
-          s.titleBlinkTimer = 0;
-          setGameStateUI('title');
-          resultReportedRef.current = false;
-        }
+        drawResult();
         rafId = requestAnimationFrame(gameLoop);
         return;
       }
@@ -774,6 +768,25 @@ const Game05: React.FC<Game05Props> = ({ onGameResult }) => {
         tabIndex={0}
         aria-label="게임 입력"
       />
+      {/* 결과 화면: "다시 시작" 버튼만으로 재시작 (키/전체 터치 무시) */}
+      {gameStateUI === 'result' && (
+        <div className="absolute inset-0 z-20 flex items-end justify-center pb-8 pointer-events-none">
+          <div className="pointer-events-auto">
+            <button
+              type="button"
+              onClick={handleRestart}
+              onTouchEnd={(e) => {
+                e.preventDefault();
+                handleRestart();
+              }}
+              className="px-8 py-4 bg-white text-black font-bold text-lg rounded-lg shadow-lg active:scale-95 transition-transform touch-manipulation"
+              aria-label="다시 시작"
+            >
+              다시 시작
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
