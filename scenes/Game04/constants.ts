@@ -14,6 +14,9 @@ export const PLAYER_MAX_HEALTH = 5;
 export const INITIAL_SPAWN_INTERVAL = 600; // ms
 export const MIN_SPAWN_INTERVAL = 80; // ms
 
+/** 레이더에 표시할 좀비 감지 거리 (이 거리 안의 좀비만 UI에 점으로 표시) */
+export const RADAR_DETECT_RANGE = 28;
+
 /** Game04 UI 문자열 — 수정 시 이 객체만 편집 */
 export const GAME04_STRINGS = {
   TITLE: '좀비고속도로',

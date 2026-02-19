@@ -19,6 +19,7 @@ import {
   GAME_DURATION,
   INITIAL_SPAWN_INTERVAL,
   MIN_SPAWN_INTERVAL,
+  RADAR_DETECT_RANGE,
 } from './constants';
 
 // --- 내부 상수 ---
@@ -55,6 +56,14 @@ const SphereGeometry = 'sphereGeometry' as any;
 const AmbientLight = 'ambientLight' as any;
 const DirectionalLight = 'directionalLight' as any;
 
+/** 레이더에 표시할 한 명의 근접 좀비 정보 (플레이어 기준 각도·거리) */
+export interface NearbyZombieRadar {
+  /** 플레이어 정면(-Z) 기준 각도(라디안). 0 = 정면, Math.PI/2 = 오른쪽 */
+  angle: number;
+  /** XZ 평면 거리 */
+  distance: number;
+}
+
 export interface GameSceneProps {
   headRotation: React.MutableRefObject<{ yaw: number; pitch: number }>;
   onGameOver: (score: number) => void;
@@ -62,6 +71,8 @@ export interface GameSceneProps {
   gameStarted: boolean;
   setScore: (cb: (prev: number) => number) => void;
   setTimeLeft: (time: number) => void;
+  /** 근접 좀비 목록(레이더용). 매 프레임 호출됨 */
+  onNearbyZombies?: (zombies: NearbyZombieRadar[]) => void;
 }
 
 // ---------- 레트로 배경 ----------
@@ -115,7 +126,7 @@ const RetroBackground = () => {
 };
 
 // ---------- 게임 로직 ----------
-const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, setScore, setTimeLeft }: GameSceneProps) => {
+const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, setScore, setTimeLeft, onNearbyZombies }: GameSceneProps) => {
   const { camera } = useThree();
 
   const bulletsData = useRef(
@@ -363,6 +374,22 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, se
           }
         }
       }
+
+      // 레이더용: 감지 범위 내 좀비만 각도·거리로 전달 (플레이어 정면 -Z 기준)
+      const nearby: NearbyZombieRadar[] = [];
+      for (let i = 0; i < MAX_ZOMBIES; i++) {
+        const z = zombiesData.current[i];
+        if (!z.active) continue;
+        const dx = z.pos.x - 0;
+        const dz = z.pos.z - 0;
+        const dist = Math.sqrt(dx * dx + dz * dz);
+        if (dist > RADAR_DETECT_RANGE) continue;
+        const angle = Math.atan2(dx, -dz);
+        nearby.push({ angle, distance: dist });
+      }
+      if (onNearbyZombies) onNearbyZombies(nearby);
+    } else if (onNearbyZombies) {
+      onNearbyZombies([]);
     }
 
     // 렌더 행렬 업데이트

@@ -27,3 +27,17 @@
   0% { transform: translateY(0) rotate(0deg); opacity: 0.8; }
   100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
 }
+
+/* 레이더: 근접 좀비 경고 원형 UI */
+.game04-radar {
+  z-index: 25;
+}
+
+.game04-radar-dot {
+  animation: game04-radar-dot-pulse 0.8s ease-in-out infinite;
+}
+
+@keyframes game04-radar-dot-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}

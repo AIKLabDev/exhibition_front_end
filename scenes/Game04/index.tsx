@@ -7,8 +7,8 @@
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Game04Props } from './Game04.types';
-import { PLAYER_MAX_HEALTH, GAME_DURATION, GAME04_STRINGS } from './constants';
-import { GameCanvas } from './GameScene';
+import { PLAYER_MAX_HEALTH, GAME_DURATION, GAME04_STRINGS, RADAR_DETECT_RANGE } from './constants';
+import { GameCanvas, type NearbyZombieRadar } from './GameScene';
 import { getVisionWsService } from '../../services/visionWebSocketService';
 import './Game04.css';
 
@@ -43,6 +43,54 @@ const Confetti = () => {
   );
 };
 
+/** 레이더: 상단 반원 UI (180° 정면) — 감지 범위 내 좀비를 점으로 표시, 중심=하단(플레이어) */
+const Radar = ({ zombies, scaleW, scaleH }: { zombies: NearbyZombieRadar[]; scaleW: number; scaleH: number }) => {
+  const size = Math.round(240 * Math.min(scaleW, scaleH));
+  const halfHeight = size / 2;
+  const dotSize = Math.max(6, Math.round(10 * scaleH));
+  return (
+    <div
+      className="game04-radar absolute left-1/2 -translate-x-1/2 overflow-hidden pointer-events-none"
+      style={{ bottom: 0, width: size, height: halfHeight }}
+    >
+      {/* 원을 가로로 자른 위쪽만 표시 → 상단 반원 (곡선=위, 직선=아래) */}
+      <div
+        className="absolute left-0 top-0 rounded-full border-2 border-red-500/80 bg-black/50 backdrop-blur-sm"
+        style={{
+          width: size,
+          height: size,
+          boxShadow: '0 0 20px rgba(255,0,0,0.3)',
+        }}
+      />
+      {/* 정면 방향 표시 (반원 꼭대기) */}
+      <div
+        className="absolute w-0 h-0 border-l-[8px] border-r-[8px] border-b-[12px] border-l-transparent border-r-transparent border-b-red-400/90"
+        style={{ top: '4px', left: '50%', transform: 'translateX(-50%)' }}
+      />
+      {/* 근접 좀비 점: 중심=반원 하단(50%,100%), angle=0이 위쪽(정면) */}
+      {zombies.map((z, i) => {
+        const normDist = Math.min(1, z.distance / RADAR_DETECT_RANGE);
+        const r = (size / 2 - dotSize) * normDist;
+        const x = Math.sin(z.angle) * r;
+        const y = -Math.cos(z.angle) * r;
+        return (
+          <div
+            key={i}
+            className="absolute rounded-full bg-red-500 shadow-[0_0_8px_rgba(255,0,0,0.9)] game04-radar-dot"
+            style={{
+              width: dotSize,
+              height: dotSize,
+              left: `calc(50% + ${x}px)`,
+              top: `calc(100% + ${y}px)`,
+              transform: 'translate(-50%, -50%)',
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+};
+
 // 체력 바
 const HealthBar = ({ health, scaleH }: { health: number; scaleH: number }) => {
   const size = Math.round(28 * scaleH);
@@ -68,6 +116,7 @@ const Game04: React.FC<Game04Props> = ({ onGameResult }) => {
   const [timeLeft, setTimeLeft] = useState(GAME_DURATION);
   const [isDamaged, setIsDamaged] = useState(false);
   const [inputMode, setInputMode] = useState<'head' | 'mouse'>('head');
+  const [nearbyZombies, setNearbyZombies] = useState<NearbyZombieRadar[]>([]);
   const resultReportedRef = useRef(false);
 
   const headRotationRef = useRef({ yaw: 0, pitch: 0 });
@@ -182,6 +231,7 @@ const Game04: React.FC<Game04Props> = ({ onGameResult }) => {
           onPlayerHit={handlePlayerHit}
           setScore={setScore}
           setTimeLeft={setTimeLeft}
+          onNearbyZombies={setNearbyZombies}
         />
       </div>
 
@@ -217,6 +267,9 @@ const Game04: React.FC<Game04Props> = ({ onGameResult }) => {
               {Math.ceil(timeLeft)}
             </div>
           </div>
+
+          {/* 레이더: 근접 좀비 표시 */}
+          <Radar zombies={nearbyZombies} scaleW={scaleW} scaleH={scaleH} />
 
           {/* 십자선 */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 border border-white/80 rounded-full flex items-center justify-center z-30">
