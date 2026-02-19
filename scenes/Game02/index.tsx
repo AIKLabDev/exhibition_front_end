@@ -673,6 +673,35 @@ const Game02: React.FC<Game02Props> = ({ onGameResult }) => {
               <p className="text-slate-400 text-lg">
                 로봇이 카메라를 맞춘 뒤 게임이 시작됩니다.
               </p>
+              {SETTINGS.DEBUG_MODE && (
+                <div className="mt-8 rounded-[2rem] bg-zinc-900/60 border border-white/10 p-5">
+                  <p className="text-sm font-black text-zinc-500 mb-2 italic">
+                    헤드 포즈
+                  </p>
+                  <div className="flex items-center gap-2 mb-2">
+                    <div
+                      className={`w-3 h-3 rounded-full ${headPoseStatus.connected
+                        ? 'bg-green-500 animate-pulse'
+                        : 'bg-red-500'
+                        }`}
+                    />
+                    <span className="text-sm font-bold text-white">
+                      {headPoseStatus.connected ? '연결됨' : '연결 안됨'}
+                    </span>
+                  </div>
+                  {headPoseStatus.yaw !== null && headPoseStatus.pitch !== null && (
+                    <div className="text-xs text-zinc-400 font-mono">
+                      <div>Yaw: {headPoseStatus.yaw.toFixed(1)}°</div>
+                      <div>Pitch: {headPoseStatus.pitch.toFixed(1)}°</div>
+                      {headPoseStatus.lastUpdate != null && (
+                        <div className="text-zinc-500 mt-1">
+                          {Math.round((Date.now() - headPoseStatus.lastUpdate) / 1000)}초 전
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
