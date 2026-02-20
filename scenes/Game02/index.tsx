@@ -24,7 +24,6 @@ import {
   HEADPOSE_SMOOTH_ALPHA,
   HEADPOSE_STALE_MS,
   HEADPOSE_MAX_DELTA_DEG,
-  PITCH_OFFSET,
   SETTINGS,
 } from './constants';
 import { generateLocalGameScenario } from './localScenarioService';
@@ -138,6 +137,8 @@ const Game02: React.FC<Game02Props> = ({ onGameResult }) => {
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const [alignFrame, setAlignFrame] = useState<CameraFrameData | null>(null);
   const alignCanvasRef = useRef<HTMLCanvasElement>(null);
+  /** 0~1, 3초 유지 = 100%. 10도 벗어나면 백엔드가 0으로 리셋 */
+  const [alignProgress, setAlignProgress] = useState(0);
 
   const [viewportAspect, setViewportAspect] = useState<number>(DEFAULT_SCENE_ASPECT);
   const viewWindow = useMemo(
@@ -359,9 +360,10 @@ const Game02: React.FC<Game02Props> = ({ onGameResult }) => {
       if (name === BackendMessageName.GAME02_ALIGNMENT_COMPLETE) {
         startNewGame();
       } else if (name === BackendMessageName.HEAD_POSE) {
-        const data = msg.data as { yaw?: number; pitch?: number };
+        const data = msg.data as { yaw?: number; pitch?: number; progress?: number };
         if (data != null && Number.isFinite(data.yaw) && Number.isFinite(data.pitch)) {
           const now = Date.now();
+          console.log('[Game02] HEAD_POSE', { yaw: data.yaw, pitch: data.pitch, atMs: now, at: new Date(now).toISOString() });
           headPoseRef.current = { yaw: data.yaw!, pitch: data.pitch!, atMs: now };
           if (!prevPoseRef.current) prevPoseRef.current = { yaw: data.yaw!, pitch: data.pitch! };
           setHeadPoseStatus({
@@ -371,10 +373,18 @@ const Game02: React.FC<Game02Props> = ({ onGameResult }) => {
             pitch: data.pitch!,
           });
         }
+        if (data != null && typeof data.progress === 'number' && data.progress >= 0 && data.progress <= 1) {
+          setAlignProgress(data.progress);
+        }
       }
     });
     return () => { unsub(); };
   }, [startNewGame]);
+
+  // 얼굴 정렬 화면 진입 시 진행 바 0으로 초기화
+  useEffect(() => {
+    if (state === Game02State.ALIGNING) setAlignProgress(0);
+  }, [state]);
 
   // 얼굴 정렬 UI: 백엔드 카메라 프레임 구독
   useEffect(() => {
@@ -411,7 +421,7 @@ const Game02: React.FC<Game02Props> = ({ onGameResult }) => {
       }
 
       let yaw = pose.yaw;
-      let pitch = pose.pitch + PITCH_OFFSET;
+      let pitch = pose.pitch;
 
       // 큰 변화 필터링
       if (prevPoseRef.current) {
@@ -627,7 +637,16 @@ const Game02: React.FC<Game02Props> = ({ onGameResult }) => {
                       className="w-full h-full object-cover"
                     />
                   )}
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                    <div className="w-[400px] mb-3">
+                      <div className="h-2 bg-zinc-700/80 rounded-full overflow-hidden border border-white/10">
+                        <div
+                          className="h-full bg-indigo-500 transition-all duration-150 ease-out"
+                          style={{ width: `${Math.round(alignProgress * 100)}%` }}
+                        />
+                      </div>
+                      <p className="text-center text-xs text-zinc-500 mt-1">3초 유지 (100%)</p>
+                    </div>
                     <div className="relative w-[400px] h-[400px] border-4 border-indigo-500/60 rounded-[2rem]">
                       <div className="absolute top-0 left-0 w-12 h-12 border-t-4 border-l-4 border-indigo-400 rounded-tl-2xl" />
                       <div className="absolute top-0 right-0 w-12 h-12 border-t-4 border-r-4 border-indigo-400 rounded-tr-2xl" />
@@ -653,6 +672,35 @@ const Game02: React.FC<Game02Props> = ({ onGameResult }) => {
               <p className="text-slate-400 text-lg">
                 로봇이 카메라를 맞춘 뒤 게임이 시작됩니다.
               </p>
+              {SETTINGS.DEBUG_MODE && (
+                <div className="mt-8 rounded-[2rem] bg-zinc-900/60 border border-white/10 p-5">
+                  <p className="text-sm font-black text-zinc-500 mb-2 italic">
+                    헤드 포즈
+                  </p>
+                  <div className="flex items-center gap-2 mb-2">
+                    <div
+                      className={`w-3 h-3 rounded-full ${headPoseStatus.connected
+                        ? 'bg-green-500 animate-pulse'
+                        : 'bg-red-500'
+                        }`}
+                    />
+                    <span className="text-sm font-bold text-white">
+                      {headPoseStatus.connected ? '연결됨' : '연결 안됨'}
+                    </span>
+                  </div>
+                  {headPoseStatus.yaw !== null && headPoseStatus.pitch !== null && (
+                    <div className="text-xs text-zinc-400 font-mono">
+                      <div>Yaw: {headPoseStatus.yaw.toFixed(1)}°</div>
+                      <div>Pitch: {headPoseStatus.pitch.toFixed(1)}°</div>
+                      {headPoseStatus.lastUpdate != null && (
+                        <div className="text-zinc-500 mt-1">
+                          {Math.round((Date.now() - headPoseStatus.lastUpdate) / 1000)}초 전
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -762,7 +810,7 @@ const Game02: React.FC<Game02Props> = ({ onGameResult }) => {
                 {headPoseStatus.yaw !== null && headPoseStatus.pitch !== null && (
                   <div className="text-xs text-zinc-400 font-mono">
                     <div>Yaw: {headPoseStatus.yaw.toFixed(1)}°</div>
-                    <div>Pitch: {(headPoseStatus.pitch + PITCH_OFFSET).toFixed(1)}°</div>
+                    <div>Pitch: {headPoseStatus.pitch.toFixed(1)}°</div>
                     {headPoseStatus.lastUpdate && (
                       <div className="text-zinc-500 mt-1">
                         {Math.round((Date.now() - headPoseStatus.lastUpdate) / 1000)}초 전

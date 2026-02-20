@@ -26,7 +26,6 @@ export const HEADPOSE_DEADZONE = 0.08;       // 데드존 (정규화된 값)
 export const HEADPOSE_SMOOTH_ALPHA = 0.18;   // EMA 스무딩 계수
 export const HEADPOSE_STALE_MS = 800;        // 오래된 포즈 무시 시간 (ms)
 export const HEADPOSE_MAX_DELTA_DEG = 90;    // 최대 허용 각도 변화
-export const PITCH_OFFSET = 25.0;            // 피치 보정값 (카메라 위치 보정)
 
 // Settings for image generation mode
 export const SETTINGS = {
@@ -34,5 +33,5 @@ export const SETTINGS = {
   // false: Use local image sets from data/ImageSets/
   USE_API_MAKE_IMAGE: false,
   // true: 헤드 포즈 디버그 정보 표시
-  DEBUG_MODE: false,
+  DEBUG_MODE: true,
 } as const;
