@@ -24,7 +24,6 @@ import {
   HEADPOSE_SMOOTH_ALPHA,
   HEADPOSE_STALE_MS,
   HEADPOSE_MAX_DELTA_DEG,
-  PITCH_OFFSET,
   SETTINGS,
 } from './constants';
 import { generateLocalGameScenario } from './localScenarioService';
@@ -422,7 +421,7 @@ const Game02: React.FC<Game02Props> = ({ onGameResult }) => {
       }
 
       let yaw = pose.yaw;
-      let pitch = pose.pitch + PITCH_OFFSET;
+      let pitch = pose.pitch;
 
       // 큰 변화 필터링
       if (prevPoseRef.current) {
@@ -811,7 +810,7 @@ const Game02: React.FC<Game02Props> = ({ onGameResult }) => {
                 {headPoseStatus.yaw !== null && headPoseStatus.pitch !== null && (
                   <div className="text-xs text-zinc-400 font-mono">
                     <div>Yaw: {headPoseStatus.yaw.toFixed(1)}°</div>
-                    <div>Pitch: {(headPoseStatus.pitch + PITCH_OFFSET).toFixed(1)}°</div>
+                    <div>Pitch: {headPoseStatus.pitch.toFixed(1)}°</div>
                     {headPoseStatus.lastUpdate && (
                       <div className="text-zinc-500 mt-1">
                         {Math.round((Date.now() - headPoseStatus.lastUpdate) / 1000)}초 전
