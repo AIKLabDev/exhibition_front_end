@@ -293,7 +293,7 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
       <main className="relative flex flex-col items-center justify-center w-full max-w-5xl h-full z-20 pt-16">
         {/* AI Hand Display */}
         <div className="relative z-10">
-          <HandDisplay choice={game.aiChoice} status={game.status} />
+          <HandDisplay choice={game.aiChoice} status={game.status} lastResult={game.lastResult} />
         </div>
 
         {/* Floating Text Container */}
