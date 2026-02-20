@@ -72,13 +72,13 @@ interface GameSounds {
   stageBgm: HTMLAudioElement;
   attackSfx: HTMLAudioElement;
   attackVoice: HTMLAudioElement;
-  winSfx: HTMLAudioElement;
-  defeatSfx: HTMLAudioElement;
+  resultWinBgm: HTMLAudioElement;
+  resultDefeatBgm: HTMLAudioElement;
   heroHitSfx: HTMLAudioElement;
   friendHitSfx: HTMLAudioElement;
-  dieSfx: HTMLAudioElement;
+  defeat_cut_scene: HTMLAudioElement;
   runSfx: HTMLAudioElement;
-  winRunSfx: HTMLAudioElement;
+  win_cut_scene: HTMLAudioElement;
   energySfx: HTMLAudioElement;
   hitSfxPool: HTMLAudioElement[];
 }
@@ -99,17 +99,18 @@ function initSounds(base: string): GameSounds {
     hitSfxPool.push(hitSfx);
   }
   return {
-    titleBgm: createAudio(`${base}/asset/sound/title.m4a`, { loop: true, volume: 0.5 }),
-    stageBgm: createAudio(`${base}/asset/sound/stage.m4a`, { loop: true, volume: 0.6 }),
+    titleBgm: createAudio(`${base}/asset/sound/bgm_title.m4a`, { loop: true, volume: 0.5 }),
+    stageBgm: createAudio(`${base}/asset/sound/bgm_stage.m4a`, { loop: true, volume: 0.6 }),
+    resultWinBgm: createAudio(`${base}/asset/sound/bgm_result_win.m4a`, { volume: 0.7 }),
+    resultDefeatBgm: createAudio(`${base}/asset/sound/bgm_result_defeat.m4a`, { volume: 0.7 }),
+    defeat_cut_scene: createAudio(`${base}/asset/sound/cut_scene_defeat_die.m4a`, { volume: 0.7 }),
+    win_cut_scene: createAudio(`${base}/asset/sound/cut_scene_win.m4a`, { volume: 0.5 }),
+
     attackSfx: createAudio(`${base}/asset/sound/attack.m4a`, { volume: 0.6 }),
     attackVoice: createAudio(`${base}/asset/sound/attack_1.m4a`, { volume: 0.5 }),
-    winSfx: createAudio(`${base}/asset/sound/win.m4a`, { volume: 0.7 }),
-    defeatSfx: createAudio(`${base}/asset/sound/defeat.m4a`, { volume: 0.7 }),
     heroHitSfx: createAudio(`${base}/asset/sound/hero_hit.m4a`, { volume: 0.7 }),
     friendHitSfx: createAudio(`${base}/asset/sound/friend_hit.m4a`, { volume: 0.7 }),
-    dieSfx: createAudio(`${base}/asset/sound/die.m4a`, { volume: 0.7 }),
     runSfx: createAudio(`${base}/asset/sound/run.m4a`, { loop: true, volume: 0.3 }),
-    winRunSfx: createAudio(`${base}/asset/sound/win_run.m4a`, { loop: true, volume: 0.5 }),
     energySfx: createAudio(`${base}/asset/sound/energy.m4a`, { volume: 0.7 }),
     hitSfxPool,
   };
@@ -118,7 +119,7 @@ function initSounds(base: string): GameSounds {
 function playSfx(audio: HTMLAudioElement, playbackRate = 1.0): void {
   audio.currentTime = 0;
   audio.playbackRate = playbackRate;
-  audio.play().catch(() => {});
+  audio.play().catch(() => { });
 }
 
 function stopAudio(audio: HTMLAudioElement): void {
@@ -357,7 +358,7 @@ const Game05: React.FC<Game05Props> = ({ onGameResult }) => {
         setLoading(false);
         console.log('[Game05] Assets loaded');
         // 타이틀 BGM 시작
-        soundsRef.current?.titleBgm.play().catch(() => {});
+        soundsRef.current?.titleBgm.play().catch(() => { });
       })
       .catch((err) => {
         console.error('[Game05] Asset load error:', err);
@@ -372,7 +373,7 @@ const Game05: React.FC<Game05Props> = ({ onGameResult }) => {
         stopAudio(sounds.titleBgm);
         stopAudio(sounds.stageBgm);
         stopAudio(sounds.runSfx);
-        stopAudio(sounds.winRunSfx);
+        stopAudio(sounds.win_cut_scene);
       }
     };
   }, []);
@@ -471,8 +472,8 @@ const Game05: React.FC<Game05Props> = ({ onGameResult }) => {
         // 게임 시작: titleBgm 정지, stageBgm + runSfx 시작
         if (sounds) {
           stopAudio(sounds.titleBgm);
-          sounds.stageBgm.play().catch(() => {});
-          sounds.runSfx.play().catch(() => {});
+          sounds.stageBgm.play().catch(() => { });
+          sounds.runSfx.play().catch(() => { });
         }
       } else if (s.gameState === 'playing') {
         startAttack();
@@ -493,8 +494,8 @@ const Game05: React.FC<Game05Props> = ({ onGameResult }) => {
     if (sounds) {
       stopAudio(sounds.stageBgm);
       stopAudio(sounds.runSfx);
-      stopAudio(sounds.winRunSfx);
-      sounds.titleBgm.play().catch(() => {});
+      stopAudio(sounds.win_cut_scene);
+      sounds.titleBgm.play().catch(() => { });
     }
   }, []);
 
@@ -917,12 +918,12 @@ const Game05: React.FC<Game05Props> = ({ onGameResult }) => {
         s.heroHitTimer = DEFEAT_DURATION;
         s.gameState = 'defeat';
         setGameStateUI('defeat');
-        // 패배 사운드: stageBgm/runSfx 정지, dieSfx + defeatSfx
+        // 패배 사운드: stageBgm/runSfx 정지, defeat_cut_scene + resultDefeatBgm
         if (sounds) {
           stopAudio(sounds.stageBgm);
           stopAudio(sounds.runSfx);
-          playSfx(sounds.dieSfx);
-          playSfx(sounds.defeatSfx);
+          playSfx(sounds.defeat_cut_scene);
+          playSfx(sounds.resultDefeatBgm);
         }
       } else if (s.remainingTime <= 0) {
         s.enemies = [];
@@ -933,12 +934,12 @@ const Game05: React.FC<Game05Props> = ({ onGameResult }) => {
         s.attackTimer = 0;
         s.gameState = 'victory';
         setGameStateUI('victory');
-        // 승리 사운드: stageBgm/runSfx 정지, winSfx + winRunSfx
+        // 승리 사운드: stageBgm/runSfx 정지, resultWinBgm + win_cut_scene
         if (sounds) {
           stopAudio(sounds.stageBgm);
           stopAudio(sounds.runSfx);
-          playSfx(sounds.winSfx);
-          sounds.winRunSfx.play().catch(() => {});
+          playSfx(sounds.resultWinBgm);
+          sounds.win_cut_scene.play().catch(() => { });
         }
       }
 
