@@ -216,7 +216,7 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
       {triggerEffect === 'win' && <Fireworks />}
 
       {/* Score Header */}
-      <div className="absolute top-24 w-full max-w-4xl flex justify-between items-center px-16 z-50 font-scifi">
+      <div className="absolute top-24 w-full max-w-4xl flex justify-between items-center px-16 z-50 font-scifi-kr">
         <div className="text-center">
           <p className="text-xs text-blue-400 tracking-[0.3em] uppercase opacity-70">{GAME01_MESSAGES.ui.human}</p>
           <p className={`text-6xl font-bold text-glow-blue ${triggerEffect === 'win' ? 'animate-score-bounce' : ''}`}>
@@ -254,7 +254,7 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
           <div
             key={hypeKey}
             className={`
-              font-arcade transition-all duration-300 drop-shadow-[0_0_50px_rgba(0,0,0,1)] text-center
+              font-arcade-kr transition-all duration-300 drop-shadow-[0_0_50px_rgba(0,0,0,1)] text-center
               ${game.status === 'hyping' ? 'text-7xl md:text-[12rem] text-yellow-400 animate-text-impact text-glow-yellow' : 'text-5xl md:text-8xl'}
               ${game.status === 'result' ? 'animate-result-pop' : ''}
               ${game.status === 'result' && game.lastResult === 'win' ? 'text-green-400 text-glow-green' : ''}
@@ -267,7 +267,7 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
           </div>
 
           <div className={`
-            mt-10 font-scifi text-lg italic text-white max-w-xl text-center px-10 transition-all duration-1000 delay-300
+            mt-10 font-scifi-kr text-lg italic text-white max-w-xl text-center px-10 transition-all duration-1000 delay-300
             ${game.status === 'result' ? 'opacity-100 translate-y-0 scale-110' : 'opacity-0 translate-y-10 scale-90'}
           `}>
             {game.status === 'result' && (
@@ -281,7 +281,7 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
             <button
               onClick={resetGame}
               className={`
-                mt-12 px-16 py-5 rounded-full border-2 font-scifi text-sm tracking-[0.5em] transition-all hover:scale-110 active:scale-95 pointer-events-auto
+                mt-12 px-16 py-5 rounded-full border-2 font-scifi-kr text-sm tracking-[0.5em] transition-all hover:scale-110 active:scale-95 pointer-events-auto
                 ${game.lastResult === 'win' ? 'bg-green-600/30 border-green-400/50 hover:bg-green-600/50 shadow-[0_0_40px_rgba(34,197,94,0.4)]' :
                   game.lastResult === 'lose' ? 'bg-red-600/30 border-red-400/50 hover:bg-red-600/50 shadow-[0_0_40px_rgba(239,68,68,0.4)]' :
                     'bg-white/10 border-white/30 hover:bg-white/20 shadow-[0_0_40px_rgba(255,255,255,0.2)]'}
@@ -300,7 +300,7 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
             onClick={handleStartGame}
             disabled={!wsConnected}
             className={`
-              px-14 py-6 rounded-full border-2 font-scifi text-xl tracking-[0.3em] 
+              px-14 py-6 rounded-full border-2 font-scifi-kr text-xl tracking-[0.3em] 
               transition-all hover:scale-110 active:scale-95
               ${wsConnected
                 ? 'bg-green-600/20 border-green-500/50 hover:bg-green-600/40 shadow-[0_0_40px_rgba(34,197,94,0.3)] text-green-400'
