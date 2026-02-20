@@ -3,13 +3,22 @@
  * Game01 전용 애니메이션 및 스타일
  */
 
-/* Fonts */
+/* Fonts (영어용 - 라틴 문자 전용) */
 .font-arcade {
   font-family: 'Bangers', system-ui, sans-serif;
 }
 
 .font-scifi {
   font-family: 'Orbitron', sans-serif;
+}
+
+/* 한글용 - Game01 메시지/버튼에 사용 (index.html에서 Black Han Sans, Pretendard 로드됨) */
+.font-arcade-kr {
+  font-family: 'Black Han Sans', sans-serif;
+}
+
+.font-scifi-kr {
+  font-family: 'Pretendard', sans-serif;
 }
 
 /* Hand shake animation during countdown */

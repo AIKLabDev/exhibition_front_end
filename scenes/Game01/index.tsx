@@ -7,54 +7,7 @@ import {
 } from '../../services/visionWebSocketService';
 import HandDisplay from './HandDisplay';
 import Fireworks from './Fireworks';
-
-// --- 사용자에게 표시할 메시지 (쉽게 수정 가능) ---
-const GAME01_MESSAGES = {
-  /** 대기 화면 */
-  idle: {
-    hypeText: "READY?",
-    aiComment: "Show me what you've got.",
-  },
-  /** Vision 서버 미연결 시 */
-  visionNotConnected: "Vision server not connected. Please check the connection.",
-  /** 카운트다운 문구 (가위 → 바위 → 보) */
-  countdown: ["SCISSORS", "ROCK", "PAPER"] as const,
-  /** 손 인식 중 */
-  calculating: "Calculating...",
-  /** 결과 - 승리 / 패배 / 무승부 */
-  result: {
-    win: { hypeText: "VICTORY!", aiComment: "You got me!" },
-    lose: { hypeText: "DEFEAT!", aiComment: "Better luck next time!" },
-    draw: { hypeText: "IT'S A DRAW!", aiComment: "Great minds think alike!" },
-  },
-  /** 인식 실패/오류 시 */
-  error: {
-    hypeText: "ERROR",
-    aiCommentFallback: "Failed to detect gesture. Please try again.",
-  },
-  /** 다음 라운드 준비 */
-  goAgain: {
-    hypeText: "GO AGAIN!",
-    aiComment: "I'll get you next time.",
-  },
-  /** UI 라벨 (스코어, 버튼 등) */
-  ui: {
-    human: "HUMAN",
-    aiCore: "AI CORE",
-    gameTitle: "ROCK PAPER SCISSORS",
-    nextRound: "NEXT ROUND",
-    startGame: "START GAME",
-    connecting: "CONNECTING...",
-  },
-  /** Python에서 받은 gesture → 화면에 표시할 문자열 (HUMAN 영역) */
-  gestureDisplay: {
-    rock: "ROCK",
-    paper: "PAPER",
-    scissors: "SCISSORS",
-    /** 아직 인식 전이거나 없을 때 */
-    none: "-",
-  },
-} as const;
+import { GAME01_MESSAGES } from './constants';
 
 /** 감지 결과 gesture → RpsChoice (Game01 전용) */
 function classNameToChoice(gesture: string): RpsChoice | null {
@@ -263,7 +216,7 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
       {triggerEffect === 'win' && <Fireworks />}
 
       {/* Score Header */}
-      <div className="absolute top-24 w-full max-w-4xl flex justify-between items-center px-16 z-50 font-scifi">
+      <div className="absolute top-24 w-full max-w-4xl flex justify-between items-center px-16 z-50 font-scifi-kr">
         <div className="text-center">
           <p className="text-xs text-blue-400 tracking-[0.3em] uppercase opacity-70">{GAME01_MESSAGES.ui.human}</p>
           <p className={`text-6xl font-bold text-glow-blue ${triggerEffect === 'win' ? 'animate-score-bounce' : ''}`}>
@@ -293,7 +246,7 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
       <main className="relative flex flex-col items-center justify-center w-full max-w-5xl h-full z-20 pt-16">
         {/* AI Hand Display */}
         <div className="relative z-10">
-          <HandDisplay choice={game.aiChoice} status={game.status} />
+          <HandDisplay choice={game.aiChoice} status={game.status} lastResult={game.lastResult} />
         </div>
 
         {/* Floating Text Container */}
@@ -301,7 +254,7 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
           <div
             key={hypeKey}
             className={`
-              font-arcade transition-all duration-300 drop-shadow-[0_0_50px_rgba(0,0,0,1)] text-center
+              font-arcade-kr transition-all duration-300 drop-shadow-[0_0_50px_rgba(0,0,0,1)] text-center
               ${game.status === 'hyping' ? 'text-7xl md:text-[12rem] text-yellow-400 animate-text-impact text-glow-yellow' : 'text-5xl md:text-8xl'}
               ${game.status === 'result' ? 'animate-result-pop' : ''}
               ${game.status === 'result' && game.lastResult === 'win' ? 'text-green-400 text-glow-green' : ''}
@@ -314,7 +267,7 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
           </div>
 
           <div className={`
-            mt-10 font-scifi text-lg italic text-white max-w-xl text-center px-10 transition-all duration-1000 delay-300
+            mt-10 font-scifi-kr text-lg italic text-white max-w-xl text-center px-10 transition-all duration-1000 delay-300
             ${game.status === 'result' ? 'opacity-100 translate-y-0 scale-110' : 'opacity-0 translate-y-10 scale-90'}
           `}>
             {game.status === 'result' && (
@@ -328,7 +281,7 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
             <button
               onClick={resetGame}
               className={`
-                mt-12 px-16 py-5 rounded-full border-2 font-scifi text-sm tracking-[0.5em] transition-all hover:scale-110 active:scale-95 pointer-events-auto
+                mt-12 px-16 py-5 rounded-full border-2 font-scifi-kr text-sm tracking-[0.5em] transition-all hover:scale-110 active:scale-95 pointer-events-auto
                 ${game.lastResult === 'win' ? 'bg-green-600/30 border-green-400/50 hover:bg-green-600/50 shadow-[0_0_40px_rgba(34,197,94,0.4)]' :
                   game.lastResult === 'lose' ? 'bg-red-600/30 border-red-400/50 hover:bg-red-600/50 shadow-[0_0_40px_rgba(239,68,68,0.4)]' :
                     'bg-white/10 border-white/30 hover:bg-white/20 shadow-[0_0_40px_rgba(255,255,255,0.2)]'}
@@ -347,7 +300,7 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
             onClick={handleStartGame}
             disabled={!wsConnected}
             className={`
-              px-14 py-6 rounded-full border-2 font-scifi text-xl tracking-[0.3em] 
+              px-14 py-6 rounded-full border-2 font-scifi-kr text-xl tracking-[0.3em] 
               transition-all hover:scale-110 active:scale-95
               ${wsConnected
                 ? 'bg-green-600/20 border-green-500/50 hover:bg-green-600/40 shadow-[0_0_40px_rgba(34,197,94,0.3)] text-green-400'
