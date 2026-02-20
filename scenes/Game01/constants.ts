@@ -9,11 +9,8 @@ export const HAND_EMOJIS: Record<'rock' | 'paper' | 'scissors', string> = {
 };
 
 export const HYPE_PHRASES = [
-  "ARE YOU READY?",
-  "LET'S GO!",
+  "준비됐어?",
+  "시작해볼까?",
   "MOVE IT!",
-  "BRING IT ON!",
-  "3... 2... 1...",
-  "SHOWDOWN!",
-  "CHALLENGE ACCEPTED!"
+  "어떻게 할까?",
 ];
