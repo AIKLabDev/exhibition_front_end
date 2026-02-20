@@ -38,8 +38,8 @@ export function initSounds(base: string): GameSounds {
     attackSfx: createAudio(`${base}/asset/sound/attack.m4a`, { volume: 0.6 }),
     attackVoice: createAudio(`${base}/asset/sound/attack_1.m4a`, { volume: 0.5 }),
     heroHitSfx: createAudio(`${base}/asset/sound/hero_hit.m4a`, { volume: 0.7 }),
-    friendHitSfx: createAudio(`${base}/asset/sound/friend_hit.m4a`, { volume: 0.7 }),
-    energySfx: createAudio(`${base}/asset/sound/energy.m4a`, { volume: 0.7 }),
+    friendHitSfx: createAudio(`${base}/asset/sound/friend_hit.m4a`, { volume: 0.9 }),
+    energySfx: createAudio(`${base}/asset/sound/energy.m4a`, { volume: 0.9 }),
     hitSfxPool,
   };
 }
@@ -47,7 +47,7 @@ export function initSounds(base: string): GameSounds {
 export function playSfx(audio: HTMLAudioElement, playbackRate = 1.0): void {
   audio.currentTime = 0;
   audio.playbackRate = playbackRate;
-  audio.play().catch(() => {});
+  audio.play().catch(() => { });
 }
 
 export function stopAudio(audio: HTMLAudioElement): void {
