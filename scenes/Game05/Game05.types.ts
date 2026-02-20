@@ -1,8 +1,123 @@
 /**
- * Game05 (플래포머) 전용 타입
+ * Game05 (플래포머) 타입 정의
  */
 
+// ── Props ──
 export interface Game05Props {
-  /** 게임 결과(승/패) 전달 */
   onGameResult?: (result: 'WIN' | 'LOSE') => void;
+}
+
+// ── 게임 상태 타입 ──
+export type GameStateType = 'title' | 'playing' | 'victory' | 'defeat' | 'result';
+
+// ── 적/친구 엔티티 ──
+export interface EnemyLike {
+  x: number;
+  speed: number;
+  frame: number;
+  animTimer: number;
+  alive: boolean;
+  isFriend: boolean;
+}
+
+// ── 날아가는 적 (타격 후 애니메이션) ──
+export interface FlyingEnemy {
+  x: number;
+  y: number;
+  frame: number;
+  timer: number;
+  isFriend: boolean;
+}
+
+// ── 히트 이펙트 ──
+export interface HitEffect {
+  x: number;
+  y: number;
+  timer: number;
+}
+
+// ── 게임 내부 상태 ──
+export interface GameState {
+  gameState: GameStateType;
+  titleBlinkTimer: number;
+  resultTimer: number;
+  resultType: 'win' | 'defeat';
+  lastTime: number;
+  currentFrame: number;
+  animTimer: number;
+  scrollX: number;
+  charX: number;
+  isAttacking: boolean;
+  attackFrame: number;
+  attackTimer: number;
+  attackHitProcessed: boolean;
+  enemies: EnemyLike[];
+  enemySpawnTimer: number;
+  enemySpawnCount: number;
+  flyingEnemies: FlyingEnemy[];
+  hitEffects: HitEffect[];
+  friendOkTimer: number;
+  score: number;
+  hp: number;
+  damageShakeTimer: number;
+  damageRedTimer: number;
+  heroHitTimer: number;
+  gameTime: number;
+  remainingTime: number;
+  defeatTimer: number;
+}
+
+// ── 사운드 ──
+export interface GameSounds {
+  titleBgm: HTMLAudioElement;
+  stageBgm: HTMLAudioElement;
+  attackSfx: HTMLAudioElement;
+  attackVoice: HTMLAudioElement;
+  resultWinBgm: HTMLAudioElement;
+  resultDefeatBgm: HTMLAudioElement;
+  heroHitSfx: HTMLAudioElement;
+  friendHitSfx: HTMLAudioElement;
+  defeatCutScene: HTMLAudioElement;
+  runSfx: HTMLAudioElement;
+  winCutScene: HTMLAudioElement;
+  energySfx: HTMLAudioElement;
+  hitSfxPool: HTMLAudioElement[];
+}
+
+// ── 이미지 에셋 ──
+export interface GameAssets {
+  runFrames: HTMLImageElement[];
+  attackFrames: HTMLImageElement[];
+  enemyFrames: HTMLImageElement[];
+  enemyHitImg: HTMLImageElement;
+  hitEffectImg: HTMLImageElement;
+  friendFrames: HTMLImageElement[];
+  friendHitImg: HTMLImageElement;
+  friendOkImg: HTMLImageElement;
+  heartImg: HTMLImageElement;
+  heroHitImg: HTMLImageElement;
+  titleImg: HTMLImageElement;
+  winImg: HTMLImageElement;
+  defeatImg: HTMLImageElement;
+  treesImg: HTMLImageElement;
+  baseImg: HTMLImageElement;
+  farImg: HTMLImageElement;
+  groundImg: HTMLImageElement;
+}
+
+// ── State Handler 인터페이스 ──
+export interface StateHandler {
+  onEnter?: (state: GameState, sounds: GameSounds | null) => void;
+  onExit?: (state: GameState, sounds: GameSounds | null) => void;
+  update: (state: GameState, dt: number, assets: GameAssets, sounds: GameSounds | null) => GameStateType | null;
+  render: (state: GameState, ctx: CanvasRenderingContext2D, assets: GameAssets, W: number, H: number) => void;
+}
+
+// ── 렌더링 컨텍스트 (draw 함수에 전달) ──
+export interface RenderContext {
+  ctx: CanvasRenderingContext2D;
+  assets: GameAssets;
+  state: GameState;
+  W: number;
+  H: number;
 }
