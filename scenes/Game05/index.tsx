@@ -495,6 +495,8 @@ const Game05: React.FC<Game05Props> = ({ onGameResult }) => {
       stopAudio(sounds.stageBgm);
       stopAudio(sounds.runSfx);
       stopAudio(sounds.win_cut_scene);
+      stopAudio(sounds.resultWinBgm);
+      stopAudio(sounds.resultDefeatBgm);
       sounds.titleBgm.play().catch(() => { });
     }
   }, []);
