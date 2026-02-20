@@ -1,22 +1,20 @@
 /**
- * Game05: 플래포머 (Platformer)
- * 원본: C:\AIKorea\플래포머\index.html
- * 캔버스 640x180 픽셀 아트 러닝/공격 게임. 적 격파·친구 구분(친구는 때리면 HP 감소).
- * 에셋: public/game05/ 아래에 asset/, bg_trees.png, base.png, far.jpeg 배치.
+ * Game05: 플래포머 (Platformer) - 새 버전
+ * 캔버스 640x180 픽셀 아트 러닝/공격 게임.
+ * 에셋: public/game05/asset/ 아래에 배치.
  */
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Game05Props } from './Game05.types';
 import {
-  RUN_FRAME_COUNT,
   CHAR_X,
   ANIM_FPS,
   SCALE,
-  ATTACK_FRAME_COUNT,
   ATTACK_SCALE,
   ATTACK_OFFSET_X,
   ATTACK_OFFSET_Y,
   HIT_RANGE,
+  ATTACK_FPS,
   ENEMY_HIT_FRAMES,
   ENEMY_HIT_FPS,
   ENEMY_HIT_SCALE_START,
@@ -28,7 +26,8 @@ import {
   DAMAGE_SHAKE_DURATION,
   DAMAGE_SHAKE_INTENSITY,
   DAMAGE_RED_DURATION,
-  ENEMY_FRAME_COUNT,
+  HERO_HIT_DURATION,
+  HERO_HIT_SCALE,
   ENEMY_SCALE,
   ENEMY_OFFSET_Y,
   ENEMY_ANIM_FPS,
@@ -37,7 +36,7 @@ import {
   ENEMY_SPAWN_MIN,
   ENEMY_SPAWN_MAX,
   ENEMY_SPAWN_DECREASE,
-  FRIEND_FRAME_COUNT,
+  ENEMY_SPEED_INCREASE,
   FRIEND_SCALE,
   FRIEND_OFFSET_Y,
   FRIEND_ANIM_FPS,
@@ -45,8 +44,8 @@ import {
   FRIEND_CHANCE,
   FRIEND_OK_DURATION,
   FRIEND_OK_SCALE,
-  FRIEND_OK_SCALE_START,
-  FRIEND_OK_FRAMES,
+  HEART_SCALE_START,
+  HEART_SCALE_END,
   FRIEND_HIT_FRAMES,
   FRIEND_HIT_FPS,
   FRIEND_HIT_SCALE_START,
@@ -55,8 +54,12 @@ import {
   GAME_DURATION,
   TREE_SPEED,
   GROUND_Y,
-  ATTACK_FPS,
-  ENEMY_SPEED_INCREASE,
+  GROUND_LAYER_SPEED,
+  GROUND_LAYER_OFFSET_Y,
+  GROUND_LAYER_SCALE,
+  VICTORY_CHAR_SPEED,
+  DEFEAT_DURATION,
+  DEFEAT_SLOW_MOTION,
   CANVAS_WIDTH as W,
   CANVAS_HEIGHT as H,
   ASSET_BASE,
@@ -73,60 +76,86 @@ interface GameAssets {
   friendFrames: HTMLImageElement[];
   friendHitImg: HTMLImageElement;
   friendOkImg: HTMLImageElement;
+  heartImg: HTMLImageElement;
+  heroHitImg: HTMLImageElement;
   titleImg: HTMLImageElement;
   winImg: HTMLImageElement;
   defeatImg: HTMLImageElement;
   treesImg: HTMLImageElement;
   baseImg: HTMLImageElement;
   farImg: HTMLImageElement;
+  groundImg: HTMLImageElement;
 }
 
-function loadImage(src: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
+function loadImageAsync(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve) => {
     const img = new Image();
     img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error(`[Game05] Failed to load: ${src}`));
+    img.onerror = () => {
+      console.warn(`[Game05] Failed to load: ${src}`);
+      resolve(img);
+    };
     img.src = src;
   });
 }
 
-async function loadAllAssets(base: string): Promise<GameAssets> {
-  const runFrames = await Promise.all(
-    Array.from({ length: RUN_FRAME_COUNT }, (_, i) => loadImage(`${base}/asset/run/${i}.png`))
-  );
-  const attackFrames = await Promise.all(
-    Array.from({ length: ATTACK_FRAME_COUNT }, (_, i) => loadImage(`${base}/asset/attack/${i}.png`))
-  );
-  const enemyFrames = await Promise.all(
-    Array.from({ length: ENEMY_FRAME_COUNT }, (_, i) => loadImage(`${base}/asset/enermy/${i}.png`))
-  );
-  const friendFrames = await Promise.all(
-    Array.from({ length: FRIEND_FRAME_COUNT }, (_, i) => loadImage(`${base}/asset/friend/${i}.png`))
-  );
+async function loadFramesFromFolder(folder: string, maxProbe = 100): Promise<HTMLImageElement[]> {
+  const probes: Promise<{ idx: number; img: HTMLImageElement } | null>[] = [];
+  for (let i = 0; i < maxProbe; i++) {
+    probes.push(
+      new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => resolve({ idx: i, img });
+        img.onerror = () => resolve(null);
+        img.src = `${folder}/${i}.png`;
+      })
+    );
+  }
+  const results = await Promise.all(probes);
+  const frames = results
+    .filter((r): r is { idx: number; img: HTMLImageElement } => r !== null)
+    .sort((a, b) => a.idx - b.idx)
+    .map((r) => r.img);
+  console.log(`[Game05] ${folder}: ${frames.length} frames loaded`);
+  return frames;
+}
 
-  const friendOkFilename = 'friend_ok.jpeg';
+async function loadAllAssets(base: string): Promise<GameAssets> {
+  const [runFrames, attackFrames, enemyFrames, friendFrames] = await Promise.all([
+    loadFramesFromFolder(`${base}/asset/run`),
+    loadFramesFromFolder(`${base}/asset/attack`),
+    loadFramesFromFolder(`${base}/asset/enermy`),
+    loadFramesFromFolder(`${base}/asset/friend`),
+  ]);
+
   const [
     enemyHitImg,
     hitEffectImg,
     friendHitImg,
     friendOkImg,
+    heartImg,
+    heroHitImg,
     titleImg,
     winImg,
     defeatImg,
     treesImg,
     baseImg,
     farImg,
+    groundImg,
   ] = await Promise.all([
-    loadImage(`${base}/asset/enermy_hit/0.png`),
-    loadImage(`${base}/asset/hit.png`),
-    loadImage(`${base}/asset/friend_hit/0_out.png`),
-    loadImage(`${base}/asset/friend_ok/${encodeURIComponent(friendOkFilename)}`),
-    loadImage(`${base}/asset/title.jpeg`),
-    loadImage(`${base}/asset/win.jpeg`),
-    loadImage(`${base}/asset/defeat.jpeg`),
-    loadImage(`${base}/bg_trees.png`),
-    loadImage(`${base}/base.png`),
-    loadImage(`${base}/far.jpeg`),
+    loadImageAsync(`${base}/asset/enermy_hit/0.png`),
+    loadImageAsync(`${base}/asset/hit.png`),
+    loadImageAsync(`${base}/asset/friend_hit/0.png`),
+    loadImageAsync(`${base}/asset/friend_ok/0.png`),
+    loadImageAsync(`${base}/asset/friend_ok/heart.png`),
+    loadImageAsync(`${base}/asset/hero_hit/0.png`),
+    loadImageAsync(`${base}/asset/title.jpeg`),
+    loadImageAsync(`${base}/asset/win.jpeg`),
+    loadImageAsync(`${base}/asset/defeat.jpeg`),
+    loadImageAsync(`${base}/asset/background/bg_trees.png`),
+    loadImageAsync(`${base}/asset/background/base.png`),
+    loadImageAsync(`${base}/asset/background/far.jpeg`),
+    loadImageAsync(`${base}/asset/background/ground.png`),
   ]);
 
   return {
@@ -138,16 +167,19 @@ async function loadAllAssets(base: string): Promise<GameAssets> {
     friendFrames,
     friendHitImg,
     friendOkImg,
+    heartImg,
+    heroHitImg,
     titleImg,
     winImg,
     defeatImg,
     treesImg,
     baseImg,
     farImg,
+    groundImg,
   };
 }
 
-// ── 게임 내부 상태 (ref로 보관, 매 프레임 갱신) ──
+// ── 게임 내부 상태 ──
 interface EnemyLike {
   x: number;
   speed: number;
@@ -168,14 +200,11 @@ interface HitEffect {
   y: number;
   timer: number;
 }
-interface FriendOkEffect {
-  x: number;
-  y: number;
-  timer: number;
-}
+
+type GameStateType = 'title' | 'playing' | 'victory' | 'defeat' | 'result';
 
 interface GameState {
-  gameState: 'title' | 'playing' | 'result';
+  gameState: GameStateType;
   titleBlinkTimer: number;
   resultTimer: number;
   resultType: 'win' | 'defeat';
@@ -183,21 +212,25 @@ interface GameState {
   currentFrame: number;
   animTimer: number;
   scrollX: number;
+  charX: number;
   isAttacking: boolean;
   attackFrame: number;
   attackTimer: number;
+  attackHitProcessed: boolean;
   enemies: EnemyLike[];
   enemySpawnTimer: number;
   enemySpawnCount: number;
   flyingEnemies: FlyingEnemy[];
   hitEffects: HitEffect[];
-  friendOkEffects: FriendOkEffect[];
+  friendOkTimer: number;
   score: number;
   hp: number;
   damageShakeTimer: number;
   damageRedTimer: number;
+  heroHitTimer: number;
   gameTime: number;
   remainingTime: number;
+  defeatTimer: number;
 }
 
 function createInitialState(): GameState {
@@ -210,45 +243,36 @@ function createInitialState(): GameState {
     currentFrame: 0,
     animTimer: 0,
     scrollX: 0,
+    charX: CHAR_X,
     isAttacking: false,
     attackFrame: 0,
     attackTimer: 0,
+    attackHitProcessed: false,
     enemies: [],
     enemySpawnTimer: 0,
     enemySpawnCount: 0,
     flyingEnemies: [],
     hitEffects: [],
-    friendOkEffects: [],
+    friendOkTimer: 0,
     score: 0,
     hp: MAX_HP,
     damageShakeTimer: 0,
     damageRedTimer: 0,
+    heroHitTimer: 0,
     gameTime: 0,
     remainingTime: GAME_DURATION,
+    defeatTimer: 0,
   };
 }
 
 function getSpawnInterval(s: GameState): number {
-  return Math.max(
-    ENEMY_SPAWN_MAX - s.enemySpawnCount * ENEMY_SPAWN_DECREASE,
-    ENEMY_SPAWN_MIN
-  );
+  return Math.max(ENEMY_SPAWN_MAX - s.enemySpawnCount * ENEMY_SPAWN_DECREASE, ENEMY_SPAWN_MIN);
 }
 
 function spawnEnemy(s: GameState): void {
-  const speed = Math.min(
-    ENEMY_SPEED_MIN + s.enemySpawnCount * ENEMY_SPEED_INCREASE,
-    ENEMY_SPEED_MAX
-  );
+  const speed = Math.min(ENEMY_SPEED_MIN + s.enemySpawnCount * ENEMY_SPEED_INCREASE, ENEMY_SPEED_MAX);
   const isFriend = s.gameTime >= FRIEND_START_TIME && Math.random() < FRIEND_CHANCE;
-  s.enemies.push({
-    x: W + 50,
-    speed,
-    frame: 0,
-    animTimer: 0,
-    alive: true,
-    isFriend,
-  });
+  s.enemies.push({ x: W + 50, speed, frame: 0, animTimer: 0, alive: true, isFriend });
   s.enemySpawnCount++;
 }
 
@@ -260,11 +284,8 @@ const Game05: React.FC<Game05Props> = ({ onGameResult }) => {
 
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [gameStateUI, setGameStateUI] = useState<'title' | 'playing' | 'result'>('title');
-  const [resultType, setResultType] = useState<'win' | 'defeat'>('win');
-  const [finalScore, setFinalScore] = useState(0);
+  const [gameStateUI, setGameStateUI] = useState<GameStateType>('title');
 
-  // 에셋 로드
   useEffect(() => {
     loadAllAssets(ASSET_BASE)
       .then((assets) => {
@@ -284,45 +305,43 @@ const Game05: React.FC<Game05Props> = ({ onGameResult }) => {
     s.currentFrame = 0;
     s.animTimer = 0;
     s.scrollX = 0;
+    s.charX = CHAR_X;
     s.isAttacking = false;
     s.attackFrame = 0;
     s.attackTimer = 0;
+    s.attackHitProcessed = false;
     s.enemies = [];
     s.enemySpawnTimer = 0;
     s.enemySpawnCount = 0;
     s.flyingEnemies = [];
     s.hitEffects = [];
-    s.friendOkEffects = [];
+    s.friendOkTimer = 0;
     s.score = 0;
     s.hp = MAX_HP;
     s.damageShakeTimer = 0;
     s.damageRedTimer = 0;
+    s.heroHitTimer = 0;
     s.gameTime = 0;
     s.remainingTime = GAME_DURATION;
+    s.defeatTimer = 0;
   }, []);
 
-  const startAttack = useCallback(() => {
-    const s = stateRef.current;
-    const assets = assetsRef.current;
-    if (!assets || s.isAttacking || s.gameState !== 'playing') return;
-
-    s.isAttacking = true;
-    s.attackFrame = 0;
-    s.attackTimer = 0;
-
+  const checkAttackHit = useCallback((s: GameState, assets: GameAssets) => {
+    if (s.attackHitProcessed) return;
     for (const enemy of s.enemies) {
-      if (!enemy.alive) continue;
+      if (!enemy.alive || enemy.x <= s.charX) continue;
       const eScale = enemy.isFriend ? FRIEND_SCALE : ENEMY_SCALE;
       const eFrameArr = enemy.isFriend ? assets.friendFrames : assets.enemyFrames;
-      const eFCount = enemy.isFriend ? FRIEND_FRAME_COUNT : ENEMY_FRAME_COUNT;
-      const eImg = eFrameArr[enemy.frame % eFCount];
-      const eHalfW = eImg?.complete ? (eImg.naturalWidth * eScale) / 2 : 20;
-      if (enemy.x - eHalfW < CHAR_X + HIT_RANGE && enemy.x > CHAR_X - 30) {
+      const eImg = eFrameArr[enemy.frame % eFrameArr.length];
+      const eHalfW = eImg?.naturalWidth ? (eImg.naturalWidth * eScale) / 2 : 20;
+      if (enemy.x - eHalfW < s.charX + HIT_RANGE && enemy.x > s.charX - 80) {
         enemy.alive = false;
+        s.attackHitProcessed = true;
         if (enemy.isFriend) {
           s.hp = Math.max(0, s.hp - 1);
           s.damageShakeTimer = DAMAGE_SHAKE_DURATION;
           s.damageRedTimer = DAMAGE_RED_DURATION;
+          s.heroHitTimer = HERO_HIT_DURATION;
           s.flyingEnemies.push({ x: enemy.x, y: GROUND_Y, frame: 0, timer: 0, isFriend: true });
         } else {
           s.score++;
@@ -334,11 +353,21 @@ const Game05: React.FC<Game05Props> = ({ onGameResult }) => {
     }
   }, []);
 
+  const startAttack = useCallback(() => {
+    const s = stateRef.current;
+    const assets = assetsRef.current;
+    if (!assets || s.gameState === 'victory') return;
+    s.isAttacking = true;
+    s.attackFrame = 0;
+    s.attackTimer = 0;
+    s.attackHitProcessed = false;
+    checkAttackHit(s, assets);
+  }, [checkAttackHit]);
+
   const handleInput = useCallback(
     (e?: React.MouseEvent | React.TouchEvent | KeyboardEvent) => {
       e?.preventDefault();
       const s = stateRef.current;
-
       if (s.gameState === 'title') {
         resetGame();
         s.gameState = 'playing';
@@ -346,12 +375,10 @@ const Game05: React.FC<Game05Props> = ({ onGameResult }) => {
       } else if (s.gameState === 'playing') {
         startAttack();
       }
-      // result 상태에서는 키/터치로 재시작하지 않음 → "다시 시작" 버튼만 사용
     },
     [resetGame, startAttack]
   );
 
-  /** 결과 화면에서 "다시 시작" 버튼 클릭 시 타이틀로 복귀 */
   const handleRestart = useCallback(() => {
     const s = stateRef.current;
     s.gameState = 'title';
@@ -364,34 +391,31 @@ const Game05: React.FC<Game05Props> = ({ onGameResult }) => {
   // 게임 루프
   useEffect(() => {
     if (loading || loadError || !assetsRef.current) return;
-
     const canvas = canvasRef.current;
     if (!canvas) return;
-
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-
     const assets = assetsRef.current;
     const s = stateRef.current;
 
     const drawFarBackground = () => {
-      if (!assets.farImg.complete) return;
+      if (!assets.farImg.naturalWidth) return;
       ctx.imageSmoothingEnabled = false;
       const farScale = H / assets.farImg.naturalHeight;
       const farW = assets.farImg.naturalWidth * farScale;
-      const offset = -(s.scrollX * 0.05 % farW);
+      const offset = -(s.scrollX * 0.05) % farW;
       for (let x = offset - farW; x < W + farW; x += farW) {
         ctx.drawImage(assets.farImg, x, 0, farW, H);
       }
     };
 
     const drawTreeLayer = () => {
-      if (!assets.treesImg.complete) return;
+      if (!assets.treesImg.naturalWidth) return;
       ctx.imageSmoothingEnabled = false;
-      const treeScale = 0.2;
+      const treeScale = 0.3;
       const treeW = assets.treesImg.naturalWidth * treeScale;
       const treeH = assets.treesImg.naturalHeight * treeScale;
-      const treeY = GROUND_Y - treeH + 5;
+      const treeY = GROUND_Y - treeH - 5;
       const offset = -(s.scrollX % treeW);
       for (let x = offset - treeW; x < W + treeW; x += treeW) {
         ctx.drawImage(assets.treesImg, x, treeY, treeW, treeH);
@@ -399,38 +423,70 @@ const Game05: React.FC<Game05Props> = ({ onGameResult }) => {
     };
 
     const drawGround = () => {
-      if (!assets.baseImg.complete) return;
+      if (!assets.baseImg.naturalWidth) return;
       ctx.imageSmoothingEnabled = false;
       const baseScale = H / assets.baseImg.naturalHeight;
       const baseW = assets.baseImg.naturalWidth * baseScale;
       const baseH = assets.baseImg.naturalHeight * baseScale;
-      const baseY = H - baseH + 17;
-      const offset = -(s.scrollX * 1.5 % baseW);
+      const baseY = H - baseH - 10;
+      const offset = -((s.scrollX * 1.5) % baseW);
       for (let x = offset - baseW; x < W + baseW; x += baseW) {
         ctx.drawImage(assets.baseImg, x, baseY, baseW, baseH);
       }
     };
 
+    const drawGroundLayer = () => {
+      if (!assets.groundImg?.naturalWidth) return;
+      ctx.imageSmoothingEnabled = false;
+      const gScale = GROUND_LAYER_SCALE;
+      const gW = assets.groundImg.naturalWidth * gScale;
+      const gH = assets.groundImg.naturalHeight * gScale;
+      const gY = H - gH + GROUND_LAYER_OFFSET_Y;
+      const offset = -((s.scrollX * (GROUND_LAYER_SPEED / TREE_SPEED)) % gW);
+      for (let x = offset - gW; x < W + gW; x += gW) {
+        ctx.drawImage(assets.groundImg, x, gY, gW, gH);
+      }
+    };
+
     const drawCharacter = () => {
-      const img = s.isAttacking ? assets.attackFrames[s.attackFrame] : assets.runFrames[s.currentFrame];
-      const scale = s.isAttacking ? ATTACK_SCALE : SCALE;
-      const offsetX = s.isAttacking ? ATTACK_OFFSET_X : 0;
-      const offsetY = s.isAttacking ? ATTACK_OFFSET_Y : 0;
-      if (!img?.complete) return;
+      if (s.friendOkTimer > 0) return;
+      let img: HTMLImageElement | undefined;
+      let scale: number;
+      let offsetX = 0;
+      let offsetY = 0;
+      if (s.heroHitTimer > 0 && assets.heroHitImg?.naturalWidth) {
+        img = assets.heroHitImg;
+        scale = HERO_HIT_SCALE;
+      } else if (s.isAttacking && s.gameState !== 'victory') {
+        img = assets.attackFrames[s.attackFrame % assets.attackFrames.length];
+        scale = ATTACK_SCALE;
+        offsetX = ATTACK_OFFSET_X;
+        offsetY = ATTACK_OFFSET_Y;
+      } else {
+        img = assets.runFrames[s.currentFrame % assets.runFrames.length];
+        scale = SCALE;
+        offsetY = 10;
+      }
+      if (!img?.naturalWidth) return;
       const w = img.naturalWidth * scale;
       const h = img.naturalHeight * scale;
       ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(img, CHAR_X - w / 2 + offsetX, GROUND_Y - h + offsetY, w, h);
+      if (s.heroHitTimer > 0) {
+        const blinkRate = s.gameState === 'defeat' ? 20 : 15;
+        if (Math.floor(s.heroHitTimer * blinkRate) % 2 === 0) ctx.globalAlpha = 0.5;
+      }
+      ctx.drawImage(img, s.charX - w / 2 + offsetX, GROUND_Y - h + offsetY, w, h);
+      ctx.globalAlpha = 1.0;
     };
 
     const drawEnemies = () => {
       for (const enemy of s.enemies) {
         if (!enemy.alive) continue;
-        const frameCount = enemy.isFriend ? FRIEND_FRAME_COUNT : ENEMY_FRAME_COUNT;
-        const img = (enemy.isFriend ? assets.friendFrames : assets.enemyFrames)[enemy.frame % frameCount];
+        const frames = enemy.isFriend ? assets.friendFrames : assets.enemyFrames;
+        const img = frames[enemy.frame % frames.length];
         const scale = enemy.isFriend ? FRIEND_SCALE : ENEMY_SCALE;
         const offsetY = enemy.isFriend ? FRIEND_OFFSET_Y : ENEMY_OFFSET_Y;
-        if (!img?.complete) continue;
+        if (!img?.naturalWidth) continue;
         const w = img.naturalWidth * scale;
         const h = img.naturalHeight * scale;
         ctx.imageSmoothingEnabled = false;
@@ -445,7 +501,7 @@ const Game05: React.FC<Game05Props> = ({ onGameResult }) => {
         const scaleStart = fe.isFriend ? FRIEND_HIT_SCALE_START : ENEMY_HIT_SCALE_START;
         const scaleEnd = fe.isFriend ? FRIEND_HIT_SCALE_END : ENEMY_HIT_SCALE_END;
         const rot = fe.isFriend ? FRIEND_HIT_ROTATION : ENEMY_HIT_ROTATION;
-        if (!hitImg.complete) continue;
+        if (!hitImg?.naturalWidth) continue;
         const t = fe.frame / maxFrames;
         const scale = scaleStart + (scaleEnd - scaleStart) * t;
         const alpha = 1.0 - t * 0.5;
@@ -462,7 +518,7 @@ const Game05: React.FC<Game05Props> = ({ onGameResult }) => {
     };
 
     const drawHitEffects = () => {
-      if (!assets.hitEffectImg.complete) return;
+      if (!assets.hitEffectImg?.naturalWidth) return;
       for (const he of s.hitEffects) {
         const w = assets.hitEffectImg.naturalWidth * HIT_EFFECT_SCALE;
         const h = assets.hitEffectImg.naturalHeight * HIT_EFFECT_SCALE;
@@ -475,20 +531,25 @@ const Game05: React.FC<Game05Props> = ({ onGameResult }) => {
       }
     };
 
-    const drawFriendOkEffects = () => {
-      if (!assets.friendOkImg.complete) return;
-      for (const fo of s.friendOkEffects) {
-        const progress = 1 - fo.timer / FRIEND_OK_DURATION;
-        const step = Math.min(Math.floor(progress * FRIEND_OK_FRAMES), FRIEND_OK_FRAMES - 1);
-        const t = (step + 1) / FRIEND_OK_FRAMES;
-        const scale = FRIEND_OK_SCALE_START + (FRIEND_OK_SCALE - FRIEND_OK_SCALE_START) * t;
-        const w = assets.friendOkImg.naturalWidth * scale;
-        const h = assets.friendOkImg.naturalHeight * scale;
-        const alpha = (fo.timer / FRIEND_OK_DURATION) * 0.6;
-        ctx.save();
-        ctx.globalAlpha = alpha;
+    const drawFriendOkEffect = () => {
+      if (s.friendOkTimer <= 0) return;
+      const progress = 1 - s.friendOkTimer / FRIEND_OK_DURATION;
+      if (assets.friendOkImg?.naturalWidth) {
+        const okW = assets.friendOkImg.naturalWidth * FRIEND_OK_SCALE;
+        const okH = assets.friendOkImg.naturalHeight * FRIEND_OK_SCALE;
         ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(assets.friendOkImg, fo.x - w / 2, fo.y - h / 2, w, h);
+        ctx.drawImage(assets.friendOkImg, s.charX - okW / 2, GROUND_Y - okH + 10, okW, okH);
+      }
+      if (assets.heartImg?.naturalWidth) {
+        const heartScale = HEART_SCALE_START + (HEART_SCALE_END - HEART_SCALE_START) * progress;
+        const hW = assets.heartImg.naturalWidth * heartScale;
+        const hH = assets.heartImg.naturalHeight * heartScale;
+        const hX = s.charX - hW / 2;
+        const hY = GROUND_Y - 100 - hH / 2 - progress * 15;
+        ctx.save();
+        ctx.globalAlpha = 0.9;
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(assets.heartImg, hX, hY, hW, hH);
         ctx.restore();
       }
     };
@@ -501,7 +562,6 @@ const Game05: React.FC<Game05Props> = ({ onGameResult }) => {
     };
 
     const drawHP = () => {
-      // TIME(W/2)과 SCORE(W-10) 사이에 HP 바 중앙 배치 (로고와 겹치지 않도록)
       const barW = 20, barH = 14, gap = 4, startY = 8;
       const hpBarTotalWidth = MAX_HP * barW + (MAX_HP - 1) * gap;
       const startX = Math.round((W / 2 + (W - 10)) / 2 - hpBarTotalWidth / 2);
@@ -531,7 +591,8 @@ const Game05: React.FC<Game05Props> = ({ onGameResult }) => {
     };
 
     const drawTitle = (dt: number) => {
-      if (!assets.titleImg.complete) return;
+      if (!assets.titleImg?.naturalWidth) return;
+      ctx.imageSmoothingEnabled = true;
       ctx.drawImage(assets.titleImg, 0, 0, W, H);
       s.titleBlinkTimer += dt;
       if (Math.floor(s.titleBlinkTimer * 2.5) % 2 === 0) {
@@ -545,9 +606,36 @@ const Game05: React.FC<Game05Props> = ({ onGameResult }) => {
       }
     };
 
+    const drawVictory = () => {
+      ctx.fillStyle = '#ffd700';
+      ctx.font = 'bold 24px monospace';
+      ctx.textAlign = 'center';
+      ctx.shadowColor = '#000';
+      ctx.shadowBlur = 6;
+      ctx.fillText('STAGE CLEAR', W / 2, 50);
+      ctx.shadowBlur = 0;
+    };
+
+    const drawDefeat = () => {
+      const blinkRate = 10;
+      const blinkAlpha = Math.floor(s.defeatTimer * blinkRate) % 2 === 0 ? 0.6 : 0.3;
+      ctx.save();
+      ctx.fillStyle = `rgba(255, 0, 0, ${blinkAlpha})`;
+      ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 24px monospace';
+      ctx.textAlign = 'center';
+      ctx.shadowColor = '#000';
+      ctx.shadowBlur = 6;
+      ctx.fillText('YOU DIE', W / 2, 50);
+      ctx.shadowBlur = 0;
+    };
+
     const drawResult = () => {
       const img = s.resultType === 'win' ? assets.winImg : assets.defeatImg;
-      if (!img.complete) return;
+      if (!img?.naturalWidth) return;
+      ctx.imageSmoothingEnabled = true;
       ctx.drawImage(img, 0, 0, W, H);
       ctx.fillStyle = '#fff';
       ctx.font = 'bold 16px monospace';
@@ -572,109 +660,192 @@ const Game05: React.FC<Game05Props> = ({ onGameResult }) => {
       let dt = (timestamp - s.lastTime) / 1000;
       s.lastTime = timestamp;
       if (dt > 0.1) dt = 0.016;
-
       ctx.clearRect(0, 0, W, H);
 
+      // ═══ TITLE ═══
       if (s.gameState === 'title') {
         drawTitle(dt);
         rafId = requestAnimationFrame(gameLoop);
         return;
       }
 
+      // ═══ RESULT ═══
       if (s.gameState === 'result') {
         drawResult();
         rafId = requestAnimationFrame(gameLoop);
         return;
       }
 
-      // playing
-      s.scrollX += TREE_SPEED * dt;
+      // ═══ VICTORY ═══
+      if (s.gameState === 'victory') {
+        s.animTimer += dt;
+        if (s.animTimer >= 1 / ANIM_FPS) {
+          s.animTimer -= 1 / ANIM_FPS;
+          s.currentFrame = (s.currentFrame + 1) % assets.runFrames.length;
+        }
+        s.charX += VICTORY_CHAR_SPEED * dt;
+        if (s.charX >= W + 100) {
+          s.resultType = 'win';
+          s.resultTimer = 0;
+          s.titleBlinkTimer = 0;
+          s.gameState = 'result';
+          setGameStateUI('result');
+          if (!resultReportedRef.current && onGameResult) {
+            resultReportedRef.current = true;
+            onGameResult('WIN');
+          }
+        }
+        drawFarBackground();
+        drawTreeLayer();
+        drawGround();
+        drawCharacter();
+        drawGroundLayer();
+        drawVictory();
+        drawHP();
+        drawScore();
+        rafId = requestAnimationFrame(gameLoop);
+        return;
+      }
 
+      // ═══ DEFEAT ═══
+      if (s.gameState === 'defeat') {
+        const slowDt = dt * DEFEAT_SLOW_MOTION;
+        s.defeatTimer += dt;
+        s.scrollX += TREE_SPEED * slowDt;
+        s.animTimer += slowDt;
+        if (s.animTimer >= 1 / ANIM_FPS) {
+          s.animTimer -= 1 / ANIM_FPS;
+          s.currentFrame = (s.currentFrame + 1) % assets.runFrames.length;
+        }
+        if (s.heroHitTimer > 0) s.heroHitTimer -= dt;
+        for (const enemy of s.enemies) {
+          if (!enemy.alive) continue;
+          enemy.x -= enemy.speed * slowDt;
+          const animFps = enemy.isFriend ? FRIEND_ANIM_FPS : ENEMY_ANIM_FPS;
+          const fArr = enemy.isFriend ? assets.friendFrames : assets.enemyFrames;
+          enemy.animTimer += slowDt;
+          if (enemy.animTimer >= 1 / animFps) {
+            enemy.animTimer -= 1 / animFps;
+            enemy.frame = (enemy.frame + 1) % fArr.length;
+          }
+        }
+        for (const fe of s.flyingEnemies) {
+          const fps = fe.isFriend ? FRIEND_HIT_FPS : ENEMY_HIT_FPS;
+          fe.timer += slowDt;
+          if (fe.timer >= 1 / fps) {
+            fe.timer -= 1 / fps;
+            fe.frame++;
+          }
+        }
+        s.flyingEnemies = s.flyingEnemies.filter((fe) => {
+          const maxFrames = fe.isFriend ? FRIEND_HIT_FRAMES : ENEMY_HIT_FRAMES;
+          return fe.frame < maxFrames;
+        });
+        for (const he of s.hitEffects) he.timer -= slowDt;
+        s.hitEffects = s.hitEffects.filter((he) => he.timer > 0);
+        if (s.friendOkTimer > 0) s.friendOkTimer -= slowDt;
+        if (s.defeatTimer >= DEFEAT_DURATION) {
+          s.resultType = 'defeat';
+          s.resultTimer = 0;
+          s.titleBlinkTimer = 0;
+          s.gameState = 'result';
+          setGameStateUI('result');
+          if (!resultReportedRef.current && onGameResult) {
+            resultReportedRef.current = true;
+            onGameResult('LOSE');
+          }
+        }
+        drawFarBackground();
+        drawTreeLayer();
+        drawGround();
+        drawEnemies();
+        drawFlyingEnemies();
+        drawHitEffects();
+        drawCharacter();
+        drawFriendOkEffect();
+        drawGroundLayer();
+        drawDefeat();
+        drawHP();
+        drawScore();
+        rafId = requestAnimationFrame(gameLoop);
+        return;
+      }
+
+      // ═══ PLAYING ═══
+      s.scrollX += TREE_SPEED * dt;
       if (s.isAttacking) {
         s.attackTimer += dt;
         if (s.attackTimer >= 1 / ATTACK_FPS) {
           s.attackTimer -= 1 / ATTACK_FPS;
           s.attackFrame++;
-          if (s.attackFrame >= ATTACK_FRAME_COUNT) {
+          checkAttackHit(s, assets);
+          if (s.attackFrame >= assets.attackFrames.length) {
             s.isAttacking = false;
             s.attackFrame = 0;
+            s.attackHitProcessed = false;
           }
         }
       } else {
         s.animTimer += dt;
         if (s.animTimer >= 1 / ANIM_FPS) {
           s.animTimer -= 1 / ANIM_FPS;
-          s.currentFrame = (s.currentFrame + 1) % RUN_FRAME_COUNT;
+          s.currentFrame = (s.currentFrame + 1) % assets.runFrames.length;
         }
       }
-
       s.enemySpawnTimer -= dt;
       if (s.enemySpawnTimer <= 0) {
         spawnEnemy(s);
         s.enemySpawnTimer = getSpawnInterval(s);
       }
-
       s.gameTime += dt;
       s.remainingTime -= dt;
 
+      // 승패 판정
       if (s.hp <= 0) {
-        s.resultType = 'defeat';
-        s.resultTimer = 0;
-        s.titleBlinkTimer = 0;
-        s.gameState = 'result';
-        setGameStateUI('result');
-        setResultType('defeat');
-        setFinalScore(s.score);
-        if (!resultReportedRef.current && onGameResult) {
-          resultReportedRef.current = true;
-          onGameResult('LOSE');
-        }
-        rafId = requestAnimationFrame(gameLoop);
-        return;
-      }
-      if (s.remainingTime <= 0) {
-        s.resultType = 'win';
-        s.resultTimer = 0;
-        s.titleBlinkTimer = 0;
-        s.gameState = 'result';
-        setGameStateUI('result');
-        setResultType('win');
-        setFinalScore(s.score);
-        if (!resultReportedRef.current && onGameResult) {
-          resultReportedRef.current = true;
-          onGameResult('WIN');
-        }
-        rafId = requestAnimationFrame(gameLoop);
-        return;
+        s.defeatTimer = 0;
+        s.heroHitTimer = DEFEAT_DURATION;
+        s.gameState = 'defeat';
+        setGameStateUI('defeat');
+      } else if (s.remainingTime <= 0) {
+        s.enemies = [];
+        s.flyingEnemies = [];
+        s.hitEffects = [];
+        s.isAttacking = false;
+        s.attackFrame = 0;
+        s.attackTimer = 0;
+        s.gameState = 'victory';
+        setGameStateUI('victory');
       }
 
+      // 적/친구 업데이트
       for (const enemy of s.enemies) {
         if (!enemy.alive) continue;
         enemy.x -= enemy.speed * dt;
         const animFps = enemy.isFriend ? FRIEND_ANIM_FPS : ENEMY_ANIM_FPS;
-        const frameCount = enemy.isFriend ? FRIEND_FRAME_COUNT : ENEMY_FRAME_COUNT;
+        const fArr = enemy.isFriend ? assets.friendFrames : assets.enemyFrames;
         enemy.animTimer += dt;
         if (enemy.animTimer >= 1 / animFps) {
           enemy.animTimer -= 1 / animFps;
-          enemy.frame = (enemy.frame + 1) % frameCount;
+          enemy.frame = (enemy.frame + 1) % fArr.length;
         }
-        if (enemy.x <= CHAR_X) {
+        if (enemy.x <= s.charX) {
           enemy.alive = false;
           if (enemy.isFriend) {
             s.hp = Math.min(MAX_HP, s.hp + 1);
-            s.friendOkEffects.push({ x: CHAR_X, y: GROUND_Y - 50, timer: FRIEND_OK_DURATION });
+            s.friendOkTimer = FRIEND_OK_DURATION;
           } else {
             s.hp = Math.max(0, s.hp - 1);
             s.damageShakeTimer = DAMAGE_SHAKE_DURATION;
             s.damageRedTimer = DAMAGE_RED_DURATION;
+            s.heroHitTimer = HERO_HIT_DURATION;
           }
         }
       }
       s.enemies = s.enemies.filter((e) => e.alive);
 
       for (const fe of s.flyingEnemies) {
-        fe.timer += dt;
         const fps = fe.isFriend ? FRIEND_HIT_FPS : ENEMY_HIT_FPS;
+        fe.timer += dt;
         if (fe.timer >= 1 / fps) {
           fe.timer -= 1 / fps;
           fe.frame++;
@@ -687,12 +858,12 @@ const Game05: React.FC<Game05Props> = ({ onGameResult }) => {
 
       for (const he of s.hitEffects) he.timer -= dt;
       s.hitEffects = s.hitEffects.filter((he) => he.timer > 0);
-      for (const fo of s.friendOkEffects) fo.timer -= dt;
-      s.friendOkEffects = s.friendOkEffects.filter((fo) => fo.timer > 0);
-
+      if (s.friendOkTimer > 0) s.friendOkTimer -= dt;
       if (s.damageShakeTimer > 0) s.damageShakeTimer -= dt;
       if (s.damageRedTimer > 0) s.damageRedTimer -= dt;
+      if (s.heroHitTimer > 0) s.heroHitTimer -= dt;
 
+      // 렌더링
       ctx.save();
       if (s.damageShakeTimer > 0) {
         ctx.translate(
@@ -706,8 +877,9 @@ const Game05: React.FC<Game05Props> = ({ onGameResult }) => {
       drawEnemies();
       drawFlyingEnemies();
       drawHitEffects();
-      drawFriendOkEffects();
       drawCharacter();
+      drawFriendOkEffect();
+      drawGroundLayer();
       ctx.restore();
       drawDamageOverlay();
       drawHP();
@@ -717,13 +889,10 @@ const Game05: React.FC<Game05Props> = ({ onGameResult }) => {
       rafId = requestAnimationFrame(gameLoop);
     };
 
-    // 루프 시작 (에셋 로드 후 state가 title이므로 drawTitle부터)
     rafId = requestAnimationFrame(gameLoop);
-
     return () => cancelAnimationFrame(rafId);
-  }, [loading, loadError, onGameResult]);
+  }, [loading, loadError, onGameResult, checkAttackHit]);
 
-  // 키보드
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => handleInput(e);
     window.addEventListener('keydown', onKey);
@@ -735,9 +904,7 @@ const Game05: React.FC<Game05Props> = ({ onGameResult }) => {
       <div className="game05-container text-white flex flex-col items-center justify-center gap-4 p-8">
         <p className="text-red-400 font-bold">[Game05] 에셋 로드 실패</p>
         <p className="text-sm text-gray-400">{loadError}</p>
-        <p className="text-xs text-gray-500">
-          public/game05/ 아래에 asset/, bg_trees.png, base.png, far.jpeg 를 넣어주세요.
-        </p>
+        <p className="text-xs text-gray-500">public/game05/asset/ 아래에 에셋을 넣어주세요.</p>
       </div>
     );
   }
@@ -768,7 +935,6 @@ const Game05: React.FC<Game05Props> = ({ onGameResult }) => {
         tabIndex={0}
         aria-label="게임 입력"
       />
-      {/* 결과 화면: "다시 시작" 버튼만으로 재시작 (키/전체 터치 무시) */}
       {gameStateUI === 'result' && (
         <div className="absolute inset-0 z-20 flex items-end justify-center pb-8 pointer-events-none">
           <div className="pointer-events-auto">
