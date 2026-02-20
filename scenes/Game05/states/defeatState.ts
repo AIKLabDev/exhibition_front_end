@@ -37,8 +37,8 @@ export const defeatState: StateHandler = {
     state.heroHitTimer = DEFEAT_DURATION;
 
     if (sounds) {
+      // defeat 컷씬에서는 컷씬 효과음만 재생 (BGM은 result에서 재생)
       playSfx(sounds.defeatCutScene);
-      playSfx(sounds.resultDefeatBgm);
     }
   },
 

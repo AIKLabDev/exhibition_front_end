@@ -4,15 +4,29 @@
 
 import { StateHandler, GameState, GameAssets, GameSounds, GameStateType } from '../Game05.types';
 import { drawResult } from '../renderers';
+import { stopAudio } from '../sounds';
 
 export const resultState: StateHandler = {
-  onEnter: (state: GameState, _sounds: GameSounds | null) => {
+  onEnter: (state: GameState, sounds: GameSounds | null) => {
     state.resultTimer = 0;
     state.titleBlinkTimer = 0;
+
+    // 결과에 따라 BGM 재생
+    if (sounds) {
+      if (state.resultType === 'win') {
+        sounds.resultWinBgm.play().catch(() => {});
+      } else {
+        sounds.resultDefeatBgm.play().catch(() => {});
+      }
+    }
   },
 
-  onExit: (_state: GameState, _sounds: GameSounds | null) => {
-    // 사운드는 이미 이전 상태에서 정지됨
+  onExit: (_state: GameState, sounds: GameSounds | null) => {
+    // BGM 정지
+    if (sounds) {
+      stopAudio(sounds.resultWinBgm);
+      stopAudio(sounds.resultDefeatBgm);
+    }
   },
 
   update: (): GameStateType | null => {

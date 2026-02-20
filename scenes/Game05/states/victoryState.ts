@@ -27,14 +27,13 @@ export const victoryState: StateHandler = {
     state.attackTimer = 0;
 
     if (sounds) {
-      playSfx(sounds.resultWinBgm);
+      // victory 컷씬에서는 컷씬 효과음만 재생 (BGM은 result에서 재생)
       sounds.winCutScene.play().catch(() => {});
     }
   },
 
   onExit: (_state: GameState, sounds: GameSounds | null) => {
     if (sounds) {
-      stopAudio(sounds.resultWinBgm);
       stopAudio(sounds.winCutScene);
     }
   },
