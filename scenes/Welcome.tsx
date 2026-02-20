@@ -3,11 +3,12 @@ import React from 'react';
 interface WelcomeProps {
   onStart: () => void;
   text?: string;
+  showGreeting?: boolean;
 }
 
 const TITLE = 'AIKOREA';
 
-const Welcome: React.FC<WelcomeProps> = ({ onStart, text }) => {
+const Welcome: React.FC<WelcomeProps> = ({ onStart, text, showGreeting = false }) => {
   const displayTitle = (text && text.trim()) ? text : TITLE;
 
   return (
@@ -23,6 +24,23 @@ const Welcome: React.FC<WelcomeProps> = ({ onStart, text }) => {
         <div className="absolute top-1/2 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[var(--welcome-glow)] to-transparent" />
         <div className="absolute top-3/4 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[var(--welcome-glow)] to-transparent" />
       </div>
+
+      {/* 사람 감지 시 환영 메시지 오버레이 */}
+      {showGreeting && (
+        <div
+          className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 animate-fade-in"
+        >
+          <h2
+            className="text-white font-black tracking-wider animate-scale-in"
+            style={{
+              fontSize: 'clamp(4rem, 12vw, 14rem)',
+              textShadow: '0 0 60px var(--welcome-glow), 0 0 120px var(--welcome-accent)',
+            }}
+          >
+            환영합니다
+          </h2>
+        </div>
+      )}
 
       <h1
         className="welcome-title font-black mb-8 tracking-tight text-center uppercase"

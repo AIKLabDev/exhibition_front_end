@@ -34,6 +34,8 @@ const App: React.FC = () => {
   const [gameStopTrigger, setGameStopTrigger] = useState(0);
   /** GAME04 디버그용: 조준 입력 모드 (mouse | head) */
   const [game04InputMode, setGame04InputMode] = useState<'mouse' | 'head'>('head');
+  /** Welcome 씬에서 human detect 시 "환영합니다" 메시지 표시 여부 */
+  const [showWelcomeGreeting, setShowWelcomeGreeting] = useState(false);
 
   const currentSceneRef = useRef(currentScene);
   currentSceneRef.current = currentScene;
@@ -90,13 +92,29 @@ const App: React.FC = () => {
     return () => { unsubscribe(); };
   }, []);
 
-  // Welcome 씬에서 Python이 human 감지 시 → 백엔드에 HUMAN_DETECTED 전달 → 백엔드가 SET_SCENE QR 보내면 씬 전환
+  // Welcome 씬에서 Python이 human 감지 시 → "환영합니다" 연출 후 백엔드에 HUMAN_DETECTED 전달
+  // useRef로 연출 중 상태 추적 (state 변경 시 effect 재실행 방지)
+  const greetingInProgressRef = useRef(false);
+
   useEffect(() => {
     const vision = getVisionWsService();
+
     const unsubscribe = vision.onHumanDetected((data) => {
       if (currentSceneRef.current !== SceneDefine.WELCOME) return;
-      backendWsService.sendCommand('HUMAN_DETECTED', data);
+      if (greetingInProgressRef.current) return; // 이미 연출 중이면 무시
+
+      // 1) "환영합니다" 메시지 표시
+      greetingInProgressRef.current = true;
+      setShowWelcomeGreeting(true);
+
+      // 2) 1초 후에 백엔드에 전달 (백엔드가 SET_SCENE QR 보내면 씬 전환)
+      setTimeout(() => {
+        backendWsService.sendCommand('HUMAN_DETECTED', data);
+        setShowWelcomeGreeting(false);
+        greetingInProgressRef.current = false;
+      }, 1000);
     });
+
     return () => { unsubscribe(); };
   }, []);
 
@@ -107,7 +125,7 @@ const App: React.FC = () => {
   const renderScene = () => {
     switch (currentScene) {
       case SceneDefine.WELCOME:
-        return <Welcome onStart={() => handleUIEvent('START')} text={sceneText} />;
+        return <Welcome onStart={() => handleUIEvent('START')} text={sceneText} showGreeting={showWelcomeGreeting} />;
       case SceneDefine.QR:
         return <QR onCancel={() => handleUIEvent('CANCEL')} text={sceneText} />;
       case SceneDefine.SELECT_MINIGAME:
