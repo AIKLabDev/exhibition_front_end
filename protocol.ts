@@ -84,10 +84,13 @@ export type UIEventNameType = (typeof UIEventName)[keyof typeof UIEventName];
 export type UIEventName = UIEventNameType;
 
 export interface CameraFrameData {
-  image: string;
   format: 'jpeg' | 'png' | 'webp' | 'raw';
   width?: number;
   height?: number;
+  /** Encoded image (jpeg/png/webp). Use with URL.createObjectURL() for <img>. */
+  imageBlob?: Blob;
+  /** Raw RGB bytes when format === 'raw'. Length = width * height * 3. Use for canvas ImageData. */
+  imageBuffer?: ArrayBuffer;
 }
 
 export interface SceneData {

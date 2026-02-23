@@ -39,19 +39,16 @@ const DEFAULT_CENTER_TOP_LEFT = {
   y: (1 - 1 / VIEW_ZOOM) / 2,
 };
 
-/** Decode base64 raw RGB to ImageData and draw on canvas (얼굴 정렬 UI용) */
-function drawRawToCanvas(
+/** Draw raw RGB ArrayBuffer to canvas (얼굴 정렬 UI용). */
+function drawRawFromBuffer(
   canvas: HTMLCanvasElement | null,
-  base64: string,
+  buffer: ArrayBuffer,
   width: number,
   height: number
 ): void {
   if (!canvas || !width || !height) return;
   try {
-    const binary = atob(base64);
-    const len = binary.length;
-    const rgb = new Uint8Array(len);
-    for (let i = 0; i < len; i++) rgb[i] = binary.charCodeAt(i);
+    const rgb = new Uint8Array(buffer);
     const rgba = new Uint8ClampedArray(width * height * 4);
     for (let i = 0; i < width * height; i++) {
       rgba[i * 4] = rgb[i * 3];
@@ -62,10 +59,7 @@ function drawRawToCanvas(
     canvas.width = width;
     canvas.height = height;
     const ctx = canvas.getContext('2d');
-    if (ctx) {
-      const imageData = new ImageData(rgba, width, height);
-      ctx.putImageData(imageData, 0, 0);
-    }
+    if (ctx) ctx.putImageData(new ImageData(rgba, width, height), 0, 0);
   } catch {
     // ignore
   }
@@ -137,6 +131,8 @@ const Game02: React.FC<Game02Props> = ({ onGameResult }) => {
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const [alignFrame, setAlignFrame] = useState<CameraFrameData | null>(null);
   const alignCanvasRef = useRef<HTMLCanvasElement>(null);
+  const alignBlobUrlRef = useRef<string | null>(null);
+  const [alignBlobUrl, setAlignBlobUrl] = useState<string | null>(null);
   /** 0~1, 3초 유지 = 100%. 10도 벗어나면 백엔드가 0으로 리셋 */
   const [alignProgress, setAlignProgress] = useState(0);
 
@@ -394,11 +390,32 @@ const Game02: React.FC<Game02Props> = ({ onGameResult }) => {
     });
     return () => { unsub(); };
   }, [state]);
+
+  // Object URL for align frame imageBlob; revoke on change or unmount
   useEffect(() => {
-    const isRaw = alignFrame?.format === 'raw' && alignFrame?.width != null && alignFrame?.height != null;
-    if (isRaw && alignFrame)
-      drawRawToCanvas(alignCanvasRef.current, alignFrame.image, alignFrame.width!, alignFrame.height!);
-  }, [alignFrame?.image, alignFrame?.width, alignFrame?.height]);
+    if (alignBlobUrlRef.current) {
+      URL.revokeObjectURL(alignBlobUrlRef.current);
+      alignBlobUrlRef.current = null;
+    }
+    if (alignFrame?.imageBlob) {
+      alignBlobUrlRef.current = URL.createObjectURL(alignFrame.imageBlob);
+      setAlignBlobUrl(alignBlobUrlRef.current);
+    } else {
+      setAlignBlobUrl(null);
+    }
+    return () => {
+      if (alignBlobUrlRef.current) {
+        URL.revokeObjectURL(alignBlobUrlRef.current);
+        alignBlobUrlRef.current = null;
+      }
+    };
+  }, [alignFrame?.imageBlob]);
+
+  useEffect(() => {
+    const isRaw = alignFrame?.format === 'raw' && alignFrame?.imageBuffer != null && alignFrame?.width != null && alignFrame?.height != null;
+    if (isRaw && alignFrame?.imageBuffer)
+      drawRawFromBuffer(alignCanvasRef.current, alignFrame.imageBuffer, alignFrame.width!, alignFrame.height!);
+  }, [alignFrame?.imageBuffer, alignFrame?.width, alignFrame?.height]);
 
   // 게임 중 헤드포즈로 뷰포트 이동
   useEffect(() => {
@@ -630,13 +647,13 @@ const Game02: React.FC<Game02Props> = ({ onGameResult }) => {
                       className="w-full h-full object-cover"
                       style={{ display: 'block', width: '100%', height: '100%', objectFit: 'cover' }}
                     />
-                  ) : (
+                  ) : alignBlobUrl ? (
                     <img
-                      src={`data:image/${alignFrame.format || 'jpeg'};base64,${alignFrame.image}`}
+                      src={alignBlobUrl}
                       alt="카메라"
                       className="w-full h-full object-cover"
                     />
-                  )}
+                  ) : null}
                   <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                     <div className="w-[400px] mb-3">
                       <div className="h-2 bg-zinc-700/80 rounded-full overflow-hidden border border-white/10">

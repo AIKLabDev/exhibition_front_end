@@ -7,19 +7,16 @@ interface QRProps {
   text?: string;
 }
 
-/** Decode base64 raw RGB to ImageData and draw on canvas. */
-function drawRawToCanvas(
+/** Draw raw RGB ArrayBuffer to canvas (width*height*3 bytes). */
+function drawRawFromBuffer(
   canvas: HTMLCanvasElement | null,
-  base64: string,
+  buffer: ArrayBuffer,
   width: number,
   height: number
 ): void {
   if (!canvas || !width || !height) return;
   try {
-    const binary = atob(base64);
-    const len = binary.length;
-    const rgb = new Uint8Array(len);
-    for (let i = 0; i < len; i++) rgb[i] = binary.charCodeAt(i);
+    const rgb = new Uint8Array(buffer);
     const rgba = new Uint8ClampedArray(width * height * 4);
     for (let i = 0; i < width * height; i++) {
       rgba[i * 4] = rgb[i * 3];
@@ -31,11 +28,10 @@ function drawRawToCanvas(
     canvas.height = height;
     const ctx = canvas.getContext('2d');
     if (ctx) {
-      const imageData = new ImageData(rgba, width, height);
-      ctx.putImageData(imageData, 0, 0);
+      ctx.putImageData(new ImageData(rgba, width, height), 0, 0);
     }
-  } catch (_) {
-    // ignore decode errors
+  } catch {
+    // ignore
   }
 }
 
@@ -46,6 +42,8 @@ const QR: React.FC<QRProps> = ({ onCancel, text }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const frameCountRef = useRef(0);
   const fpsIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const blobUrlRef = useRef<string | null>(null);
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
 
   useEffect(() => {
     const unsubscribe = backendWsService.addFrameListener((data) => {
@@ -68,10 +66,30 @@ const QR: React.FC<QRProps> = ({ onCancel, text }) => {
   }, []);
 
   // Draw raw frames to canvas when frame updates
-  const isRaw = frame?.format === 'raw' && frame?.width != null && frame?.height != null;
+  const isRaw = frame?.format === 'raw' && frame?.imageBuffer != null && frame?.width != null && frame?.height != null;
   useEffect(() => {
-    if (isRaw && frame) drawRawToCanvas(canvasRef.current, frame.image, frame.width!, frame.height!);
-  }, [isRaw, frame?.image, frame?.width, frame?.height]);
+    if (isRaw && frame?.imageBuffer) drawRawFromBuffer(canvasRef.current, frame.imageBuffer, frame.width!, frame.height!);
+  }, [isRaw, frame?.imageBuffer, frame?.width, frame?.height]);
+
+  // Blob URL for encoded frames (jpeg/png/webp); revoke on change or unmount
+  useEffect(() => {
+    if (blobUrlRef.current) {
+      URL.revokeObjectURL(blobUrlRef.current);
+      blobUrlRef.current = null;
+    }
+    if (frame?.imageBlob && frame.format !== 'raw') {
+      blobUrlRef.current = URL.createObjectURL(frame.imageBlob);
+      setBlobUrl(blobUrlRef.current);
+    } else {
+      setBlobUrl(null);
+    }
+    return () => {
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+        blobUrlRef.current = null;
+      }
+    };
+  }, [frame?.imageBlob, frame?.format]);
 
   const isStreamActive = Date.now() - lastFrameTime < 2000 && frame !== null;
 
@@ -87,13 +105,13 @@ const QR: React.FC<QRProps> = ({ onCancel, text }) => {
                 className="w-full h-full object-cover opacity-90 transition-opacity duration-300"
                 style={{ display: 'block', width: '100%', height: '100%', objectFit: 'cover' }}
               />
-            ) : (
+            ) : blobUrl ? (
               <img
-                src={`data:image/${frame?.format || 'jpeg'};base64,${frame?.image}`}
+                src={blobUrl}
                 alt="Remote Camera Feed"
                 className="w-full h-full object-cover opacity-90 transition-opacity duration-300"
               />
-            )}
+            ) : null}
 
             {/* Overlay Scan UI */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">

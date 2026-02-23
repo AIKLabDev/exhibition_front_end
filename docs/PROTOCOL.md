@@ -27,7 +27,7 @@ interface WSMessageV2 {
 | `SET_SCENE` | 화면 전환 | `{ scene: SceneDefine, text?: string, result?: 'WIN' \| 'LOSE' }` |
 | `PROGRESS_UPDATE` | 진행률 갱신 | `{ value: number (0~1), label?: string }` |
 | `SYSTEM_ERROR` | 오류 오버레이 | `{ message: string }` |
-| `CAMERA_FRAME` | 카메라 프레임 (실시간) | `{ image: string (base64), format: 'jpeg' \| 'png' \| 'webp', width?, height? }` |
+| `CAMERA_FRAME` | 카메라 프레임 (실시간) | **바이너리 전송**(권장): WebSocket binary = `[4B JSON 길이 LE][JSON][이미지 바이트]`. JSON에는 `header` + `data: { format, width?, height? }` (image 없음). 프론트는 `CameraFrameData` (`imageBlob` 또는 `imageBuffer`, base64 미사용)로 수신. 텍스트 폴백: `{ image: string (base64), format, width?, height? }` → 서비스에서 Blob/ArrayBuffer로 변환해 전달. |
 | `GAME_START` | 게임 시작 신호 (예: 로봇 준비 완료) | `{}` — 프론트가 Game01 시작 트리거 + Python에 game_start 전달 |
 | `GAME_STOP` | 게임 종료 신호 | `{}` — 프론트가 Python에 game_stop 전달 |
 

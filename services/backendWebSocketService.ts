@@ -1,6 +1,7 @@
 /**
  * WebSocket client for C++ backend communication.
  * Handles scene control, progress updates, and camera frames (V2 protocol).
+ * Camera frames are received as binary (faster): [4 bytes JSON length LE][JSON][image bytes].
  */
 
 import { WSMessageV2, UIEventName, CameraFrameData, Sender } from '../types';
@@ -9,6 +10,38 @@ type MessageListener = (msg: WSMessageV2) => void;
 type FrameListener = (frame: CameraFrameData) => void;
 
 const defaultWsUrl = 'ws://127.0.0.1:8080';
+
+/**
+ * Parse binary CAMERA_FRAME: [4 bytes uint32 LE = jsonLen][json][image bytes].
+ * Returns CameraFrameData with imageBlob (jpeg/png/webp) or imageBuffer (raw).
+ */
+function parseBinaryCameraFrame(buffer: ArrayBuffer): CameraFrameData | null {
+  if (buffer.byteLength < 4) return null;
+  const view = new DataView(buffer);
+  const jsonLen = view.getUint32(0, true);
+  if (4 + jsonLen > buffer.byteLength) return null;
+  const jsonBytes = new Uint8Array(buffer, 4, jsonLen);
+  const jsonStr = new TextDecoder().decode(jsonBytes);
+  try {
+    const msg = JSON.parse(jsonStr) as WSMessageV2;
+    if (msg?.header?.name !== 'CAMERA_FRAME' || !msg.data || typeof msg.data !== 'object') return null;
+    const data = msg.data as Record<string, unknown>;
+    const format = ((data.format as string) || 'jpeg') as CameraFrameData['format'];
+    const width = typeof data.width === 'number' ? data.width : undefined;
+    const height = typeof data.height === 'number' ? data.height : undefined;
+    const imageBytes = buffer.slice(4 + jsonLen);
+    //. uncompressed raw image. currently uses jpeg format. if compress time is a problem, use raw format.
+    if (format === 'raw') {
+      return { format: 'raw', width, height, imageBuffer: imageBytes };
+    }
+    //. fallback.
+    //const mime = format === 'png' ? 'image/png' : format === 'webp' ? 'image/webp' : 'image/jpeg';
+    const mime = 'image/jpeg';
+    return { format, width, height, imageBlob: new Blob([imageBytes], { type: mime }) };
+  } catch {
+    return null;
+  }
+}
 
 class BackendWebSocketService {
   private socket: WebSocket | null = null;
@@ -27,22 +60,26 @@ class BackendWebSocketService {
     this.onStatusChangeCallback('CONNECTING');
     try {
       this.socket = new WebSocket(this.url);
+      this.socket.binaryType = 'arraybuffer';
 
       this.socket.onopen = () => {
         console.log('[Backend WS] Connected (V2 Protocol)');
         this.onStatusChangeCallback('CONNECTED');
       };
 
+      //. websocket message is either binary or text
       this.socket.onmessage = (event) => {
         try {
-          const msg: WSMessageV2 = JSON.parse(event.data);
 
-          // Handle Camera Frames separately for high-performance routing
-          if (msg.header.name === 'CAMERA_FRAME') {
-            this.frameListeners.forEach(fn => fn(msg.data as CameraFrameData));
-          } else {
-            this.messageListeners.forEach(fn => fn(msg));
+          //. currently, binary message is only CAMERA_FRAME
+          if (event.data instanceof ArrayBuffer) {
+            const frame = parseBinaryCameraFrame(event.data);
+            if (frame) this.frameListeners.forEach(fn => fn(frame));
+            return;
           }
+
+          const msg: WSMessageV2 = JSON.parse(event.data as string);
+          this.messageListeners.forEach(fn => fn(msg));
         } catch (e) {
           console.error('[Backend WS] Failed to parse message', e);
         }
