@@ -5,14 +5,20 @@ import type { VisionQRScannedData } from '../protocol';
 
 const QR_SUCCESS_DISPLAY_MS = 2000;
 
+/** 오른쪽 패널 안내 문구 (한글) */
+const QR_SCAN_INSTRUCTION =
+  '화면에 전시회 QR 티켓을 놓아주세요.';
+
 interface QRProps {
   onCancel: () => void;
   text?: string;
   /** 인식 완료 연출을 보여준 뒤 호출. 여기서 백엔드로 전달하면 씬 전환됨 */
   onQRScannedComplete?: (data: VisionQRScannedData) => void;
+  /** Vision WebSocket 연결 여부 (오른쪽 패널 Online/Offline 표시) */
+  visionOnline?: boolean;
 }
 
-const QR: React.FC<QRProps> = ({ onCancel, text, onQRScannedComplete }) => {
+const QR: React.FC<QRProps> = ({ onCancel, text, onQRScannedComplete, visionOnline = false }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const frameCountRef = useRef(0);
   const lastFrameTimeRef = useRef<number>(Date.now());
@@ -135,19 +141,23 @@ const QR: React.FC<QRProps> = ({ onCancel, text, onQRScannedComplete }) => {
           </div>
           <h2 className="text-7xl font-black mb-8 leading-tight tracking-tighter uppercase italic">
             QR Code<br />
-            <span className="text-blue-500">인식 중</span>
+            <span className={showScannedSuccess ? 'text-green-500' : 'text-blue-500'}>
+              {showScannedSuccess ? '인식 완료' : '인식 중'}
+            </span>
           </h2>
           <p className="text-2xl text-slate-400 mb-12 leading-relaxed">
-            {text || "Please place your exhibition QR ticket within the scanner's view."}
+            {text || QR_SCAN_INSTRUCTION}
           </p>
 
           <div className="p-8 bg-blue-500/10 rounded-3xl border border-blue-500/20 flex flex-col gap-4">
             <div className="flex items-center gap-4">
               <span className="text-3xl">🤖</span>
-              <span className="text-lg font-bold text-blue-400 uppercase tracking-widest">[debug]Status</span>
+              <span className="text-lg font-bold text-blue-400 uppercase tracking-widest">VISION SYSTEM</span>
             </div>
-            <div className="text-2xl font-black text-white uppercase italic">
-              {isStreamActive ? 'Vision System Online' : 'Connecting to Core...'}
+            <div className="text-2xl font-black uppercase italic">
+              <span className={visionOnline ? 'text-green-400' : 'text-red-400'}>
+                {visionOnline ? 'Online' : 'Offline'}
+              </span>
             </div>
           </div>
         </div>

@@ -132,6 +132,7 @@ const App: React.FC = () => {
             onCancel={() => handleUIEvent('CANCEL')}
             text={sceneText}
             onQRScannedComplete={(data) => backendWsService.sendCommand('QR_SCANNED', data)}
+            visionOnline={pythonConnected}
           />
         );
       case SceneDefine.SELECT_MINIGAME:
