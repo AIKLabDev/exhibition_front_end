@@ -28,9 +28,8 @@ import {
 } from './constants';
 import { generateLocalGameScenario } from './localScenarioService';
 import { backendWsService } from '../../services/backendWebSocketService';
-import type { CameraFrameData } from '../../types';
 import { BackendMessageName } from '../../protocol';
-import { drawRawFrameToCanvas } from '../../utils/drawCameraFrame';
+import { useCameraFrameCanvas } from '../../hooks/useCameraFrameCanvas';
 import ResultOverlay from './ResultOverlay';
 import ruleBgImg from '../../images/Game02 Rule.png';
 import './Game02.css';
@@ -104,10 +103,10 @@ const Game02: React.FC<Game02Props> = ({ onGameResult }) => {
   const [lastClick, setLastClick] = useState<{ x: number; y: number } | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const viewportRef = useRef<HTMLDivElement | null>(null);
-  const [alignFrame, setAlignFrame] = useState<CameraFrameData | null>(null);
   const alignCanvasRef = useRef<HTMLCanvasElement>(null);
-  const alignBlobUrlRef = useRef<string | null>(null);
-  const [alignBlobUrl, setAlignBlobUrl] = useState<string | null>(null);
+  const { hasFrame: alignHasFrame } = useCameraFrameCanvas(alignCanvasRef, {
+    enabled: state === Game02State.ALIGNING,
+  });
   /** 0~1, 3초 유지 = 100%. 10도 벗어나면 백엔드가 0으로 리셋 */
   const [alignProgress, setAlignProgress] = useState(0);
 
@@ -357,41 +356,6 @@ const Game02: React.FC<Game02Props> = ({ onGameResult }) => {
     if (state === Game02State.ALIGNING) setAlignProgress(0);
   }, [state]);
 
-  // 얼굴 정렬 UI: 백엔드 카메라 프레임 구독
-  useEffect(() => {
-    if (state !== Game02State.ALIGNING) return;
-    const unsub = backendWsService.addFrameListener((data) => {
-      setAlignFrame(data);
-    });
-    return () => { unsub(); };
-  }, [state]);
-
-  // Object URL for align frame imageBlob; revoke on change or unmount
-  useEffect(() => {
-    if (alignBlobUrlRef.current) {
-      URL.revokeObjectURL(alignBlobUrlRef.current);
-      alignBlobUrlRef.current = null;
-    }
-    if (alignFrame?.imageBlob) {
-      alignBlobUrlRef.current = URL.createObjectURL(alignFrame.imageBlob);
-      setAlignBlobUrl(alignBlobUrlRef.current);
-    } else {
-      setAlignBlobUrl(null);
-    }
-    return () => {
-      if (alignBlobUrlRef.current) {
-        URL.revokeObjectURL(alignBlobUrlRef.current);
-        alignBlobUrlRef.current = null;
-      }
-    };
-  }, [alignFrame?.imageBlob]);
-
-  useEffect(() => {
-    const isRaw = alignFrame?.format === 'raw' && alignFrame?.imageBuffer != null && alignFrame?.width != null && alignFrame?.height != null;
-    if (isRaw && alignFrame?.imageBuffer)
-      drawRawFrameToCanvas(alignCanvasRef.current, alignFrame.imageBuffer, alignFrame.width!, alignFrame.height!);
-  }, [alignFrame?.imageBuffer, alignFrame?.width, alignFrame?.height]);
-
   // 게임 중 헤드포즈로 뷰포트 이동
   useEffect(() => {
     if (state !== Game02State.PLAYING) return;
@@ -614,21 +578,13 @@ const Game02: React.FC<Game02Props> = ({ onGameResult }) => {
         <div className="absolute inset-0 z-10 flex flex-col bg-slate-900">
           <div className="flex-1 relative grid grid-cols-[1fr_400px] min-h-0">
             <div className="relative bg-black overflow-hidden flex items-center justify-center">
-              {alignFrame ? (
+              {alignHasFrame ? (
                 <div className="w-full h-full relative">
-                  {alignFrame.format === 'raw' && alignFrame.width != null && alignFrame.height != null ? (
-                    <canvas
-                      ref={alignCanvasRef}
-                      className="w-full h-full object-cover"
-                      style={{ display: 'block', width: '100%', height: '100%', objectFit: 'cover' }}
-                    />
-                  ) : alignBlobUrl ? (
-                    <img
-                      src={alignBlobUrl}
-                      alt="카메라"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : null}
+                  <canvas
+                    ref={alignCanvasRef}
+                    className="w-full h-full object-cover"
+                    style={{ display: 'block', width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
                   <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                     <div className="w-[400px] mb-3">
                       <div className="h-2 bg-zinc-700/80 rounded-full overflow-hidden border border-white/10">

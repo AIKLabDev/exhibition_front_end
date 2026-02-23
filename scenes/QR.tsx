@@ -1,7 +1,5 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { backendWsService } from '../services/backendWebSocketService';
-import { CameraFrameData } from '../types';
-import { drawRawFrameToCanvas } from '../utils/drawCameraFrame';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
+import { useCameraFrameCanvas } from '../hooks/useCameraFrameCanvas';
 
 interface QRProps {
   onCancel: () => void;
@@ -9,62 +7,36 @@ interface QRProps {
 }
 
 const QR: React.FC<QRProps> = ({ onCancel, text }) => {
-  const [frame, setFrame] = useState<CameraFrameData | null>(null);
-  const [lastFrameTime, setLastFrameTime] = useState<number>(Date.now());
-  const [fps, setFps] = useState<number>(0);
-  const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const blobUrlRef = useRef<string | null>(null);
   const frameCountRef = useRef(0);
+  const lastFrameTimeRef = useRef<number>(Date.now());
   const fpsIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [fps, setFps] = useState(0);
+  const [isStreamActive, setIsStreamActive] = useState(false);
 
-  useEffect(() => {
-    const unsubscribe = backendWsService.addFrameListener((data) => {
-      setFrame(data);
-      setLastFrameTime(Date.now());
-      frameCountRef.current += 1;
-    });
-    return () => { unsubscribe(); };
+  const onFrame = useCallback(() => {
+    frameCountRef.current += 1;
+    lastFrameTimeRef.current = Date.now();
   }, []);
 
-  // Object URL for imageBlob; revoke on change or unmount
-  useEffect(() => {
-    if (blobUrlRef.current) {
-      URL.revokeObjectURL(blobUrlRef.current);
-      blobUrlRef.current = null;
-    }
-    if (frame?.imageBlob) {
-      blobUrlRef.current = URL.createObjectURL(frame.imageBlob);
-      setBlobUrl(blobUrlRef.current);
-    } else {
-      setBlobUrl(null);
-    }
-    return () => {
-      if (blobUrlRef.current) {
-        URL.revokeObjectURL(blobUrlRef.current);
-        blobUrlRef.current = null;
-      }
-    };
-  }, [frame?.imageBlob]);
+  const { hasFrame } = useCameraFrameCanvas(canvasRef, { enabled: true, onFrame });
 
-  // FPS: every 1s, set fps = frame count and reset
+  // 첫 프레임 도착 시 바로 스트림 활성 표시
+  useEffect(() => {
+    if (hasFrame) setIsStreamActive(true);
+  }, [hasFrame]);
+
+  // FPS·스트림 비활성: 1초마다 ref 기준으로 state 갱신 (리렌더 최소화)
   useEffect(() => {
     fpsIntervalRef.current = setInterval(() => {
       setFps(frameCountRef.current);
       frameCountRef.current = 0;
+      setIsStreamActive((prev) => (prev ? Date.now() - lastFrameTimeRef.current < 2000 : false));
     }, 1000);
     return () => {
       if (fpsIntervalRef.current) clearInterval(fpsIntervalRef.current);
     };
   }, []);
-
-  // Draw raw RGBA frames to canvas (backend sends RGBA; no conversion loop)
-  const isRaw = frame?.format === 'raw' && frame?.imageBuffer != null && frame?.width != null && frame?.height != null;
-  useEffect(() => {
-    if (isRaw && frame?.imageBuffer) drawRawFrameToCanvas(canvasRef.current, frame.imageBuffer, frame.width!, frame.height!);
-  }, [isRaw, frame?.imageBuffer, frame?.width, frame?.height]);
-
-  const isStreamActive = Date.now() - lastFrameTime < 2000 && frame !== null;
 
   return (
     <div className="h-full relative grid grid-cols-[1fr_500px] bg-slate-900">
@@ -72,19 +44,11 @@ const QR: React.FC<QRProps> = ({ onCancel, text }) => {
       <div className="relative h-full bg-black overflow-hidden flex items-center justify-center">
         {isStreamActive ? (
           <div className="w-full h-full relative">
-            {frame?.format === 'raw' ? (
-              <canvas
-                ref={canvasRef}
-                className="w-full h-full object-cover opacity-90 transition-opacity duration-300"
-                style={{ display: 'block', width: '100%', height: '100%', objectFit: 'cover' }}
-              />
-            ) : blobUrl ? (
-              <img
-                src={blobUrl}
-                alt="Remote Camera Feed"
-                className="w-full h-full object-cover opacity-90 transition-opacity duration-300"
-              />
-            ) : null}
+            <canvas
+              ref={canvasRef}
+              className="w-full h-full object-cover opacity-90 transition-opacity duration-300"
+              style={{ display: 'block', width: '100%', height: '100%', objectFit: 'cover' }}
+            />
 
             {/* Overlay Scan UI */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
