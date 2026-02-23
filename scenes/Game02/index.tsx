@@ -30,6 +30,7 @@ import { generateLocalGameScenario } from './localScenarioService';
 import { backendWsService } from '../../services/backendWebSocketService';
 import type { CameraFrameData } from '../../types';
 import { BackendMessageName } from '../../protocol';
+import { drawRawFrameToCanvas } from '../../utils/drawCameraFrame';
 import ResultOverlay from './ResultOverlay';
 import ruleBgImg from '../../images/Game02 Rule.png';
 import './Game02.css';
@@ -38,32 +39,6 @@ const DEFAULT_CENTER_TOP_LEFT = {
   x: (1 - 1 / VIEW_ZOOM) / 2,
   y: (1 - 1 / VIEW_ZOOM) / 2,
 };
-
-/** Draw raw RGB ArrayBuffer to canvas (얼굴 정렬 UI용). */
-function drawRawFromBuffer(
-  canvas: HTMLCanvasElement | null,
-  buffer: ArrayBuffer,
-  width: number,
-  height: number
-): void {
-  if (!canvas || !width || !height) return;
-  try {
-    const rgb = new Uint8Array(buffer);
-    const rgba = new Uint8ClampedArray(width * height * 4);
-    for (let i = 0; i < width * height; i++) {
-      rgba[i * 4] = rgb[i * 3];
-      rgba[i * 4 + 1] = rgb[i * 3 + 1];
-      rgba[i * 4 + 2] = rgb[i * 3 + 2];
-      rgba[i * 4 + 3] = 255;
-    }
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext('2d');
-    if (ctx) ctx.putImageData(new ImageData(rgba, width, height), 0, 0);
-  } catch {
-    // ignore
-  }
-}
 
 function clamp(n: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, n));
@@ -414,7 +389,7 @@ const Game02: React.FC<Game02Props> = ({ onGameResult }) => {
   useEffect(() => {
     const isRaw = alignFrame?.format === 'raw' && alignFrame?.imageBuffer != null && alignFrame?.width != null && alignFrame?.height != null;
     if (isRaw && alignFrame?.imageBuffer)
-      drawRawFromBuffer(alignCanvasRef.current, alignFrame.imageBuffer, alignFrame.width!, alignFrame.height!);
+      drawRawFrameToCanvas(alignCanvasRef.current, alignFrame.imageBuffer, alignFrame.width!, alignFrame.height!);
   }, [alignFrame?.imageBuffer, alignFrame?.width, alignFrame?.height]);
 
   // 게임 중 헤드포즈로 뷰포트 이동

@@ -1,49 +1,22 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { backendWsService } from '../services/backendWebSocketService';
 import { CameraFrameData } from '../types';
+import { drawRawFrameToCanvas } from '../utils/drawCameraFrame';
 
 interface QRProps {
   onCancel: () => void;
   text?: string;
 }
 
-/** Draw raw RGB ArrayBuffer to canvas (width*height*3 bytes). */
-function drawRawFromBuffer(
-  canvas: HTMLCanvasElement | null,
-  buffer: ArrayBuffer,
-  width: number,
-  height: number
-): void {
-  if (!canvas || !width || !height) return;
-  try {
-    const rgb = new Uint8Array(buffer);
-    const rgba = new Uint8ClampedArray(width * height * 4);
-    for (let i = 0; i < width * height; i++) {
-      rgba[i * 4] = rgb[i * 3];
-      rgba[i * 4 + 1] = rgb[i * 3 + 1];
-      rgba[i * 4 + 2] = rgb[i * 3 + 2];
-      rgba[i * 4 + 3] = 255;
-    }
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext('2d');
-    if (ctx) {
-      ctx.putImageData(new ImageData(rgba, width, height), 0, 0);
-    }
-  } catch {
-    // ignore
-  }
-}
-
 const QR: React.FC<QRProps> = ({ onCancel, text }) => {
   const [frame, setFrame] = useState<CameraFrameData | null>(null);
   const [lastFrameTime, setLastFrameTime] = useState<number>(Date.now());
   const [fps, setFps] = useState<number>(0);
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const blobUrlRef = useRef<string | null>(null);
   const frameCountRef = useRef(0);
   const fpsIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const blobUrlRef = useRef<string | null>(null);
-  const [blobUrl, setBlobUrl] = useState<string | null>(null);
 
   useEffect(() => {
     const unsubscribe = backendWsService.addFrameListener((data) => {
@@ -53,6 +26,26 @@ const QR: React.FC<QRProps> = ({ onCancel, text }) => {
     });
     return () => { unsubscribe(); };
   }, []);
+
+  // Object URL for imageBlob; revoke on change or unmount
+  useEffect(() => {
+    if (blobUrlRef.current) {
+      URL.revokeObjectURL(blobUrlRef.current);
+      blobUrlRef.current = null;
+    }
+    if (frame?.imageBlob) {
+      blobUrlRef.current = URL.createObjectURL(frame.imageBlob);
+      setBlobUrl(blobUrlRef.current);
+    } else {
+      setBlobUrl(null);
+    }
+    return () => {
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+        blobUrlRef.current = null;
+      }
+    };
+  }, [frame?.imageBlob]);
 
   // FPS: every 1s, set fps = frame count and reset
   useEffect(() => {
@@ -65,31 +58,11 @@ const QR: React.FC<QRProps> = ({ onCancel, text }) => {
     };
   }, []);
 
-  // Draw raw frames to canvas when frame updates
+  // Draw raw RGBA frames to canvas (backend sends RGBA; no conversion loop)
   const isRaw = frame?.format === 'raw' && frame?.imageBuffer != null && frame?.width != null && frame?.height != null;
   useEffect(() => {
-    if (isRaw && frame?.imageBuffer) drawRawFromBuffer(canvasRef.current, frame.imageBuffer, frame.width!, frame.height!);
+    if (isRaw && frame?.imageBuffer) drawRawFrameToCanvas(canvasRef.current, frame.imageBuffer, frame.width!, frame.height!);
   }, [isRaw, frame?.imageBuffer, frame?.width, frame?.height]);
-
-  // Blob URL for encoded frames (jpeg/png/webp); revoke on change or unmount
-  useEffect(() => {
-    if (blobUrlRef.current) {
-      URL.revokeObjectURL(blobUrlRef.current);
-      blobUrlRef.current = null;
-    }
-    if (frame?.imageBlob && frame.format !== 'raw') {
-      blobUrlRef.current = URL.createObjectURL(frame.imageBlob);
-      setBlobUrl(blobUrlRef.current);
-    } else {
-      setBlobUrl(null);
-    }
-    return () => {
-      if (blobUrlRef.current) {
-        URL.revokeObjectURL(blobUrlRef.current);
-        blobUrlRef.current = null;
-      }
-    };
-  }, [frame?.imageBlob, frame?.format]);
 
   const isStreamActive = Date.now() - lastFrameTime < 2000 && frame !== null;
 

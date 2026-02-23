@@ -89,7 +89,7 @@ export interface CameraFrameData {
   height?: number;
   /** Encoded image (jpeg/png/webp). Use with URL.createObjectURL() for <img>. */
   imageBlob?: Blob;
-  /** Raw RGB bytes when format === 'raw'. Length = width * height * 3. Use for canvas ImageData. */
+  /** Raw RGBA bytes when format === 'raw'. Length = width * height * 4 (backend sends RGBA for direct canvas use). */
   imageBuffer?: ArrayBuffer;
 }
 
