@@ -79,6 +79,8 @@ export const UIEventName = {
   GAME02_HEAD_POSE: 'GAME02_HEAD_POSE',
   /** Game02: 게임 시작 클릭 후 얼굴 정렬 UI 진입. Exhibition이 정렬 phase 시작 */
   GAME02_ALIGNMENT_START: 'GAME02_ALIGNMENT_START',
+  /** Vision에서 QR 인식 시(QR 씬) 프론트가 백엔드에 전달. data, bbox 포함 */
+  QR_SCANNED: 'QR_SCANNED',
 } as const;
 export type UIEventNameType = (typeof UIEventName)[keyof typeof UIEventName];
 export type UIEventName = UIEventNameType;
@@ -123,6 +125,8 @@ export const VisionMessageName = {
   HUMAN_DETECTED: 'HUMAN_DETECTED',
   /** GAME04 씬에서 python vision module이 head의 왼쪽 오른쪽 방향만 제시 */
   GAME04_DIRECTION: 'GAME04_DIRECTION',
+  /** QR 씬에서 Python이 QR 인식 시 → 프론트는 백엔드에 QR_SCANNED 전달 */
+  QR_SCANNED: 'QR_SCANNED',
 } as const;
 export type VisionMessageNameType = (typeof VisionMessageName)[keyof typeof VisionMessageName];
 
@@ -171,6 +175,12 @@ export interface VisionGame04DirectionData {
   pitch: number;
 }
 
+/** QR_SCANNED 메시지의 data (Python → 프론트). 프론트는 그대로 백엔드에 전달. */
+export interface VisionQRScannedData {
+  data: string;
+  bbox?: unknown;
+  type?: string;
+}
 
 /** @deprecated VisionMessageType 대신 VisionMessageName 사용 */
 export const VisionMessageType = {
@@ -182,5 +192,6 @@ export const VisionMessageType = {
   HEAD_POSE: VisionMessageName.HEAD_POSE,
   HUMAN_DETECTED: VisionMessageName.HUMAN_DETECTED,
   GAME04_DIRECTION: VisionMessageName.GAME04_DIRECTION,
+  QR_SCANNED: VisionMessageName.QR_SCANNED,
 } as const;
 export type VisionMessageTypeValue = (typeof VisionMessageType)[keyof typeof VisionMessageType];

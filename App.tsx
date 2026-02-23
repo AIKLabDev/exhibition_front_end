@@ -118,6 +118,16 @@ const App: React.FC = () => {
     return () => { unsubscribe(); };
   }, []);
 
+  // QR 씬에서 Python이 QR 인식 시 → 백엔드에 QR_SCANNED(data, bbox) 전달
+  useEffect(() => {
+    const vision = getVisionWsService();
+    const unsubscribe = vision.onQRScanned((data) => {
+      if (currentSceneRef.current !== SceneDefine.QR) return;
+      backendWsService.sendCommand('QR_SCANNED', data);
+    });
+    return () => { unsubscribe(); };
+  }, []);
+
   const handleUIEvent = useCallback((name: UIEventName, data?: any) => {
     backendWsService.sendCommand(name, data);
   }, []);

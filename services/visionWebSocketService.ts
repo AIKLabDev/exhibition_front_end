@@ -17,6 +17,7 @@ import type {
   VisionHeadPoseData,
   VisionHumanDetectedData,
   VisionGame04DirectionData,
+  VisionQRScannedData,
 } from '../protocol';
 import {
   Sender,
@@ -97,6 +98,7 @@ export class VisionWebSocketService {
   private onPoseCallback?: (payload: VisionHeadPoseData) => void;
   private onHumanDetectedCallback?: (data: VisionHumanDetectedData) => void;
   private onGame04DirectionCallback?: (data: VisionGame04DirectionData) => void;
+  private onQRScannedCallback?: (data: VisionQRScannedData) => void;
 
   constructor(url: string) {
     this.url = url;
@@ -344,6 +346,12 @@ export class VisionWebSocketService {
         console.error('[VisionWS] Server error:', payload);
       } else if (name === VisionMessageName.ACK) {
         // no-op
+      } else if (name === VisionMessageName.QR_SCANNED) {
+        const qrData = payload as VisionQRScannedData;
+        if (qrData && typeof qrData.data === 'string') {
+          this.onQRScannedCallback?.(qrData);
+          console.log('[VisionWS] QR_SCANNED (forward to backend)', qrData.data);
+        }
       } else {
         console.warn('[VisionWS] Unknown message name:', name);
       }
@@ -395,5 +403,11 @@ export class VisionWebSocketService {
   onGame04Direction(cb: (data: VisionGame04DirectionData) => void): () => void {
     this.onGame04DirectionCallback = cb;
     return () => { this.onGame04DirectionCallback = undefined; };
+  }
+
+  /** QR 씬에서 Python이 QR 인식 시 구독. 프론트는 백엔드에 QR_SCANNED(data, bbox) 전달. */
+  onQRScanned(cb: (data: VisionQRScannedData) => void): () => void {
+    this.onQRScannedCallback = cb;
+    return () => { this.onQRScannedCallback = undefined; };
   }
 }
