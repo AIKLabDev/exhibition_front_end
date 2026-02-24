@@ -30,6 +30,7 @@ import { generateLocalGameScenario } from './localScenarioService';
 import { backendWsService } from '../../services/backendWebSocketService';
 import { BackendMessageName } from '../../protocol';
 import { useCameraFrameCanvas } from '../../hooks/useCameraFrameCanvas';
+import { useGameStartFromBackend } from '../../hooks/useGameStartFromBackend';
 import ResultOverlay from './ResultOverlay';
 import ruleBgImg from '../../images/Game02 Rule.png';
 import './Game02.css';
@@ -221,14 +222,14 @@ const Game02: React.FC<Game02Props> = ({ onGameResult, triggerStartFromBackend =
     []
   );
 
-  // 게임 시작 클릭 → 얼굴 정렬 UI로 진입 (정렬 완료 시 startNewGame은 백엔드 신호로 호출)
+  // 게임 시작 클릭 → 얼굴 정렬 UI로 진입 (정렬 완료 시 startGame은 백엔드 신호로 호출)
   const requestGameStartWithAlignment = useCallback(() => {
     setState(Game02State.ALIGNING);
     backendWsService.sendCommand('GAME02_ALIGNMENT_START', {});
   }, []);
 
-  // 새 게임 시작 (시나리오 생성 → ANNOUNCING → PLAYING)
-  const startNewGame = useCallback(async () => {
+  // 게임 시작 (시나리오 생성 → ANNOUNCING → PLAYING). 버튼(정렬 후) 또는 백엔드 GAME_START 시 호출
+  const startGame = useCallback(async () => {
     setState(Game02State.GENERATING);
     setLastClick(null);
     setViewTopLeft(centerTopLeft);
@@ -244,7 +245,7 @@ const Game02: React.FC<Game02Props> = ({ onGameResult, triggerStartFromBackend =
       setScenario(newScenario);
       setState(Game02State.ANNOUNCING);
     } catch (error) {
-      console.error('[Game02] startNewGame 실패', error);
+      console.error('[Game02] startGame 실패', error);
       setGenerationError(normalizeError(error));
       setState(Game02State.INTRO);
     }
@@ -323,21 +324,16 @@ const Game02: React.FC<Game02Props> = ({ onGameResult, triggerStartFromBackend =
     }
   }, [state, onGameResult]);
 
-  // 백엔드 GAME_START 수신 시(trigger 증가)에만 시작. 씬 진입 시점 값이면 무시
-  const prevTriggerRef = useRef(triggerStartFromBackend);
-  useEffect(() => {
-    if (triggerStartFromBackend > prevTriggerRef.current && (state === Game02State.INTRO || state === Game02State.ALIGNING)) {
-      prevTriggerRef.current = triggerStartFromBackend;
-      startNewGame();
-    }
-  }, [triggerStartFromBackend, state, startNewGame]);
+  useGameStartFromBackend(triggerStartFromBackend, startGame, {
+    onlyWhen: () => state === Game02State.INTRO || state === Game02State.ALIGNING,
+  });
 
   // Backend → GAME02_ALIGNMENT_COMPLETE 수신 시 게임 시작, HEAD_POSE 수신 시 뷰용 yaw/pitch 갱신
   useEffect(() => {
     const unsub = backendWsService.addMessageListener((msg) => {
       const name = msg.header?.name;
       if (name === BackendMessageName.GAME02_ALIGNMENT_COMPLETE) {
-        startNewGame();
+        startGame();
       } else if (name === BackendMessageName.HEAD_POSE) {
         const data = msg.data as { yaw?: number; pitch?: number; progress?: number };
         if (data != null && Number.isFinite(data.yaw) && Number.isFinite(data.pitch)) {
@@ -358,7 +354,7 @@ const Game02: React.FC<Game02Props> = ({ onGameResult, triggerStartFromBackend =
       }
     });
     return () => { unsub(); };
-  }, [startNewGame]);
+  }, [startGame]);
 
   // 얼굴 정렬 화면 진입 시 진행 바 0으로 초기화
   useEffect(() => {

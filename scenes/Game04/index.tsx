@@ -9,6 +9,7 @@ import { Game04Props } from './Game04.types';
 import { PLAYER_MAX_HEALTH, GAME_DURATION, GAME04_STRINGS, RADAR_DETECT_RANGE, RADAR_ANGLE_DEGREES, PLAYER_VIEW_ANGLE_DEGREES } from './constants';
 import { GameCanvas, type NearbyZombieRadar } from './GameScene';
 import { getVisionWsService } from '../../services/visionWebSocketService';
+import { useGameStartFromBackend } from '../../hooks/useGameStartFromBackend';
 import './Game04.css';
 
 /** 기준 해상도 (전시 키오스크) */
@@ -185,6 +186,7 @@ const Game04: React.FC<Game04Props> = ({ onGameResult, inputMode: forceInputMode
     };
   }, [inputMode, forceInputMode]);
 
+  // 게임 시작 (버튼 클릭 또는 백엔드 GAME_START 시 호출)
   const startGame = useCallback(() => {
     setGameStarted(true);
     setGameOver(false);
@@ -194,14 +196,9 @@ const Game04: React.FC<Game04Props> = ({ onGameResult, inputMode: forceInputMode
     resultReportedRef.current = false;
   }, []);
 
-  // 백엔드 GAME_START 수신 시(trigger 증가)에만 시작. 씬 진입 시점 값이면 무시
-  const prevTriggerRef = useRef(triggerStartFromBackend);
-  useEffect(() => {
-    if (triggerStartFromBackend > prevTriggerRef.current && !gameStarted && !gameOver) {
-      prevTriggerRef.current = triggerStartFromBackend;
-      startGame();
-    }
-  }, [triggerStartFromBackend, gameStarted, gameOver, startGame]);
+  useGameStartFromBackend(triggerStartFromBackend, startGame, {
+    onlyWhen: () => !gameStarted && !gameOver,
+  });
 
   const handleGameOver = useCallback((finalScoreVal: number) => {
     setGameStarted(false);

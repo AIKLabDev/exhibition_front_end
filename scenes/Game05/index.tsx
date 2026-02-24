@@ -9,6 +9,7 @@ import { CHAR_X, MAX_HP, GAME_DURATION, CANVAS_WIDTH as W, CANVAS_HEIGHT as H, A
 import { loadAllAssets } from './assets';
 import { initSounds, playSfx, stopAllSounds } from './sounds';
 import { stateHandlers, checkAttackHit } from './states';
+import { useGameStartFromBackend } from '../../hooks/useGameStartFromBackend';
 import './Game05.css';
 
 function createInitialState(): GameState {
@@ -118,19 +119,28 @@ const Game05: React.FC<Game05Props> = ({ onGameResult, triggerStartFromBackend =
     checkAttackHit(s, assets, sounds, hitSfxIndexRef);
   }, []);
 
-  // 입력 처리
+  // 게임 시작 (타이틀 터치/클릭 또는 백엔드 GAME_START 시 호출)
+  const startGame = useCallback(() => {
+    resetGame();
+    changeState('playing');
+  }, [resetGame, changeState]);
+
+  useGameStartFromBackend(triggerStartFromBackend, startGame, {
+    onlyWhen: () => gameStateUI === 'title',
+  });
+
+  // 입력 처리 (타이틀: startGame, 플레이 중: 공격)
   const handleInput = useCallback(
     (e?: React.MouseEvent | React.TouchEvent | KeyboardEvent) => {
       e?.preventDefault();
       const s = stateRef.current;
       if (s.gameState === 'title') {
-        resetGame();
-        changeState('playing');
+        startGame();
       } else if (s.gameState === 'playing') {
         startAttack();
       }
     },
-    [resetGame, changeState, startAttack]
+    [startGame, startAttack]
   );
 
   // 재시작 (result → title)
@@ -141,16 +151,6 @@ const Game05: React.FC<Game05Props> = ({ onGameResult, triggerStartFromBackend =
     }
     changeState('title');
   }, [changeState]);
-
-  // 백엔드 GAME_START 수신 시(trigger 증가)에만 시작. 씬 진입 시점 값이면 무시
-  const prevTriggerRef = useRef(triggerStartFromBackend);
-  useEffect(() => {
-    if (triggerStartFromBackend > prevTriggerRef.current && gameStateUI === 'title') {
-      prevTriggerRef.current = triggerStartFromBackend;
-      resetGame();
-      changeState('playing');
-    }
-  }, [triggerStartFromBackend, gameStateUI, resetGame, changeState]);
 
   // 에셋 및 사운드 로드
   useEffect(() => {

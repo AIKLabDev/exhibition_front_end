@@ -7,6 +7,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GameState, CardData, Game03Props, CardType } from './Game03.types';
+import { useGameStartFromBackend } from '../../hooks/useGameStartFromBackend';
 import { REVEAL_DURATION, SHUFFLE_DURATION, NUM_CARDS, GAME03_STRINGS } from './constants';
 import Card from './Card';
 import './Game03.css';
@@ -51,7 +52,8 @@ const Game03: React.FC<Game03Props> = ({ onGameResult, triggerStartFromBackend =
   const progressBarWidth = Math.round(1101 * scaleW);
   const progressBarHeight = Math.round(16 * scaleH);
 
-  const initializeGame = useCallback(() => {
+  // 게임 시작 (버튼 클릭 또는 백엔드 GAME_START 시 호출)
+  const startGame = useCallback(() => {
     const newCards: CardData[] = Array.from({ length: NUM_CARDS }, (_, i) => ({
       id: i,
       type: i === 0 ? CardType.HEART : CardType.BOMB,
@@ -65,14 +67,9 @@ const Game03: React.FC<Game03Props> = ({ onGameResult, triggerStartFromBackend =
     resultReportedRef.current = false;
   }, []);
 
-  // 백엔드 GAME_START 수신 시(trigger 증가)에만 시작. 씬 진입 시점 값이면 무시
-  const prevTriggerRef = useRef(triggerStartFromBackend);
-  useEffect(() => {
-    if (triggerStartFromBackend > prevTriggerRef.current && gameState === GameState.IDLE) {
-      prevTriggerRef.current = triggerStartFromBackend;
-      initializeGame();
-    }
-  }, [triggerStartFromBackend, gameState, initializeGame]);
+  useGameStartFromBackend(triggerStartFromBackend, startGame, {
+    onlyWhen: () => gameState === GameState.IDLE,
+  });
 
   // Stage 1: 초기 공개
   useEffect(() => {
@@ -153,7 +150,7 @@ const Game03: React.FC<Game03Props> = ({ onGameResult, triggerStartFromBackend =
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.8 }}
-              onClick={initializeGame}
+              onClick={startGame}
               className="bg-blue-600 hover:bg-blue-500 text-white font-black rounded-full shadow-lg transition-transform hover:scale-105 active:scale-95"
               style={{ fontSize: `${buttonFontSize}px`, padding: `${12 * scaleH}px ${40 * scaleW}px` }}
             >
@@ -228,7 +225,7 @@ const Game03: React.FC<Game03Props> = ({ onGameResult, triggerStartFromBackend =
                 {isWinner ? GAME03_STRINGS.YOU_WIN : GAME03_STRINGS.GAME_OVER}
               </div>
               <button
-                onClick={initializeGame}
+                onClick={startGame}
                 className="bg-zinc-700 hover:bg-zinc-600 text-white font-bold rounded-lg transition-colors"
                 style={{ fontSize: `${buttonFontSize}px`, padding: `${8 * scaleH}px ${20 * scaleW}px` }}
               >

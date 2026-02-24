@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import './Game01.css';
 import type { RpsChoice, RpsGameState, RpsResult, Game01Props } from './Game01.types';
 import {
   getVisionWsService,
   type VisionWebSocketService,
 } from '../../services/visionWebSocketService';
+import { useGameStartFromBackend } from '../../hooks/useGameStartFromBackend';
 import HandDisplay from './HandDisplay';
 import Fireworks from './Fireworks';
 import { GAME01_MESSAGES } from './constants';
@@ -38,7 +39,6 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
   const [triggerEffect, setTriggerEffect] = useState<RpsResult | null>(null);
   const [wsConnected, setWsConnected] = useState(false);
   const wsRef = useRef<VisionWebSocketService | null>(null);
-  const handleStartGameRef = useRef<(() => Promise<void>) | null>(null);
 
   // Initialize Vision WebSocket connection (공통 Python 모듈, game_id 로 라우팅)
   useEffect(() => {
@@ -73,20 +73,6 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
     };
   }, []);
 
-  // handleStartGame을 ref에 동기화
-  useEffect(() => {
-    handleStartGameRef.current = handleStartGame;
-  });
-
-  // 백엔드 GAME_START 수신 시(trigger 증가)에만 시작. 씬 진입 시점 값이면 무시(튜토리얼 등 대기용)
-  const prevTriggerRef = useRef(triggerStartFromBackend);
-  useEffect(() => {
-    if (triggerStartFromBackend > prevTriggerRef.current) {
-      prevTriggerRef.current = triggerStartFromBackend;
-      handleStartGameRef.current?.();
-    }
-  }, [triggerStartFromBackend]);
-
   // 승패 판정
   const determineWinner = (user: RpsChoice, ai: RpsChoice): RpsResult => {
     if (user === ai) return 'draw';
@@ -98,8 +84,8 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
     return 'lose';
   };
 
-  // Vision 기반 게임 시작
-  const handleStartGame = async () => {
+  // 게임 시작 (버튼 클릭 또는 백엔드 GAME_START 시 호출)
+  const startGame = useCallback(async () => {
     if (!wsRef.current || !wsRef.current.isConnected()) {
       console.error('[Game01] Vision WebSocket not connected');
       setGame(prev => ({
@@ -190,7 +176,9 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
       }));
       setHypeKey(prev => prev + 1);
     }
-  };
+  }, [game.status, onGameResult]);
+
+  useGameStartFromBackend(triggerStartFromBackend, startGame);
 
   // 다음 라운드
   const resetGame = () => {
@@ -299,7 +287,7 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
       {game.status === 'idle' && (
         <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 z-50">
           <button
-            onClick={handleStartGame}
+            onClick={startGame}
             disabled={!wsConnected}
             className={`
               px-14 py-6 rounded-full border-2 font-scifi-kr text-xl tracking-[0.3em] 
