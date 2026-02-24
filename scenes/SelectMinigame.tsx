@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 
 interface SelectMinigameProps {
   onComplete: (game: string) => void;
@@ -23,6 +23,9 @@ const SelectMinigame: React.FC<SelectMinigameProps> = ({ onComplete }) => {
   const [isFinalized, setIsFinalized] = useState(false);
   const [viewportWidth, setViewportWidth] = useState(window.innerWidth);
   const [viewportHeight, setViewportHeight] = useState(window.innerHeight);
+
+  /** unmount 시 모든 타이머 정리 (씬 강제 전환 후 재진입 시 이전 타이머가 onComplete 호출하는 것 방지) */
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   // 뷰포트 크기 추적
   useEffect(() => {
@@ -49,6 +52,11 @@ const SelectMinigame: React.FC<SelectMinigameProps> = ({ onComplete }) => {
   const readyFontSize = Math.round(60 * scaleH);    // text-6xl ≈ 60px
 
   useEffect(() => {
+    const clearAll = () => {
+      timersRef.current.forEach((id) => clearTimeout(id));
+      timersRef.current = [];
+    };
+
     // 1. Show the list statically for 800ms
     const startTimer = setTimeout(() => {
       setIsSpinning(true);
@@ -63,15 +71,16 @@ const SelectMinigame: React.FC<SelectMinigameProps> = ({ onComplete }) => {
       const endTimer = setTimeout(() => {
         setIsSpinning(false);
         setIsFinalized(true);
-        setTimeout(() => {
+        const completeTimer = setTimeout(() => {
           onComplete(baseGames[targetGameIdx].id);
         }, 2500);
+        timersRef.current.push(completeTimer);
       }, 4000);
-
-      return () => clearTimeout(endTimer);
+      timersRef.current.push(endTimer);
     }, 800);
+    timersRef.current.push(startTimer);
 
-    return () => clearTimeout(startTimer);
+    return () => clearAll();
   }, []);
 
   return (

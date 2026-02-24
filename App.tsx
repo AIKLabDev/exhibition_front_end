@@ -139,6 +139,8 @@ const App: React.FC = () => {
         return (
           <SelectMinigame
             onComplete={(game) => {
+              // 백엔드가 디버깅 등으로 씬 강제 전환한 경우, minigame select가 아닐 때는 전송하지 않음
+              if (currentSceneRef.current !== SceneDefine.SELECT_MINIGAME) return;
               handleUIEvent('MINIGAME_SELECTED', { game });
             }}
           />
