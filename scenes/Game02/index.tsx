@@ -29,6 +29,7 @@ import {
 import { generateLocalGameScenario } from './localScenarioService';
 import { backendWsService } from '../../services/backendWebSocketService';
 import { BackendMessageName } from '../../protocol';
+import { LAYOUT_CAMERA_SIDEBAR_WIDTH_PX } from '../../layoutConstants';
 import { useCameraFrameCanvas } from '../../hooks/useCameraFrameCanvas';
 import { useGameStartFromBackend, isStartableState, useResetResultReportRefWhenEnteringRound } from '../../hooks/useGameStartFromBackend';
 import ResultOverlay from './ResultOverlay';
@@ -596,7 +597,10 @@ const Game02: React.FC<Game02Props> = ({ onGameResult, triggerStartFromBackend =
       {/* 2. Aligning Screen - vision + 스캔 박스 + "화면에 3초이상 얼굴을 고정해주세요" */}
       {state === Game02State.ALIGNING && (
         <div className="absolute inset-0 z-10 flex flex-col bg-slate-900">
-          <div className="flex-1 relative grid grid-cols-[1fr_400px] min-h-0">
+          <div
+            className="flex-1 relative grid min-h-0"
+            style={{ gridTemplateColumns: `1fr ${LAYOUT_CAMERA_SIDEBAR_WIDTH_PX}px` }}
+          >
             <div className="relative bg-black overflow-hidden flex items-center justify-center">
               {alignHasFrame ? (
                 <div className="w-full h-full relative">

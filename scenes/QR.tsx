@@ -3,6 +3,7 @@ import { useCameraFrameCanvas } from '../hooks/useCameraFrameCanvas';
 import { useQRROI, DEFAULT_QR_ROI } from '../hooks/useQRROI';
 import { getVisionWsService } from '../services/visionWebSocketService';
 import type { VisionQRScannedData } from '../protocol';
+import { LAYOUT_CAMERA_SIDEBAR_WIDTH_PX } from '../layoutConstants';
 import { QRScanBoxROI } from './QRScanBoxROI';
 
 const QR_SUCCESS_DISPLAY_MS = 2000;
@@ -89,7 +90,10 @@ const QR: React.FC<QRProps> = ({ onCancel, text, onQRScannedComplete, visionOnli
   }, []);
 
   return (
-    <div className="h-full relative grid grid-cols-[1fr_500px] bg-slate-900">
+    <div
+      className="h-full relative grid bg-slate-900"
+      style={{ gridTemplateColumns: `1fr ${LAYOUT_CAMERA_SIDEBAR_WIDTH_PX}px` }}
+    >
       {/* Left: Remote Camera Feed */}
       <div className="relative h-full bg-black overflow-hidden flex items-center justify-center">
         {isStreamActive ? (
