@@ -6,13 +6,8 @@ import { backendWsService } from '../services/backendWebSocketService';
 import type { VisionQRScannedData } from '../protocol';
 import { BackendMessageName } from '../protocol';
 import { LAYOUT_CAMERA_SIDEBAR_WIDTH_PX } from '../layoutConstants';
+import { QR_SUCCESS_DISPLAY_MS, QR_SCAN_INSTRUCTION, QR_STRINGS } from './QR/constants';
 import { QRScanBoxROI } from './QRScanBoxROI';
-
-const QR_SUCCESS_DISPLAY_MS = 2000;
-
-/** 오른쪽 패널 안내 문구 (한글) */
-const QR_SCAN_INSTRUCTION =
-  '화면에 전시회 QR 티켓을 놓아주세요.';
 
 interface QRProps {
   onCancel: () => void;
@@ -145,8 +140,8 @@ const QR: React.FC<QRProps> = ({ onCancel, text, onQRScannedComplete, visionOnli
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                     </svg>
                   </div>
-                  <h3 className="text-5xl font-black text-white uppercase tracking-wider">인식 완료</h3>
-                  <p className="text-xl text-green-300/90">티켓이 확인되었습니다</p>
+                  <h3 className="text-5xl font-black text-white uppercase tracking-wider">{QR_STRINGS.successTitle}</h3>
+                  <p className="text-xl text-green-300/90">{QR_STRINGS.successSubtitle}</p>
                 </div>
               </div>
             )}
@@ -160,8 +155,8 @@ const QR: React.FC<QRProps> = ({ onCancel, text, onQRScannedComplete, visionOnli
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
                   </div>
-                  <h3 className="text-5xl font-black text-white uppercase tracking-wider">이미 참여하셨군요</h3>
-                  <p className="text-xl text-amber-300/90">해당 티켓은 이미 사용되었습니다</p>
+                  <h3 className="text-5xl font-black text-white uppercase tracking-wider">{QR_STRINGS.duplicatedTitle}</h3>
+                  <p className="text-xl text-amber-300/90">{QR_STRINGS.duplicatedSubtitle}</p>
                 </div>
               </div>
             )}
@@ -169,9 +164,9 @@ const QR: React.FC<QRProps> = ({ onCancel, text, onQRScannedComplete, visionOnli
         ) : (
           <div className="flex flex-col items-center justify-center p-12 text-center max-w-2xl bg-slate-950/50 w-full h-full">
             <div className="w-24 h-24 border-4 border-slate-700 border-t-blue-500 rounded-full animate-spin mb-8" />
-            <h3 className="text-4xl font-black text-slate-500 mb-4 uppercase">Waiting for camera frame...</h3>
+            <h3 className="text-4xl font-black text-slate-500 mb-4 uppercase">{QR_STRINGS.waitingTitle}</h3>
             <p className="text-xl text-slate-600 uppercase tracking-widest">
-              need to check back-end camera frame
+              {QR_STRINGS.waitingSubtitle}
             </p>
           </div>
         )}
@@ -182,7 +177,7 @@ const QR: React.FC<QRProps> = ({ onCancel, text, onQRScannedComplete, visionOnli
         <div className="flex-1 flex flex-col justify-center">
           <div className="absolute top-12 left-12 px-6 py-2 bg-blue-600/80 rounded-full backdrop-blur-md flex items-center gap-3">
             <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-            <span className="text-white font-black tracking-widest text-xs uppercase">Server Stream Active</span>
+            <span className="text-white font-black tracking-widest text-xs uppercase">{QR_STRINGS.serverStreamActive}</span>
             <span className="text-blue-200 font-mono text-sm tabular-nums">{fps} FPS</span>
           </div>
           <h2 className="text-7xl font-black mb-8 leading-tight tracking-tighter uppercase italic">
@@ -190,7 +185,7 @@ const QR: React.FC<QRProps> = ({ onCancel, text, onQRScannedComplete, visionOnli
             <span className={
               showDuplicated ? 'text-amber-500' : showScannedSuccess ? 'text-green-500' : 'text-blue-500'
             }>
-              {showDuplicated ? '중복 참여' : showScannedSuccess ? '인식 완료' : '인식 중'}
+              {showDuplicated ? QR_STRINGS.statusDuplicated : showScannedSuccess ? QR_STRINGS.statusScanned : QR_STRINGS.statusRecognizing}
             </span>
           </h2>
           <p className="text-2xl text-slate-400 mb-12 leading-relaxed">
@@ -200,11 +195,11 @@ const QR: React.FC<QRProps> = ({ onCancel, text, onQRScannedComplete, visionOnli
           <div className="p-8 bg-blue-500/10 rounded-3xl border border-blue-500/20 flex flex-col gap-4">
             <div className="flex items-center gap-4">
               <span className="text-3xl">🤖</span>
-              <span className="text-lg font-bold text-blue-400 uppercase tracking-widest">VISION SYSTEM</span>
+              <span className="text-lg font-bold text-blue-400 uppercase tracking-widest">{QR_STRINGS.visionSystem}</span>
             </div>
             <div className="text-2xl font-black uppercase italic">
               <span className={visionOnline ? 'text-green-400' : 'text-red-400'}>
-                {visionOnline ? 'Online' : 'Offline'}
+                {visionOnline ? QR_STRINGS.online : QR_STRINGS.offline}
               </span>
             </div>
           </div>
