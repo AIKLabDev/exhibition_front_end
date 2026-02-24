@@ -2,7 +2,9 @@ import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { useCameraFrameCanvas } from '../hooks/useCameraFrameCanvas';
 import { useQRROI, DEFAULT_QR_ROI } from '../hooks/useQRROI';
 import { getVisionWsService } from '../services/visionWebSocketService';
+import { backendWsService } from '../services/backendWebSocketService';
 import type { VisionQRScannedData } from '../protocol';
+import { BackendMessageName } from '../protocol';
 import { LAYOUT_CAMERA_SIDEBAR_WIDTH_PX } from '../layoutConstants';
 import { QRScanBoxROI } from './QRScanBoxROI';
 
@@ -29,10 +31,15 @@ const QR: React.FC<QRProps> = ({ onCancel, text, onQRScannedComplete, visionOnli
   const [fps, setFps] = useState(0);
   const [isStreamActive, setIsStreamActive] = useState(false);
   const [showScannedSuccess, setShowScannedSuccess] = useState(false);
+  const [showDuplicated, setShowDuplicated] = useState(false);
   const successTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scannedDataRef = useRef<VisionQRScannedData | null>(null);
   const onQRScannedCompleteRef = useRef(onQRScannedComplete);
+  /** 인식 완료 2초 연출 중에 QR_DUPLICATED 수신 시, 연출 끝난 뒤에 중복 연출 표시 */
+  const pendingDuplicateRef = useRef(false);
+  const showScannedSuccessRef = useRef(false);
   onQRScannedCompleteRef.current = onQRScannedComplete;
+  showScannedSuccessRef.current = showScannedSuccess;
 
   // Vision: QR 인식 시 연출 표시 → 일정 시간 후 백엔드 전달(씬 전환)
   useEffect(() => {
@@ -44,12 +51,34 @@ const QR: React.FC<QRProps> = ({ onCancel, text, onQRScannedComplete, visionOnli
     return () => { unsubscribe(); };
   }, []);
 
+  // 백엔드 QR_DUPLICATED: 인식 완료 연출이 끝난 뒤에만 연출 표시
+  useEffect(() => {
+    const unsubscribe = backendWsService.addMessageListener((msg) => {
+      if (msg.header.name !== BackendMessageName.QR_DUPLICATED) return;
+      if (showScannedSuccessRef.current) {
+        pendingDuplicateRef.current = true;
+      } else {
+        setShowDuplicated(true);
+      }
+    });
+    return () => { unsubscribe(); };
+  }, []);
+
+  useEffect(() => {
+    showScannedSuccessRef.current = showScannedSuccess;
+  }, [showScannedSuccess]);
+
   useEffect(() => {
     if (!showScannedSuccess) return;
     const data = scannedDataRef.current;
     successTimeoutRef.current = setTimeout(() => {
       successTimeoutRef.current = null;
-      if (data) onQRScannedCompleteRef.current?.(data);
+      if (pendingDuplicateRef.current) {
+        pendingDuplicateRef.current = false;
+        setShowDuplicated(true);
+      } else if (data) {
+        onQRScannedCompleteRef.current?.(data);
+      }
       setShowScannedSuccess(false);
       scannedDataRef.current = null;
     }, QR_SUCCESS_DISPLAY_MS);
@@ -121,6 +150,21 @@ const QR: React.FC<QRProps> = ({ onCancel, text, onQRScannedComplete, visionOnli
                 </div>
               </div>
             )}
+
+            {/* 중복 참여자 연출: 백엔드 QR_DUPLICATED 수신 후 또는 디버그 트리거 시 */}
+            {showDuplicated && (
+              <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/70 backdrop-blur-sm animate-[qrSuccessFadeIn_0.3s_ease-out]">
+                <div className="flex flex-col items-center gap-6 text-center">
+                  <div className="w-28 h-28 rounded-full bg-amber-500/20 border-4 border-amber-400 flex items-center justify-center animate-[qrSuccessScale_0.4s_ease-out]">
+                    <svg className="w-16 h-16 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-5xl font-black text-white uppercase tracking-wider">이미 참여하셨군요</h3>
+                  <p className="text-xl text-amber-300/90">해당 티켓은 이미 사용되었습니다</p>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center p-12 text-center max-w-2xl bg-slate-950/50 w-full h-full">
@@ -143,8 +187,10 @@ const QR: React.FC<QRProps> = ({ onCancel, text, onQRScannedComplete, visionOnli
           </div>
           <h2 className="text-7xl font-black mb-8 leading-tight tracking-tighter uppercase italic">
             QR Code<br />
-            <span className={showScannedSuccess ? 'text-green-500' : 'text-blue-500'}>
-              {showScannedSuccess ? '인식 완료' : '인식 중'}
+            <span className={
+              showDuplicated ? 'text-amber-500' : showScannedSuccess ? 'text-green-500' : 'text-blue-500'
+            }>
+              {showDuplicated ? '중복 참여' : showScannedSuccess ? '인식 완료' : '인식 중'}
             </span>
           </h2>
           <p className="text-2xl text-slate-400 mb-12 leading-relaxed">

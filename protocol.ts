@@ -60,6 +60,8 @@ export const BackendMessageName = {
   GAME02_ALIGNMENT_COMPLETE: 'GAME02_ALIGNMENT_COMPLETE',
   /** Game02 뷰 제어: 백엔드(C++)가 기준 로봇 대비 yaw, pitch 전송 (Python HEAD_POSE 대체) */
   HEAD_POSE: 'HEAD_POSE',
+  /** QR 씬: 중복 참여자(이미 참여한 티켓). 인식 완료 연출이 끝난 뒤에만 연출 표시 */
+  QR_DUPLICATED: 'QR_DUPLICATED',
 } as const;
 export type BackendMessageNameType = (typeof BackendMessageName)[keyof typeof BackendMessageName];
 
