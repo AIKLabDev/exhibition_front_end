@@ -10,6 +10,10 @@ export const NUM_CARDS = 5;
 
 /** Game03 UI 문자열 — 수정 시 이 객체만 편집 */
 export const GAME03_STRINGS = {
+  /** 튜토리얼 (헤더 한 줄용: 타이틀 + 이 문구 + 버튼) */
+  TUTORIAL_TITLE: '❤️를 기억하세요!',
+  TUTORIAL_DESC: '카드를 잠깐 본 뒤 섞입니다. 하트가 있던 자리를 찾아 탭하세요!',
+  TUTORIAL_DESC_ONE_LINE: '잠깐 본 뒤 섞이면 하트 자리를 찾아 탭하세요!',
   START_GAME: '게임 시작',
   MEMORIZE: '❤️를',
   MEMORIZE_SUB: '기억하세요!',
