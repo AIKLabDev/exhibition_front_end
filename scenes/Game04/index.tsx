@@ -6,7 +6,7 @@
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Game04Props } from './Game04.types';
-import { PLAYER_MAX_HEALTH, GAME_DURATION, GAME04_STRINGS, RADAR_DETECT_RANGE } from './constants';
+import { PLAYER_MAX_HEALTH, GAME_DURATION, GAME04_STRINGS, RADAR_DETECT_RANGE, RADAR_ANGLE_DEGREES, PLAYER_VIEW_ANGLE_DEGREES } from './constants';
 import { GameCanvas, type NearbyZombieRadar } from './GameScene';
 import { getVisionWsService } from '../../services/visionWebSocketService';
 import './Game04.css';
@@ -15,10 +15,9 @@ import './Game04.css';
 const BASE_WIDTH = 2560;
 const BASE_HEIGHT = 720;
 
-/** HEAD_POSE yaw를 라디안으로 변환할 때 최대 범위 (±도) */
-const HEAD_YAW_RANGE_DEG = 50;
-/** 마우스 폴백 시 감도 (±라디안) */
-const MOUSE_YAW_RAD = 75 * (Math.PI / 180);
+/** 조준 반경(머리/마우스): PLAYER_VIEW_ANGLE_DEGREES와 동일 — 모니터를 보며 고개 돌릴 수 있는 범위 */
+const AIM_HALF_DEG = PLAYER_VIEW_ANGLE_DEGREES / 2;
+const MOUSE_YAW_RAD = (AIM_HALF_DEG * Math.PI) / 180;
 
 // 간단한 컨페티
 const Confetti = () => {
@@ -42,7 +41,10 @@ const Confetti = () => {
   );
 };
 
-/** 레이더: 상단 반원 UI (180° 정면) — 감지 범위 내 좀비를 점으로 표시, 중심=하단(플레이어) */
+// RADAR_ANGLE_DEGREES(180°)에 해당하는 라디안: 정면 기준 좌우 ±90°
+const RADAR_ANGLE_HALF_RAD = (RADAR_ANGLE_DEGREES / 2) * (Math.PI / 180);
+
+/** 레이더: 상단 반원 UI — 정면 RADAR_ANGLE_DEGREES(180°) 안의 좀비만 점으로 표시 */
 const Radar = ({ zombies, scaleW, scaleH }: { zombies: NearbyZombieRadar[]; scaleW: number; scaleH: number }) => {
   const size = Math.round(240 * Math.min(scaleW, scaleH));
   const halfHeight = size / 2;
@@ -52,7 +54,7 @@ const Radar = ({ zombies, scaleW, scaleH }: { zombies: NearbyZombieRadar[]; scal
       className="game04-radar absolute left-1/2 -translate-x-1/2 overflow-hidden pointer-events-none"
       style={{ bottom: 0, width: size, height: halfHeight }}
     >
-      {/* 원을 가로로 자른 위쪽만 표시 → 상단 반원 (곡선=위, 직선=아래) */}
+      {/* 원을 가로로 자른 위쪽만 표시 → 상단 반원 (곡선=위, 직선=아래) = 180° 시야 */}
       <div
         className="absolute left-0 top-0 rounded-full border-2 border-red-500/80 bg-black/50 backdrop-blur-sm"
         style={{
@@ -66,26 +68,28 @@ const Radar = ({ zombies, scaleW, scaleH }: { zombies: NearbyZombieRadar[]; scal
         className="absolute w-0 h-0 border-l-[8px] border-r-[8px] border-b-[12px] border-l-transparent border-r-transparent border-b-red-400/90"
         style={{ top: '4px', left: '50%', transform: 'translateX(-50%)' }}
       />
-      {/* 근접 좀비 점: 중심=반원 하단(50%,100%), angle=0이 위쪽(정면) */}
-      {zombies.map((z, i) => {
-        const normDist = Math.min(1, z.distance / RADAR_DETECT_RANGE);
-        const r = (size / 2 - dotSize) * normDist;
-        const x = Math.sin(z.angle) * r;
-        const y = -Math.cos(z.angle) * r;
-        return (
-          <div
-            key={i}
-            className="absolute rounded-full bg-red-500 shadow-[0_0_8px_rgba(255,0,0,0.9)] game04-radar-dot"
-            style={{
-              width: dotSize,
-              height: dotSize,
-              left: `calc(50% + ${x}px)`,
-              top: `calc(100% + ${y}px)`,
-              transform: 'translate(-50%, -50%)',
-            }}
-          />
-        );
-      })}
+      {/* 근접 좀비 점: 정면 180°(-π/2 ~ π/2) 안만 표시, 중심=반원 하단(50%,100%) */}
+      {zombies
+        .filter((z) => z.angle >= -RADAR_ANGLE_HALF_RAD && z.angle <= RADAR_ANGLE_HALF_RAD)
+        .map((z, i) => {
+          const normDist = Math.min(1, z.distance / RADAR_DETECT_RANGE);
+          const r = (size / 2 - dotSize) * normDist;
+          const x = Math.sin(z.angle) * r;
+          const y = -Math.cos(z.angle) * r;
+          return (
+            <div
+              key={i}
+              className="absolute rounded-full bg-red-500 shadow-[0_0_8px_rgba(255,0,0,0.9)] game04-radar-dot"
+              style={{
+                width: dotSize,
+                height: dotSize,
+                left: `calc(50% + ${x}px)`,
+                top: `calc(100% + ${y}px)`,
+                transform: 'translate(-50%, -50%)',
+              }}
+            />
+          );
+        })}
     </div>
   );
 };
@@ -151,7 +155,8 @@ const Game04: React.FC<Game04Props> = ({ onGameResult, inputMode: forceInputMode
       const { yaw, pitch } = data;
       if (!Number.isFinite(yaw) || !Number.isFinite(pitch)) return;
       if (forceInputMode === 'mouse') return; // 디버그에서 mouse 강제 시 헤드 데이터 무시
-      const yawRad = (yaw / HEAD_YAW_RANGE_DEG) * (HEAD_YAW_RANGE_DEG * Math.PI / 180);
+      const yawRadRaw = (yaw * Math.PI) / 180;
+      const yawRad = Math.max(-MOUSE_YAW_RAD, Math.min(MOUSE_YAW_RAD, yawRadRaw));
       headRotationRef.current = { yaw: yawRad, pitch: 0 };
       setInputMode('head');
     });

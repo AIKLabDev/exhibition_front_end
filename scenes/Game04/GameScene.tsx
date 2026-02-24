@@ -20,13 +20,15 @@ import {
   INITIAL_SPAWN_INTERVAL,
   MIN_SPAWN_INTERVAL,
   RADAR_DETECT_RANGE,
+  PLAYER_VIEW_ANGLE_DEGREES,
 } from './constants';
 
 // --- 내부 상수 ---
 const MAX_BULLETS = 600;
 const MAX_ZOMBIES = 500;
 const MAX_PARTICLES = 800;
-const MAX_SPAWN_ANGLE = 60 * (Math.PI / 180);
+/** 좀비 스폰 각도: PLAYER_VIEW_ANGLE_DEGREES와 동일(정면 70° 안에서만 스폰) */
+const SPAWN_HALF_ANGLE_RAD = (PLAYER_VIEW_ANGLE_DEGREES / 2) * (Math.PI / 180);
 const FLOOR_LEVEL = -1.5;
 
 // 네온 컬러
@@ -296,7 +298,7 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, se
         const zombie = zombiesData.current.find((z) => !z.active);
         if (zombie) {
           zombie.active = true;
-          const angle = -Math.PI / 2 + (Math.random() - 0.5) * MAX_SPAWN_ANGLE * 2;
+          const angle = -Math.PI / 2 + (Math.random() - 0.5) * 2 * SPAWN_HALF_ANGLE_RAD;
           zombie.pos.set(Math.cos(angle) * SPAWN_RADIUS, FLOOR_LEVEL, Math.sin(angle) * SPAWN_RADIUS);
           zombie.speed = ZOMBIE_BASE_SPEED + progress * 15;
 
