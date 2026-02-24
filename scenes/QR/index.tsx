@@ -1,12 +1,12 @@
 import React, { useCallback, useEffect, useState, useRef } from 'react';
-import { useCameraFrameCanvas } from '../hooks/useCameraFrameCanvas';
-import { useQRROI, DEFAULT_QR_ROI } from '../hooks/useQRROI';
-import { getVisionWsService } from '../services/visionWebSocketService';
-import { backendWsService } from '../services/backendWebSocketService';
-import type { VisionQRScannedData } from '../protocol';
-import { BackendMessageName } from '../protocol';
-import { LAYOUT_CAMERA_SIDEBAR_WIDTH_PX } from '../layoutConstants';
-import { QR_SUCCESS_DISPLAY_MS, QR_SCAN_INSTRUCTION, QR_STRINGS } from './QR/constants';
+import { useCameraFrameCanvas } from '../../hooks/useCameraFrameCanvas';
+import { useQRROI, DEFAULT_QR_ROI } from '../../hooks/useQRROI';
+import { getVisionWsService } from '../../services/visionWebSocketService';
+import { backendWsService } from '../../services/backendWebSocketService';
+import type { VisionQRScannedData } from '../../protocol';
+import { BackendMessageName } from '../../protocol';
+import { LAYOUT_CAMERA_SIDEBAR_WIDTH_PX } from '../../layoutConstants';
+import { QR_SUCCESS_DISPLAY_MS, QR_SCAN_INSTRUCTION, QR_STRINGS } from './constants';
 import { QRScanBoxROI } from './QRScanBoxROI';
 
 interface QRProps {
@@ -146,7 +146,7 @@ const QR: React.FC<QRProps> = ({ onCancel, text, onQRScannedComplete, visionOnli
               </div>
             )}
 
-            {/* 중복 참여자 연출: 백엔드 QR_DUPLICATED 수신 후 또는 디버그 트리거 시 */}
+            {/* 중복 참여자 연출: 백엔드 QR_DUPLICATED 수신 후 */}
             {showDuplicated && (
               <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/70 backdrop-blur-sm animate-[qrSuccessFadeIn_0.3s_ease-out]">
                 <div className="flex flex-col items-center gap-6 text-center">
