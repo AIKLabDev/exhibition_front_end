@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { useCameraFrameCanvas } from '../hooks/useCameraFrameCanvas';
+import { useQRROI, DEFAULT_QR_ROI } from '../hooks/useQRROI';
 import { getVisionWsService } from '../services/visionWebSocketService';
 import type { VisionQRScannedData } from '../protocol';
+import { QRScanBoxROI } from './QRScanBoxROI';
 
 const QR_SUCCESS_DISPLAY_MS = 2000;
 
@@ -63,7 +65,11 @@ const QR: React.FC<QRProps> = ({ onCancel, text, onQRScannedComplete, visionOnli
     lastFrameTimeRef.current = Date.now();
   }, []);
 
-  const { hasFrame } = useCameraFrameCanvas(canvasRef, { enabled: true, onFrame });
+  const { hasFrame, frameSize } = useCameraFrameCanvas(canvasRef, { enabled: true, onFrame });
+  const roiFromVision = useQRROI();
+  const scanBoxRoi = roiFromVision ?? DEFAULT_QR_ROI;
+  const cameraAspectRatio =
+    frameSize && frameSize.height > 0 ? frameSize.width / frameSize.height : 16 / 9;
 
   // 첫 프레임 도착 시 바로 스트림 활성 표시
   useEffect(() => {
@@ -94,16 +100,8 @@ const QR: React.FC<QRProps> = ({ onCancel, text, onQRScannedComplete, visionOnli
               style={{ display: 'block', width: '100%', height: '100%', objectFit: 'cover' }}
             />
 
-            {/* Overlay Scan UI */}
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="w-[500px] h-[500px] border-4 border-blue-500/50 rounded-[3rem] relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-2 bg-blue-400 shadow-[0_0_20px_#60a5fa] animate-[scan_2s_linear_infinite]" />
-                <div className="absolute top-0 left-0 w-16 h-16 border-t-8 border-l-8 border-blue-500 rounded-tl-3xl" />
-                <div className="absolute top-0 right-0 w-16 h-16 border-t-8 border-r-8 border-blue-500 rounded-tr-3xl" />
-                <div className="absolute bottom-0 left-0 w-16 h-16 border-b-8 border-l-8 border-blue-500 rounded-bl-3xl" />
-                <div className="absolute bottom-0 right-0 w-16 h-16 border-b-8 border-r-8 border-blue-500 rounded-br-3xl" />
-              </div>
-            </div>
+            {/* Overlay Scan UI: ROI에 맞춘 파란 상자. 원본 카메라 비율 안에서만 그려서 찌그러짐 방지 */}
+            <QRScanBoxROI roi={scanBoxRoi} cameraAspectRatio={cameraAspectRatio} />
 
             {/* 인식 완료 연출: 2초 표시 후 씬 전환 */}
             {showScannedSuccess && (

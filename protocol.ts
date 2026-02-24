@@ -127,6 +127,8 @@ export const VisionMessageName = {
   GAME04_DIRECTION: 'GAME04_DIRECTION',
   /** QR 씬에서 Python이 QR 인식 시 → 프론트는 백엔드에 QR_SCANNED 전달 */
   QR_SCANNED: 'QR_SCANNED',
+  /** QR 씬에서 스캔 영역(ROI) 전달. left/top/width/height 비율(0~1). 프론트는 파란 상자 위치·크기에 반영 */
+  QR_ROI: 'QR_ROI',
 } as const;
 export type VisionMessageNameType = (typeof VisionMessageName)[keyof typeof VisionMessageName];
 
@@ -182,6 +184,14 @@ export interface VisionQRScannedData {
   type?: string;
 }
 
+/** QR_ROI 메시지의 data (Python → 프론트). 비율(0~1). left/top = 영역 왼쪽·위 기준, width/height = 영역 크기. */
+export interface VisionQRROIData {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
 /** @deprecated VisionMessageType 대신 VisionMessageName 사용 */
 export const VisionMessageType = {
   SET_SCENE_PY: VisionMessageName.SET_SCENE,
@@ -193,5 +203,6 @@ export const VisionMessageType = {
   HUMAN_DETECTED: VisionMessageName.HUMAN_DETECTED,
   GAME04_DIRECTION: VisionMessageName.GAME04_DIRECTION,
   QR_SCANNED: VisionMessageName.QR_SCANNED,
+  QR_ROI: VisionMessageName.QR_ROI,
 } as const;
 export type VisionMessageTypeValue = (typeof VisionMessageType)[keyof typeof VisionMessageType];

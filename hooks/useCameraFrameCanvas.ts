@@ -20,25 +20,33 @@ export interface UseCameraFrameCanvasOptions {
 /**
  * @param canvasRef - 그릴 canvas의 ref
  * @param options - enabled, onFrame
- * @returns hasFrame - 최소 한 번이라도 프레임을 받았는지 (대기 UI vs 영상 표시용)
+ * @returns hasFrame, frameSize(원본 프레임 크기, ROI 비율 계산용)
  */
 export function useCameraFrameCanvas(
   canvasRef: RefObject<HTMLCanvasElement | null>,
   options: UseCameraFrameCanvasOptions = {}
-): { hasFrame: boolean } {
+): { hasFrame: boolean; frameSize: { width: number; height: number } | null } {
   const { enabled = true, onFrame } = options;
   const frameRef = useRef<CameraFrameData | null>(null);
   const [hasFrame, setHasFrame] = useState(false);
+  const [frameSize, setFrameSize] = useState<{ width: number; height: number } | null>(null);
   const hasFrameRef = useRef(false);
   const pendingDecodeRef = useRef(false);
   const rafIdRef = useRef<number>(0);
 
-  // 구독: 프레임을 ref에만 넣고, onFrame 호출. 첫 프레임 시 hasFrame true로 한 번만 setState
+  // 구독: 프레임을 ref에만 넣고, onFrame 호출. 첫 프레임 시 hasFrame true. 프레임 크기 있으면 frameSize 갱신(ROI 비율 계산용)
   useEffect(() => {
     if (!enabled) return;
     const unsub = backendWsService.addFrameListener((data) => {
       frameRef.current = data;
       onFrame?.();
+      if (data.width != null && data.height != null) {
+        const w = data.width;
+        const h = data.height;
+        setFrameSize((prev) =>
+          prev && prev.width === w && prev.height === h ? prev : { width: w, height: h }
+        );
+      }
       if (!hasFrameRef.current) {
         hasFrameRef.current = true;
         setHasFrame(true);
@@ -49,12 +57,13 @@ export function useCameraFrameCanvas(
     };
   }, [enabled, onFrame]);
 
-  // enabled 꺼질 때 hasFrame 리셋 (Game02가 ALIGNING 벗어날 때)
+  // enabled 꺼질 때 hasFrame·frameSize 리셋 (Game02가 ALIGNING 벗어날 때)
   useEffect(() => {
     if (!enabled) {
       frameRef.current = null;
       hasFrameRef.current = false;
       setHasFrame(false);
+      setFrameSize(null);
       pendingDecodeRef.current = false;
     }
   }, [enabled]);
@@ -108,5 +117,5 @@ export function useCameraFrameCanvas(
     return () => cancelAnimationFrame(rafIdRef.current);
   }, [enabled, canvasRef]);
 
-  return { hasFrame };
+  return { hasFrame, frameSize };
 }
