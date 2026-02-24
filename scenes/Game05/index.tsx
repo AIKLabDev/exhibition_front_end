@@ -9,7 +9,7 @@ import { CHAR_X, MAX_HP, GAME_DURATION, CANVAS_WIDTH as W, CANVAS_HEIGHT as H, A
 import { loadAllAssets } from './assets';
 import { initSounds, playSfx, stopAllSounds } from './sounds';
 import { stateHandlers, checkAttackHit } from './states';
-import { useGameStartFromBackend } from '../../hooks/useGameStartFromBackend';
+import { useGameStartFromBackend, isStartableState } from '../../hooks/useGameStartFromBackend';
 import './Game05.css';
 
 function createInitialState(): GameState {
@@ -125,8 +125,10 @@ const Game05: React.FC<Game05Props> = ({ onGameResult, triggerStartFromBackend =
     changeState('playing');
   }, [resetGame, changeState]);
 
+  // 타이틀 또는 결과 화면에서 백엔드 GAME_START 시 시작/재시작 (3판 진행 시 재시작 포함)
+  const game05StartableStates: readonly GameStateType[] = ['title', 'result'];
   useGameStartFromBackend(triggerStartFromBackend, startGame, {
-    onlyWhen: () => gameStateUI === 'title',
+    onlyWhen: () => isStartableState(gameStateUI, game05StartableStates),
   });
 
   // 입력 처리 (타이틀: startGame, 플레이 중: 공격)

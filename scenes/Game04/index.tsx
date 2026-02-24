@@ -196,8 +196,9 @@ const Game04: React.FC<Game04Props> = ({ onGameResult, inputMode: forceInputMode
     resultReportedRef.current = false;
   }, []);
 
+  // 대기 중 또는 게임오버(재시작) 화면에서 백엔드 GAME_START 시 재시작
   useGameStartFromBackend(triggerStartFromBackend, startGame, {
-    onlyWhen: () => !gameStarted && !gameOver,
+    onlyWhen: () => !gameStarted,
   });
 
   const handleGameOver = useCallback((finalScoreVal: number) => {

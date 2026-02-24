@@ -30,7 +30,7 @@ import { generateLocalGameScenario } from './localScenarioService';
 import { backendWsService } from '../../services/backendWebSocketService';
 import { BackendMessageName } from '../../protocol';
 import { useCameraFrameCanvas } from '../../hooks/useCameraFrameCanvas';
-import { useGameStartFromBackend } from '../../hooks/useGameStartFromBackend';
+import { useGameStartFromBackend, isStartableState } from '../../hooks/useGameStartFromBackend';
 import ResultOverlay from './ResultOverlay';
 import ruleBgImg from '../../images/Game02 Rule.png';
 import './Game02.css';
@@ -324,8 +324,15 @@ const Game02: React.FC<Game02Props> = ({ onGameResult, triggerStartFromBackend =
     }
   }, [state, onGameResult]);
 
+  // 대기 중 또는 결과 화면에서 백엔드 GAME_START 시 시작/재시작 (3판 진행 시 재시작 포함)
+  const game02StartableStates: readonly Game02State[] = [
+    Game02State.INTRO,
+    Game02State.ALIGNING,
+    Game02State.SUCCESS,
+    Game02State.FAILURE,
+  ];
   useGameStartFromBackend(triggerStartFromBackend, startGame, {
-    onlyWhen: () => state === Game02State.INTRO || state === Game02State.ALIGNING,
+    onlyWhen: () => isStartableState(state, game02StartableStates),
   });
 
   // Backend → GAME02_ALIGNMENT_COMPLETE 수신 시 게임 시작, HEAD_POSE 수신 시 뷰용 yaw/pitch 갱신
