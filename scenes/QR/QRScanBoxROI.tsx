@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import type { VisionQRROIData } from '../protocol';
+import type { VisionQRROIData } from '../../protocol';
 
 /** frameSize 미수신 시 가정하는 비율 (예: 16:9) */
 const FALLBACK_ASPECT_RATIO = 16 / 9;
