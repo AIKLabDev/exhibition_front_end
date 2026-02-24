@@ -78,9 +78,11 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
     handleStartGameRef.current = handleStartGame;
   });
 
-  // 백엔드 GAME_START 수신 시 App이 triggerStartFromBackend 증가 → 버튼 없이 시작
+  // 백엔드 GAME_START 수신 시(trigger 증가)에만 시작. 씬 진입 시점 값이면 무시(튜토리얼 등 대기용)
+  const prevTriggerRef = useRef(triggerStartFromBackend);
   useEffect(() => {
-    if (triggerStartFromBackend > 0) {
+    if (triggerStartFromBackend > prevTriggerRef.current) {
+      prevTriggerRef.current = triggerStartFromBackend;
       handleStartGameRef.current?.();
     }
   }, [triggerStartFromBackend]);

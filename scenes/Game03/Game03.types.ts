@@ -25,4 +25,6 @@ export interface CardData {
 export interface Game03Props {
   /** 게임 결과(WIN/LOSE) 전달 → App이 백엔드에 GAME_RESULT 전송 */
   onGameResult?: (result: 'WIN' | 'LOSE') => void;
+  /** 백엔드 GAME_START 수신 시 App이 증가시켜 전달. 0 → N 되면 버튼 없이 게임 시작 */
+  triggerStartFromBackend?: number;
 }

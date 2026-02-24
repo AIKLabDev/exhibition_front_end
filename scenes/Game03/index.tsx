@@ -15,7 +15,7 @@ import './Game03.css';
 const BASE_WIDTH = 2560;
 const BASE_HEIGHT = 720;
 
-const Game03: React.FC<Game03Props> = ({ onGameResult }) => {
+const Game03: React.FC<Game03Props> = ({ onGameResult, triggerStartFromBackend = 0 }) => {
   const [gameState, setGameState] = useState<GameState>(GameState.IDLE);
   const [cards, setCards] = useState<CardData[]>([]);
   const [selectedCardId, setSelectedCardId] = useState<number | null>(null);
@@ -64,6 +64,15 @@ const Game03: React.FC<Game03Props> = ({ onGameResult }) => {
     setShufflePhase(0);
     resultReportedRef.current = false;
   }, []);
+
+  // 백엔드 GAME_START 수신 시(trigger 증가)에만 시작. 씬 진입 시점 값이면 무시
+  const prevTriggerRef = useRef(triggerStartFromBackend);
+  useEffect(() => {
+    if (triggerStartFromBackend > prevTriggerRef.current && gameState === GameState.IDLE) {
+      prevTriggerRef.current = triggerStartFromBackend;
+      initializeGame();
+    }
+  }, [triggerStartFromBackend, gameState, initializeGame]);
 
   // Stage 1: 초기 공개
   useEffect(() => {

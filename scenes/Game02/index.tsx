@@ -90,7 +90,7 @@ function computeViewWindow(
   };
 }
 
-const Game02: React.FC<Game02Props> = ({ onGameResult }) => {
+const Game02: React.FC<Game02Props> = ({ onGameResult, triggerStartFromBackend = 0 }) => {
   const [state, setState] = useState<Game02State>(Game02State.INTRO);
   const [scenario, setScenario] = useState<GameScenario | null>(null);
   const [targetCropUrl, setTargetCropUrl] = useState<string | null>(null);
@@ -322,6 +322,15 @@ const Game02: React.FC<Game02Props> = ({ onGameResult }) => {
       onGameResult('lose');
     }
   }, [state, onGameResult]);
+
+  // 백엔드 GAME_START 수신 시(trigger 증가)에만 시작. 씬 진입 시점 값이면 무시
+  const prevTriggerRef = useRef(triggerStartFromBackend);
+  useEffect(() => {
+    if (triggerStartFromBackend > prevTriggerRef.current && (state === Game02State.INTRO || state === Game02State.ALIGNING)) {
+      prevTriggerRef.current = triggerStartFromBackend;
+      startNewGame();
+    }
+  }, [triggerStartFromBackend, state, startNewGame]);
 
   // Backend → GAME02_ALIGNMENT_COMPLETE 수신 시 게임 시작, HEAD_POSE 수신 시 뷰용 yaw/pitch 갱신
   useEffect(() => {

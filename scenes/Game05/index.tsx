@@ -43,7 +43,7 @@ function createInitialState(): GameState {
   };
 }
 
-const Game05: React.FC<Game05Props> = ({ onGameResult }) => {
+const Game05: React.FC<Game05Props> = ({ onGameResult, triggerStartFromBackend = 0 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const assetsRef = useRef<GameAssets | null>(null);
   const soundsRef = useRef<GameSounds | null>(null);
@@ -141,6 +141,16 @@ const Game05: React.FC<Game05Props> = ({ onGameResult }) => {
     }
     changeState('title');
   }, [changeState]);
+
+  // 백엔드 GAME_START 수신 시(trigger 증가)에만 시작. 씬 진입 시점 값이면 무시
+  const prevTriggerRef = useRef(triggerStartFromBackend);
+  useEffect(() => {
+    if (triggerStartFromBackend > prevTriggerRef.current && gameStateUI === 'title') {
+      prevTriggerRef.current = triggerStartFromBackend;
+      resetGame();
+      changeState('playing');
+    }
+  }, [triggerStartFromBackend, gameStateUI, resetGame, changeState]);
 
   // 에셋 및 사운드 로드
   useEffect(() => {

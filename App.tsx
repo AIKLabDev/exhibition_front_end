@@ -160,6 +160,7 @@ const App: React.FC = () => {
             onGameResult={(result) => {
               handleUIEvent('GAME_RESULT', { result });
             }}
+            triggerStartFromBackend={gameStartTrigger}
           />
         );
       case SceneDefine.GAME03:
@@ -168,6 +169,7 @@ const App: React.FC = () => {
             onGameResult={(result) => {
               handleUIEvent('GAME_RESULT', { result });
             }}
+            triggerStartFromBackend={gameStartTrigger}
           />
         );
       case SceneDefine.GAME04:
@@ -177,6 +179,7 @@ const App: React.FC = () => {
             onGameResult={(result) => {
               handleUIEvent('GAME_RESULT', { result });
             }}
+            triggerStartFromBackend={gameStartTrigger}
           />
         );
       case SceneDefine.GAME05:
@@ -185,6 +188,7 @@ const App: React.FC = () => {
             onGameResult={(result) => {
               handleUIEvent('GAME_RESULT', { result });
             }}
+            triggerStartFromBackend={gameStartTrigger}
           />
         );
       case SceneDefine.GAME_RESULT:

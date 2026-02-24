@@ -110,7 +110,7 @@ const HealthBar = ({ health, scaleH }: { health: number; scaleH: number }) => {
   );
 };
 
-const Game04: React.FC<Game04Props> = ({ onGameResult, inputMode: forceInputMode }) => {
+const Game04: React.FC<Game04Props> = ({ onGameResult, inputMode: forceInputMode, triggerStartFromBackend = 0 }) => {
   const [gameStarted, setGameStarted] = useState(false);
   const [gameOver, setGameOver] = useState(false);
   const [finalScore, setFinalScore] = useState(0);
@@ -193,6 +193,15 @@ const Game04: React.FC<Game04Props> = ({ onGameResult, inputMode: forceInputMode
     setTimeLeft(GAME_DURATION);
     resultReportedRef.current = false;
   }, []);
+
+  // 백엔드 GAME_START 수신 시(trigger 증가)에만 시작. 씬 진입 시점 값이면 무시
+  const prevTriggerRef = useRef(triggerStartFromBackend);
+  useEffect(() => {
+    if (triggerStartFromBackend > prevTriggerRef.current && !gameStarted && !gameOver) {
+      prevTriggerRef.current = triggerStartFromBackend;
+      startGame();
+    }
+  }, [triggerStartFromBackend, gameStarted, gameOver, startGame]);
 
   const handleGameOver = useCallback((finalScoreVal: number) => {
     setGameStarted(false);
