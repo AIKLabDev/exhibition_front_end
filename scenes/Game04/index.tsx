@@ -9,7 +9,7 @@ import { Game04Props } from './Game04.types';
 import { PLAYER_MAX_HEALTH, GAME_DURATION, GAME04_STRINGS, RADAR_DETECT_RANGE, RADAR_ANGLE_DEGREES, PLAYER_VIEW_ANGLE_DEGREES } from './constants';
 import { GameCanvas, type NearbyZombieRadar } from './GameScene';
 import { getVisionWsService } from '../../services/visionWebSocketService';
-import { useGameStartFromBackend } from '../../hooks/useGameStartFromBackend';
+import { useGameStartFromBackend, useResetResultReportRefWhenEnteringRound } from '../../hooks/useGameStartFromBackend';
 import './Game04.css';
 
 /** 기준 해상도 (전시 키오스크) */
@@ -193,13 +193,14 @@ const Game04: React.FC<Game04Props> = ({ onGameResult, inputMode: forceInputMode
     setScore(0);
     setHealth(PLAYER_MAX_HEALTH);
     setTimeLeft(GAME_DURATION);
-    resultReportedRef.current = false;
   }, []);
 
   // 대기 중 또는 게임오버(재시작) 화면에서 백엔드 GAME_START 시 재시작
   useGameStartFromBackend(triggerStartFromBackend, startGame, {
     onlyWhen: () => !gameStarted,
   });
+
+  useResetResultReportRefWhenEnteringRound(gameStarted, resultReportedRef);
 
   const handleGameOver = useCallback((finalScoreVal: number) => {
     setGameStarted(false);

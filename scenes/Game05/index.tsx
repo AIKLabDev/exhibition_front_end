@@ -9,7 +9,7 @@ import { CHAR_X, MAX_HP, GAME_DURATION, CANVAS_WIDTH as W, CANVAS_HEIGHT as H, A
 import { loadAllAssets } from './assets';
 import { initSounds, playSfx, stopAllSounds } from './sounds';
 import { stateHandlers, checkAttackHit } from './states';
-import { useGameStartFromBackend, isStartableState } from '../../hooks/useGameStartFromBackend';
+import { useGameStartFromBackend, isStartableState, useResetResultReportRefWhenEnteringRound } from '../../hooks/useGameStartFromBackend';
 import './Game05.css';
 
 function createInitialState(): GameState {
@@ -99,7 +99,6 @@ const Game05: React.FC<Game05Props> = ({ onGameResult, triggerStartFromBackend =
     s.gameTime = 0;
     s.remainingTime = GAME_DURATION;
     s.defeatTimer = 0;
-    resultReportedRef.current = false;
   }, []);
 
   // 공격 시작
@@ -130,6 +129,8 @@ const Game05: React.FC<Game05Props> = ({ onGameResult, triggerStartFromBackend =
   useGameStartFromBackend(triggerStartFromBackend, startGame, {
     onlyWhen: () => isStartableState(gameStateUI, game05StartableStates),
   });
+
+  useResetResultReportRefWhenEnteringRound(gameStateUI === 'playing', resultReportedRef);
 
   // 입력 처리 (타이틀: startGame, 플레이 중: 공격)
   const handleInput = useCallback(

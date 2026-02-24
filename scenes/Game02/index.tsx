@@ -30,7 +30,7 @@ import { generateLocalGameScenario } from './localScenarioService';
 import { backendWsService } from '../../services/backendWebSocketService';
 import { BackendMessageName } from '../../protocol';
 import { useCameraFrameCanvas } from '../../hooks/useCameraFrameCanvas';
-import { useGameStartFromBackend, isStartableState } from '../../hooks/useGameStartFromBackend';
+import { useGameStartFromBackend, isStartableState, useResetResultReportRefWhenEnteringRound } from '../../hooks/useGameStartFromBackend';
 import ResultOverlay from './ResultOverlay';
 import ruleBgImg from '../../images/Game02 Rule.png';
 import './Game02.css';
@@ -103,6 +103,7 @@ const Game02: React.FC<Game02Props> = ({ onGameResult, triggerStartFromBackend =
   const [timeLeft, setTimeLeft] = useState(GAME_TIME_LIMIT);
   const [lastClick, setLastClick] = useState<{ x: number; y: number } | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const resultReportedRef = useRef(false);
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const alignCanvasRef = useRef<HTMLCanvasElement>(null);
   const { hasFrame: alignHasFrame } = useCameraFrameCanvas(alignCanvasRef, {
@@ -315,14 +316,21 @@ const Game02: React.FC<Game02Props> = ({ onGameResult, triggerStartFromBackend =
     };
   }, [state]);
 
-  // 게임 결과 보고
+  // 게임 결과 보고 (한 판당 한 번만)
   useEffect(() => {
-    if (state === Game02State.SUCCESS) {
+    if (state === Game02State.SUCCESS && !resultReportedRef.current) {
+      resultReportedRef.current = true;
       onGameResult('win');
-    } else if (state === Game02State.FAILURE) {
+    } else if (state === Game02State.FAILURE && !resultReportedRef.current) {
+      resultReportedRef.current = true;
       onGameResult('lose');
     }
   }, [state, onGameResult]);
+
+  useResetResultReportRefWhenEnteringRound(
+    state === Game02State.GENERATING || state === Game02State.ANNOUNCING || state === Game02State.PLAYING,
+    resultReportedRef
+  );
 
   // 대기 중 또는 결과 화면에서 백엔드 GAME_START 시 시작/재시작 (3판 진행 시 재시작 포함)
   const game02StartableStates: readonly Game02State[] = [

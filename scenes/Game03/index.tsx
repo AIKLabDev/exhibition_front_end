@@ -7,7 +7,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GameState, CardData, Game03Props, CardType } from './Game03.types';
-import { useGameStartFromBackend, isStartableState } from '../../hooks/useGameStartFromBackend';
+import { useGameStartFromBackend, isStartableState, useResetResultReportRefWhenEnteringRound } from '../../hooks/useGameStartFromBackend';
 import { REVEAL_DURATION, SHUFFLE_DURATION, NUM_CARDS, GAME03_STRINGS } from './constants';
 import Card from './Card';
 import './Game03.css';
@@ -64,7 +64,6 @@ const Game03: React.FC<Game03Props> = ({ onGameResult, triggerStartFromBackend =
     setSelectedCardId(null);
     setGameState(GameState.REVEALING);
     setShufflePhase(0);
-    resultReportedRef.current = false;
   }, []);
 
   // 대기 중 또는 결과 화면에서 백엔드 GAME_START 시 시작/재시작 (3판 진행 시 재시작 포함)
@@ -72,6 +71,8 @@ const Game03: React.FC<Game03Props> = ({ onGameResult, triggerStartFromBackend =
   useGameStartFromBackend(triggerStartFromBackend, startGame, {
     onlyWhen: () => isStartableState(gameState, game03StartableStates),
   });
+
+  useResetResultReportRefWhenEnteringRound(gameState === GameState.REVEALING, resultReportedRef);
 
   // Stage 1: 초기 공개
   useEffect(() => {

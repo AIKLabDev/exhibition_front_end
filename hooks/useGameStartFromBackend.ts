@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type MutableRefObject } from 'react';
 
 export interface UseGameStartFromBackendOptions {
   /**
@@ -14,6 +14,20 @@ export interface UseGameStartFromBackendOptions {
  */
 export function isStartableState<T>(current: T, startable: readonly T[]): boolean {
   return startable.includes(current);
+}
+
+/**
+ * 새 라운드(플레이) 진입 시 resultReportedRef를 false로 리셋.
+ * GAME_START → startGame() 호출 직후 같은 effect 턴에서 "결과 전송" effect가
+ * 이전 state로 다시 전송하는 것을 막기 위해, ref 리셋은 state가 실제로 바뀐 뒤 effect에서 수행.
+ */
+export function useResetResultReportRefWhenEnteringRound(
+  isInRound: boolean,
+  resultReportedRef: MutableRefObject<boolean>
+): void {
+  useEffect(() => {
+    if (isInRound) resultReportedRef.current = false;
+  }, [isInRound, resultReportedRef]);
 }
 
 /**
