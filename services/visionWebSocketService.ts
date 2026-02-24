@@ -18,6 +18,7 @@ import type {
   VisionHumanDetectedData,
   VisionGame04DirectionData,
   VisionQRScannedData,
+  VisionQRROIData,
 } from '../protocol';
 import {
   Sender,
@@ -99,6 +100,7 @@ export class VisionWebSocketService {
   private onHumanDetectedCallback?: (data: VisionHumanDetectedData) => void;
   private onGame04DirectionCallback?: (data: VisionGame04DirectionData) => void;
   private onQRScannedCallback?: (data: VisionQRScannedData) => void;
+  private onQRROICallback?: (data: VisionQRROIData) => void;
 
   constructor(url: string) {
     this.url = url;
@@ -352,6 +354,20 @@ export class VisionWebSocketService {
           this.onQRScannedCallback?.(qrData);
           console.log('[VisionWS] QR_SCANNED (forward to backend)', qrData.data);
         }
+      } else if (name === VisionMessageName.QR_ROI) {
+        const roiData = payload as VisionQRROIData;
+        if (
+          roiData &&
+          typeof roiData.left === 'number' &&
+          typeof roiData.top === 'number' &&
+          typeof roiData.width === 'number' &&
+          typeof roiData.height === 'number'
+        ) {
+          this.onQRROICallback?.(roiData);
+          console.log('[VisionWS] QR_ROI received', { left: roiData.left, top: roiData.top, width: roiData.width, height: roiData.height });
+        } else {
+          console.warn('[VisionWS] QR_ROI invalid payload', payload);
+        }
       } else {
         console.warn('[VisionWS] Unknown message name:', name);
       }
@@ -409,5 +425,11 @@ export class VisionWebSocketService {
   onQRScanned(cb: (data: VisionQRScannedData) => void): () => void {
     this.onQRScannedCallback = cb;
     return () => { this.onQRScannedCallback = undefined; };
+  }
+
+  /** QR 씬에서 Python이 보내는 스캔 영역(ROI) 구독. 파란 상자 위치·크기 반영용. */
+  onQRROI(cb: (data: VisionQRROIData) => void): () => void {
+    this.onQRROICallback = cb;
+    return () => { this.onQRROICallback = undefined; };
   }
 }
