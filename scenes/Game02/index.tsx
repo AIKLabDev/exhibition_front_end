@@ -425,7 +425,7 @@ const Game02: React.FC<Game02Props> = ({ onGameResult, triggerStartFromBackend =
       const maxY = 1 - viewWindow.h;
 
       let nx = clamp(yaw / HEADPOSE_YAW_RANGE_DEG, -1, 1);
-      let ny = clamp(pitch / HEADPOSE_PITCH_RANGE_DEG, -1, 1);
+      let ny = clamp(-pitch / HEADPOSE_PITCH_RANGE_DEG, -1, 1); // - 부호: pitch(-) → 뷰 아래로
 
       if (Math.abs(nx) < HEADPOSE_DEADZONE) nx = 0;
       if (Math.abs(ny) < HEADPOSE_DEADZONE) ny = 0;
