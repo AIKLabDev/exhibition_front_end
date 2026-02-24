@@ -3,7 +3,16 @@
  */
 
 /** 인식 완료 연출 표시 시간(ms). 이후 백엔드로 전달 또는 중복 참여자 연출 */
-export const QR_SUCCESS_DISPLAY_MS = 2000;
+export const QR_SUCCESS_DISPLAY_MS = 1000;
+
+/** 중복 참여자 연출 표시 시간(ms). 0이면 백엔드 씬 전환까지 유지 */
+export const QR_DUPLICATED_DISPLAY_MS = 0;
+
+/** 인식 완료 / 중복 참여 오버레이 페이드인 애니메이션 시간(ms) */
+export const QR_OVERLAY_FADE_IN_MS = 300;
+
+/** 인식 완료 / 중복 참여 오버레이 아이콘 스케일 애니메이션 시간(ms) */
+export const QR_OVERLAY_SCALE_MS = 400;
 
 /** 오른쪽 패널 안내 문구 (한글) */
 export const QR_SCAN_INSTRUCTION = '화면에 전시회 QR 티켓을 놓아주세요.';

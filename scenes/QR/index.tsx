@@ -6,7 +6,14 @@ import { backendWsService } from '../../services/backendWebSocketService';
 import type { VisionQRScannedData } from '../../protocol';
 import { BackendMessageName } from '../../protocol';
 import { LAYOUT_CAMERA_SIDEBAR_WIDTH_PX } from '../../layoutConstants';
-import { QR_SUCCESS_DISPLAY_MS, QR_SCAN_INSTRUCTION, QR_STRINGS } from './constants';
+import {
+  QR_SUCCESS_DISPLAY_MS,
+  QR_DUPLICATED_DISPLAY_MS,
+  QR_OVERLAY_FADE_IN_MS,
+  QR_OVERLAY_SCALE_MS,
+  QR_SCAN_INSTRUCTION,
+  QR_STRINGS,
+} from './constants';
 import { QRScanBoxROI } from './QRScanBoxROI';
 
 interface QRProps {
@@ -33,6 +40,7 @@ const QR: React.FC<QRProps> = ({ onCancel, text, onQRScannedComplete, visionOnli
   /** 인식 완료 2초 연출 중에 QR_DUPLICATED 수신 시, 연출 끝난 뒤에 중복 연출 표시 */
   const pendingDuplicateRef = useRef(false);
   const showScannedSuccessRef = useRef(false);
+  const duplicatedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   onQRScannedCompleteRef.current = onQRScannedComplete;
   showScannedSuccessRef.current = showScannedSuccess;
 
@@ -62,6 +70,21 @@ const QR: React.FC<QRProps> = ({ onCancel, text, onQRScannedComplete, visionOnli
   useEffect(() => {
     showScannedSuccessRef.current = showScannedSuccess;
   }, [showScannedSuccess]);
+
+  // 중복 참여 연출: QR_DUPLICATED_DISPLAY_MS > 0이면 해당 시간 후 자동 숨김
+  useEffect(() => {
+    if (!showDuplicated || QR_DUPLICATED_DISPLAY_MS <= 0) return;
+    duplicatedTimeoutRef.current = setTimeout(() => {
+      duplicatedTimeoutRef.current = null;
+      setShowDuplicated(false);
+    }, QR_DUPLICATED_DISPLAY_MS);
+    return () => {
+      if (duplicatedTimeoutRef.current) {
+        clearTimeout(duplicatedTimeoutRef.current);
+        duplicatedTimeoutRef.current = null;
+      }
+    };
+  }, [showDuplicated]);
 
   useEffect(() => {
     if (!showScannedSuccess) return;
@@ -131,11 +154,17 @@ const QR: React.FC<QRProps> = ({ onCancel, text, onQRScannedComplete, visionOnli
             {/* Overlay Scan UI: ROI에 맞춘 파란 상자. 원본 카메라 비율 안에서만 그려서 찌그러짐 방지 */}
             <QRScanBoxROI roi={scanBoxRoi} cameraAspectRatio={cameraAspectRatio} />
 
-            {/* 인식 완료 연출: 2초 표시 후 씬 전환 */}
+            {/* 인식 완료 연출: QR_SUCCESS_DISPLAY_MS 표시 후 씬 전환 */}
             {showScannedSuccess && (
-              <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/70 backdrop-blur-sm animate-[qrSuccessFadeIn_0.3s_ease-out]">
+              <div
+                className="absolute inset-0 z-20 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+                style={{ animation: `qrSuccessFadeIn ${QR_OVERLAY_FADE_IN_MS}ms ease-out` }}
+              >
                 <div className="flex flex-col items-center gap-6 text-center">
-                  <div className="w-28 h-28 rounded-full bg-green-500/20 border-4 border-green-400 flex items-center justify-center animate-[qrSuccessScale_0.4s_ease-out]">
+                  <div
+                    className="w-28 h-28 rounded-full bg-green-500/20 border-4 border-green-400 flex items-center justify-center"
+                    style={{ animation: `qrSuccessScale ${QR_OVERLAY_SCALE_MS}ms ease-out` }}
+                  >
                     <svg className="w-16 h-16 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                     </svg>
@@ -146,11 +175,17 @@ const QR: React.FC<QRProps> = ({ onCancel, text, onQRScannedComplete, visionOnli
               </div>
             )}
 
-            {/* 중복 참여자 연출: 백엔드 QR_DUPLICATED 수신 후 */}
+            {/* 중복 참여자 연출: 백엔드 QR_DUPLICATED 수신 후. 표시 시간은 QR_DUPLICATED_DISPLAY_MS */}
             {showDuplicated && (
-              <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/70 backdrop-blur-sm animate-[qrSuccessFadeIn_0.3s_ease-out]">
+              <div
+                className="absolute inset-0 z-20 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+                style={{ animation: `qrSuccessFadeIn ${QR_OVERLAY_FADE_IN_MS}ms ease-out` }}
+              >
                 <div className="flex flex-col items-center gap-6 text-center">
-                  <div className="w-28 h-28 rounded-full bg-amber-500/20 border-4 border-amber-400 flex items-center justify-center animate-[qrSuccessScale_0.4s_ease-out]">
+                  <div
+                    className="w-28 h-28 rounded-full bg-amber-500/20 border-4 border-amber-400 flex items-center justify-center"
+                    style={{ animation: `qrSuccessScale ${QR_OVERLAY_SCALE_MS}ms ease-out` }}
+                  >
                     <svg className="w-16 h-16 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
