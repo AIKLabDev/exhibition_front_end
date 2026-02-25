@@ -229,7 +229,6 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
               {round}/{GAME01_MESSAGES.totalRounds} 판
             </p>
           </div>
-          <div className="h-px w-32 bg-gradient-to-r from-transparent via-slate-700 to-transparent mt-2"></div>
         </div>
 
         {/* 우측: 중앙 오른쪽부터. 점수 | AI | (대기 시) 게임 시작 버튼 */}
