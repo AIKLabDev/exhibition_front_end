@@ -5,6 +5,7 @@
  */
 
 export const REVEAL_DURATION = 2000; // 2초
+export const FLIPPING_BACK_DURATION = 600; // 0.6초
 export const SHUFFLE_DURATION = 5000; // 5초
 export const NUM_CARDS = 5;
 

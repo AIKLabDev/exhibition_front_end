@@ -7,7 +7,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { CardType } from './Game03.types';
-import { GAME03_STRINGS, CARD_FACE_CONFIG } from './constants';
+import { GAME03_STRINGS, CARD_FACE_CONFIG, FLIPPING_BACK_DURATION } from './constants';
 import logoUrl from '../../resources/AIK_logo_white.png';
 
 interface CardProps {
@@ -45,7 +45,7 @@ const Card: React.FC<CardProps> = ({ type, isFlipped, onClick, disabled, positio
       <motion.div
         initial={false}
         animate={{ rotateY: isFlipped ? 180 : 0 }}
-        transition={{ duration: 0.6, type: 'spring', stiffness: 260, damping: 20 }}
+        transition={{ duration: FLIPPING_BACK_DURATION / 1000, type: 'spring', stiffness: 260, damping: 20 }}
         className="relative w-full h-full game03-card-inner"
       >
         {/* 뒷면: 로고 */}

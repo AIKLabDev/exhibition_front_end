@@ -8,7 +8,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { GameState, CardData, Game03Props, CardType, Game03Layout } from './Game03.types';
 import { useGameStartFromBackend, isStartableState, useResetResultReportRefWhenEnteringRound } from '../../hooks/useGameStartFromBackend';
-import { REVEAL_DURATION, SHUFFLE_DURATION, NUM_CARDS } from './constants';
+import { REVEAL_DURATION, SHUFFLE_DURATION, NUM_CARDS, FLIPPING_BACK_DURATION } from './constants';
 import { TutorialHeader, TutorialContent } from './TutorialScreen';
 import { IdleHeader, IdleContent } from './IdleScreen';
 import { RevealingHeader } from './RevealingScreen';
@@ -125,7 +125,9 @@ const Game03: React.FC<Game03Props> = ({ onGameResult, triggerStartFromBackend =
       shuffleTimerRef.current = window.setTimeout(runShuffle, currentInterval);
     };
 
-    runShuffle();
+    //. wait for flipping back duration
+    setTimeout(runShuffle, FLIPPING_BACK_DURATION);
+
     return () => {
       if (shuffleTimerRef.current) clearTimeout(shuffleTimerRef.current);
     };
