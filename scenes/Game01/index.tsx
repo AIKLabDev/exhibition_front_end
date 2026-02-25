@@ -244,14 +244,14 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
       </div>
 
       {/* Main Content Area */}
-      <main className="relative flex flex-col items-center justify-center w-full max-w-5xl h-full z-20 pt-16">
-        {/* AI Hand Display */}
-        <div className="relative z-10">
+      <main className="relative w-full max-w-5xl h-full z-20">
+        {/* 주먹 이모지: 화면 세로 정중앙에 고정 (absolute로 기준점 통일) */}
+        <div className="absolute inset-0 flex items-center justify-center z-10">
           <HandDisplay choice={game.aiChoice} status={game.status} lastResult={game.lastResult} />
         </div>
 
         {/* Floating Text Container */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-30 pt-24">
+        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-30">
           <div
             key={hypeKey}
             className={`
