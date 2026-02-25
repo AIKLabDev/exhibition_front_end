@@ -10,14 +10,14 @@ export const SHUFFLE_DURATION = 5000; // 5초
 export const NUM_CARDS = 5;
 
 /** 셔플 스왑 간격(ms): lerp(시작, 끝, progress) — 처음 느리게, 끝에 빠르게 */
-export const SHUFFLE_START_INTERVAL_MS = 500;
-export const SHUFFLE_END_INTERVAL_MS = 300;
+export const SHUFFLE_START_INTERVAL_MS = 1000;
+export const SHUFFLE_END_INTERVAL_MS = 400;
 
 /** 카드 위치 이동(셔플) 시 layout 애니메이션 — stiffness↓ 느리게, damping 조절로 떨림 제어 */
 export const CARD_LAYOUT_TRANSITION = {
   type: 'spring' as const,
   stiffness: 300,
-  damping: 30,
+  damping: 50,
 };
 
 /** Game03 UI 문자열 — 수정 시 이 객체만 편집 */
