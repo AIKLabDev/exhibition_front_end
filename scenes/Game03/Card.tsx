@@ -7,7 +7,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { CardType } from './Game03.types';
-import { GAME03_STRINGS } from './constants';
+import { GAME03_STRINGS, CARD_FACE_CONFIG } from './constants';
 import logoUrl from '../../resources/AIK_logo_white.png';
 
 interface CardProps {
@@ -25,12 +25,14 @@ const GOLDEN_RATIO = 1.618;
 
 const Card: React.FC<CardProps> = ({ type, isFlipped, onClick, disabled, positionIndex, width, height }) => {
   const cornerSize = Math.round(height * 0.08);
-  /*const emojiSize = Math.round(height * 0.42);*/
   const emojiSize = cornerSize * Math.pow(GOLDEN_RATIO, 4);
   const labelSize = Math.round(height * 0.06);
 
   const borderPx = Math.max(3, Math.round(width * 0.012));
   const paddingPx = Math.round(width * 0.04);
+
+  /** CardType별 앞면 설정 — 정의되지 않은 타입은 BOMB 스타일로 폴백 */
+  const face = CARD_FACE_CONFIG[type] ?? CARD_FACE_CONFIG.BOMB;
 
   return (
     <motion.div
@@ -60,29 +62,20 @@ const Card: React.FC<CardProps> = ({ type, isFlipped, onClick, disabled, positio
                 className="w-full h-auto object-contain brightness-125 contrast-125"
               />
             </div>
-            {/*<div className="absolute top-2 left-2 text-blue-400 font-bold" style={{ fontSize: cornerSize }}>{GAME03_STRINGS.CARD_BACK_AI}</div> */}
-            {/*<div className="absolute bottom-2 right-2 text-blue-400 font-bold rotate-180" style={{ fontSize: cornerSize }}>{GAME03_STRINGS.CARD_BACK_AI}</div> */}
           </div>
         </div>
 
-        {/* 앞면: 하트 / 폭탄 */}
+        {/* 앞면: CardType별 설정(CARD_FACE_CONFIG)으로 렌더 — 3종류 이상 확장 시 constants만 수정 */}
         <div
-          className={`game03-card-front absolute inset-0 w-full h-full rounded-xl flex flex-col items-center justify-center shadow-2xl bg-white ${type === CardType.HEART ? 'border-red-500' : 'border-zinc-300'}`}
+          className={`game03-card-front absolute inset-0 w-full h-full rounded-xl flex flex-col items-center justify-center shadow-2xl bg-white ${face.borderClassName}`}
           style={{ backfaceVisibility: 'hidden', borderWidth: borderPx }}
         >
-          {type === CardType.HEART ? (
-            <div className="flex flex-col items-center">
-              <span className="animate-pulse" style={{ fontSize: emojiSize }}>{GAME03_STRINGS.CARD_HEART_ICON}</span>
-              <span className="mt-2 text-red-600 font-black uppercase tracking-widest" style={{ fontSize: labelSize }}>{GAME03_STRINGS.CARD_HEART_LABEL}</span>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center">
-              <span style={{ fontSize: emojiSize }}>{GAME03_STRINGS.CARD_BOMB_ICON}</span>
-              <span className="mt-2 text-zinc-800 font-black uppercase tracking-widest" style={{ fontSize: labelSize }}>{GAME03_STRINGS.CARD_BOMB_LABEL}</span>
-            </div>
-          )}
-          <div className={`absolute top-2 left-2 font-bold ${type === CardType.HEART ? 'text-red-600' : 'text-zinc-800'}`} style={{ fontSize: cornerSize }}>{type === CardType.HEART ? GAME03_STRINGS.CARD_HEART_ICON : GAME03_STRINGS.CARD_BOMB_ICON}</div>
-          <div className={`absolute bottom-2 right-2 font-bold rotate-180 ${type === CardType.HEART ? 'text-red-600' : 'text-zinc-800'}`} style={{ fontSize: cornerSize }}>{type === CardType.HEART ? GAME03_STRINGS.CARD_HEART_ICON : GAME03_STRINGS.CARD_BOMB_ICON}</div>
+          <div className="flex flex-col items-center">
+            <span className={face.iconClassName || undefined} style={{ fontSize: emojiSize }}>{face.icon}</span>
+            <span className={`mt-2 font-black uppercase tracking-widest ${face.labelClassName}`} style={{ fontSize: labelSize }}>{face.label}</span>
+          </div>
+          <div className={`absolute top-2 left-2 font-bold ${face.labelClassName}`} style={{ fontSize: cornerSize }}>{face.icon}</div>
+          <div className={`absolute bottom-2 right-2 font-bold rotate-180 ${face.labelClassName}`} style={{ fontSize: cornerSize }}>{face.icon}</div>
         </div>
       </motion.div>
     </motion.div>

@@ -32,3 +32,27 @@ export const GAME03_STRINGS = {
   CARD_BOMB_ICON: '💣',
   CARD_LOGO_ALT: 'AI Korea',
 } as const;
+
+/** 카드 앞면 타입별 정의 — 새 카드 종류 추가 시 여기만 추가 */
+export const CARD_FACE_CONFIG = {
+  HEART: {
+    icon: GAME03_STRINGS.CARD_HEART_ICON,
+    label: GAME03_STRINGS.CARD_HEART_LABEL,
+    borderClassName: 'border-red-500',
+    labelClassName: 'text-red-600',
+    iconClassName: 'animate-pulse',
+  },
+  BOMB: {
+    icon: GAME03_STRINGS.CARD_BOMB_ICON,
+    label: GAME03_STRINGS.CARD_BOMB_LABEL,
+    borderClassName: 'border-zinc-300',
+    labelClassName: 'text-zinc-800',
+    iconClassName: '',
+  },
+} as const satisfies Record<string, {
+  icon: string;
+  label: string;
+  borderClassName: string;
+  labelClassName: string;
+  iconClassName: string;
+}>;
