@@ -22,6 +22,18 @@ import './Game03.css';
 const BASE_WIDTH = 2560;
 const BASE_HEIGHT = 720;
 
+/** (prev) => next 카드 배열. setCards(shuffleMethod1) 형태로 사용. Method 교체 가능 */
+function shuffleMethod1(prev: CardData[]): CardData[] {
+  const next = [...prev];
+  const idx1 = Math.floor(Math.random() * NUM_CARDS);
+  let idx2 = Math.floor(Math.random() * NUM_CARDS);
+  while (idx1 === idx2) idx2 = Math.floor(Math.random() * NUM_CARDS);
+  const tempPos = next[idx1].positionIndex;
+  next[idx1].positionIndex = next[idx2].positionIndex;
+  next[idx2].positionIndex = tempPos;
+  return next;
+}
+
 function useLayout(): Game03Layout {
   const [viewportWidth, setViewportWidth] = useState(window.innerWidth);
   const [viewportHeight, setViewportHeight] = useState(window.innerHeight);
@@ -112,16 +124,7 @@ const Game03: React.FC<Game03Props> = ({ onGameResult, triggerStartFromBackend =
 
       const currentInterval = lerp(SHUFFLE_START_INTERVAL_MS, SHUFFLE_END_INTERVAL_MS, progress);
 
-      setCards((prev) => {
-        const next = [...prev];
-        const idx1 = Math.floor(Math.random() * NUM_CARDS);
-        let idx2 = Math.floor(Math.random() * NUM_CARDS);
-        while (idx1 === idx2) idx2 = Math.floor(Math.random() * NUM_CARDS);
-        const tempPos = next[idx1].positionIndex;
-        next[idx1].positionIndex = next[idx2].positionIndex;
-        next[idx2].positionIndex = tempPos;
-        return next;
-      });
+      setCards(shuffleMethod1);
 
       shuffleTimerRef.current = window.setTimeout(runShuffle, currentInterval);
     };
