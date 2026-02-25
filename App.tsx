@@ -34,6 +34,8 @@ const App: React.FC = () => {
   const [gameStopTrigger, setGameStopTrigger] = useState(0);
   /** GAME04 디버그용: 조준 입력 모드 (mouse | head) */
   const [game04InputMode, setGame04InputMode] = useState<'mouse' | 'head'>('head');
+  /** GAME05 디버그용: 입력 모드 (mouse | vision). vision 시 Python GAME05_ATTACK 수신 시 공격 */
+  const [game05InputMode, setGame05InputMode] = useState<'mouse' | 'vision'>('vision');
   /** Welcome 씬에서 human detect 시 "환영합니다" 메시지 표시 여부 */
   const [showWelcomeGreeting, setShowWelcomeGreeting] = useState(false);
 
@@ -185,6 +187,7 @@ const App: React.FC = () => {
       case SceneDefine.GAME05:
         return (
           <Game05
+            inputMode={game05InputMode}
             onGameResult={(result) => {
               handleUIEvent('GAME_RESULT', { result });
             }}
@@ -232,7 +235,7 @@ const App: React.FC = () => {
       {/* Debug Panel */}
       {isDebugOpen && (
         <div className="absolute bottom-24 left-16 z-[100] bg-slate-900/95 border border-white/10 rounded-3xl p-8 shadow-2xl backdrop-blur-xl w-[450px]">
-          {/* Connection Status - Debug용: cpp(백엔드), python(Vision). GAME04일 때 입력 모드 토글 */}
+          {/* Connection Status - Debug용: cpp(백엔드), python(Vision). GAME04/GAME05일 때 입력 모드 토글 */}
           <div className="mb-6 pb-4 border-b border-white/10">
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-2">
@@ -256,6 +259,24 @@ const App: React.FC = () => {
                       className={`px-3 py-1.5 text-xs font-bold transition-colors ${game04InputMode === 'head' ? 'bg-blue-600 text-white' : 'bg-white/5 text-zinc-400 hover:bg-white/10'}`}
                     >
                       Head
+                    </button>
+                  </div>
+                )}
+                {currentScene === SceneDefine.GAME05 && (
+                  <div className="flex rounded-lg border border-white/20 overflow-hidden shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setGame05InputMode('mouse')}
+                      className={`px-3 py-1.5 text-xs font-bold transition-colors ${game05InputMode === 'mouse' ? 'bg-blue-600 text-white' : 'bg-white/5 text-zinc-400 hover:bg-white/10'}`}
+                    >
+                      Mouse
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setGame05InputMode('vision')}
+                      className={`px-3 py-1.5 text-xs font-bold transition-colors ${game05InputMode === 'vision' ? 'bg-blue-600 text-white' : 'bg-white/5 text-zinc-400 hover:bg-white/10'}`}
+                    >
+                      Vision
                     </button>
                   </div>
                 )}

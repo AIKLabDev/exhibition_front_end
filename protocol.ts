@@ -131,6 +131,8 @@ export const VisionMessageName = {
   QR_SCANNED: 'QR_SCANNED',
   /** QR 씬에서 스캔 영역(ROI) 전달. left/top/width/height 비율(0~1). 프론트는 파란 상자 위치·크기에 반영 */
   QR_ROI: 'QR_ROI',
+  /** GAME05 씬에서 Python이 공격 이벤트 전송. 수신 시 공격 애니메이션만 실행 (data는 더미) */
+  GAME05_ATTACK: 'GAME05_ATTACK',
 } as const;
 export type VisionMessageNameType = (typeof VisionMessageName)[keyof typeof VisionMessageName];
 
@@ -206,5 +208,6 @@ export const VisionMessageType = {
   GAME04_DIRECTION: VisionMessageName.GAME04_DIRECTION,
   QR_SCANNED: VisionMessageName.QR_SCANNED,
   QR_ROI: VisionMessageName.QR_ROI,
+  GAME05_ATTACK: VisionMessageName.GAME05_ATTACK,
 } as const;
 export type VisionMessageTypeValue = (typeof VisionMessageType)[keyof typeof VisionMessageType];

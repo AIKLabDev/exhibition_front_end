@@ -3,10 +3,15 @@
  */
 
 // ── Props ──
+/** 디버그용: 마우스/키보드 입력 vs Vision(Python GAME05_ATTACK) 입력 */
+export type Game05InputMode = 'mouse' | 'vision';
+
 export interface Game05Props {
   onGameResult?: (result: 'WIN' | 'LOSE') => void;
   /** 백엔드 GAME_START 수신 시 App이 증가시켜 전달. 0 → N 되면 버튼 없이 게임 시작 */
   triggerStartFromBackend?: number;
+  /** 디버그 UI에서 지정 시 강제 입력 모드. mouse=클릭/키보드, vision=Python GAME05_ATTACK 수신 시 공격 */
+  inputMode?: Game05InputMode;
 }
 
 // ── 게임 상태 타입 ──

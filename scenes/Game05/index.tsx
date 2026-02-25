@@ -10,6 +10,7 @@ import { loadAllAssets } from './assets';
 import { initSounds, playSfx, stopAllSounds } from './sounds';
 import { stateHandlers, checkAttackHit } from './states';
 import { useGameStartFromBackend, isStartableState, useResetResultReportRefWhenEnteringRound } from '../../hooks/useGameStartFromBackend';
+import { getVisionWsService } from '../../services/visionWebSocketService';
 import './Game05.css';
 
 function createInitialState(): GameState {
@@ -44,7 +45,7 @@ function createInitialState(): GameState {
   };
 }
 
-const Game05: React.FC<Game05Props> = ({ onGameResult, triggerStartFromBackend = 0 }) => {
+const Game05: React.FC<Game05Props> = ({ onGameResult, triggerStartFromBackend = 0, inputMode: forceInputMode = 'mouse' }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const assetsRef = useRef<GameAssets | null>(null);
   const soundsRef = useRef<GameSounds | null>(null);
@@ -132,18 +133,33 @@ const Game05: React.FC<Game05Props> = ({ onGameResult, triggerStartFromBackend =
 
   useResetResultReportRefWhenEnteringRound(gameStateUI === 'playing', resultReportedRef);
 
-  // 입력 처리 (타이틀: startGame, 플레이 중: 공격)
+  // Vision 모드: Python GAME05_ATTACK 수신 시 공격만 실행 (이벤트성, data 무시)
+  useEffect(() => {
+    if (forceInputMode !== 'vision') return;
+    const visionWs = getVisionWsService();
+    if (!visionWs.isConnected()) {
+      visionWs.connect().catch(() => {});
+    }
+    const unsubscribe = visionWs.onGame05Attack(() => {
+      startAttack();
+    });
+    return () => {
+      unsubscribe();
+    };
+  }, [forceInputMode, startAttack]);
+
+  // 입력 처리 (타이틀: startGame, 플레이 중: mouse 모드일 때만 공격)
   const handleInput = useCallback(
     (e?: React.MouseEvent | React.TouchEvent | KeyboardEvent) => {
       e?.preventDefault();
       const s = stateRef.current;
       if (s.gameState === 'title') {
         startGame();
-      } else if (s.gameState === 'playing') {
+      } else if (s.gameState === 'playing' && forceInputMode === 'mouse') {
         startAttack();
       }
     },
-    [startGame, startAttack]
+    [startGame, startAttack, forceInputMode]
   );
 
   // 재시작 (result → title)

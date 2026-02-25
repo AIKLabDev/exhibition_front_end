@@ -101,6 +101,7 @@ export class VisionWebSocketService {
   private onGame04DirectionCallback?: (data: VisionGame04DirectionData) => void;
   private onQRScannedCallback?: (data: VisionQRScannedData) => void;
   private onQRROICallback?: (data: VisionQRROIData) => void;
+  private onGame05AttackCallback?: () => void;
 
   constructor(url: string) {
     this.url = url;
@@ -368,6 +369,10 @@ export class VisionWebSocketService {
         } else {
           console.warn('[VisionWS] QR_ROI invalid payload', payload);
         }
+      } else if (name === VisionMessageName.GAME05_ATTACK) {
+        // 이벤트성 메시지. data는 더미. 수신 시 공격 애니메이션 트리거용
+        this.onGame05AttackCallback?.();
+        console.log('[VisionWS] GAME05_ATTACK received');
       } else {
         console.warn('[VisionWS] Unknown message name:', name);
       }
@@ -431,5 +436,11 @@ export class VisionWebSocketService {
   onQRROI(cb: (data: VisionQRROIData) => void): () => void {
     this.onQRROICallback = cb;
     return () => { this.onQRROICallback = undefined; };
+  }
+
+  /** GAME05 씬에서 Python이 GAME05_ATTACK 수신 시 구독. 공격 애니메이션만 실행 (data 무시). */
+  onGame05Attack(cb: () => void): () => void {
+    this.onGame05AttackCallback = cb;
+    return () => { this.onGame05AttackCallback = undefined; };
   }
 }
