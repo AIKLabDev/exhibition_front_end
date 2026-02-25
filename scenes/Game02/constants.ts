@@ -20,8 +20,8 @@ export const CLICK_PADDING_RATIO = 0.6;
 export const CLICK_PADDING_MIN = 20;
 
 // HumanTrack HeadPose 설정
-export const HEADPOSE_YAW_RANGE_DEG = 50;    // 좌우 회전 범위 (±도)
-export const HEADPOSE_PITCH_RANGE_DEG = 40;  // 상하 회전 범위 (±도)
+export const HEADPOSE_YAW_RANGE_DEG = 30;    // 좌우 회전 범위 (±도)
+export const HEADPOSE_PITCH_RANGE_DEG = 20;  // 상하 회전 범위 (±도)
 export const HEADPOSE_DEADZONE = 0.08;       // 데드존 (정규화된 값)
 export const HEADPOSE_SMOOTH_ALPHA = 0.18;   // EMA 스무딩 계수
 export const HEADPOSE_STALE_MS = 800;        // 오래된 포즈 무시 시간 (ms)
