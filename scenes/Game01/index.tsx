@@ -193,18 +193,10 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
     onlyWhen: () => phase === 'game' && round < GAME01_MESSAGES.totalRounds,
   });
 
-  // 다음 라운드 (idle로 돌아감. 라운드 수는 startGame 시에만 증가)
+  // 다음 라운드: "다시 시작해볼까?" idle 없이 바로 다음 판 시작 (백엔드 GAME_START와 동일한 흐름)
   const resetGame = () => {
-    setGame(prev => ({
-      ...prev,
-      status: 'idle',
-      userChoice: null,
-      aiChoice: null,
-      lastResult: null,
-      hypeText: GAME01_MESSAGES.goAgain.hypeText,
-      aiComment: GAME01_MESSAGES.goAgain.aiComment,
-    }));
     setTriggerEffect(null);
+    startGame();
   };
 
   return (
