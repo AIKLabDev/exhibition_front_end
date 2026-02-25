@@ -38,7 +38,7 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
   const [hypeKey, setHypeKey] = useState(0);
   const [triggerEffect, setTriggerEffect] = useState<RpsResult | null>(null);
   const [wsConnected, setWsConnected] = useState(false);
-  const [round, setRound] = useState(1); // 현재 라운드 (1~3, n/3 판 표시용)
+  const [round, setRound] = useState(0); // 0=게임 시작 전, 1~3=현재 판. 게임 시작 시마다 증가, 씬 전환 시 초기화(언마운트)
   const wsRef = useRef<VisionWebSocketService | null>(null);
 
   // Initialize Vision WebSocket connection (공통 Python 모듈, game_id 로 라우팅)
@@ -99,6 +99,8 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
     if (game.status === 'hyping') return;
 
     setTriggerEffect(null);
+    // 게임 시작할 때마다 라운드 증가 (1→2→3→1)
+    setRound(prev => (prev >= GAME01_MESSAGES.totalRounds ? 1 : prev + 1));
 
     // 카운트다운 시퀀스: "가위" -> "바위" -> "보"
     const sequence = GAME01_MESSAGES.countdown.map((text) => ({ text, delay: 500 }));
@@ -181,9 +183,8 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
 
   useGameStartFromBackend(triggerStartFromBackend, startGame);
 
-  // 다음 라운드 (다음 라운드 버튼 클릭 시: 라운드 1→2→3→1 반복)
+  // 다음 라운드 (idle로 돌아감. 라운드 수는 startGame 시에만 증가)
   const resetGame = () => {
-    setRound(prev => (prev >= GAME01_MESSAGES.totalRounds ? 1 : prev + 1));
     setGame(prev => ({
       ...prev,
       status: 'idle',
@@ -227,14 +228,16 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
             </p>
           </div>
 
-          {/* 중앙: 항상 화면 50%에 고정. 내용 변경에 영향받지 않음 */}
-          <div className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center justify-center z-10">
-            <div className="px-10 py-3 bg-white/5 border border-white/10 rounded-full backdrop-blur-xl">
-              <p className="text-2xl font-bold text-white/95 tracking-tight">
-                {round}/{GAME01_MESSAGES.totalRounds} 판
-              </p>
+          {/* 중앙: 게임 시작 후에만 n/3 판 표시 (idle 시 숨김) */}
+          {game.status !== 'idle' && round >= 1 && (
+            <div className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center justify-center z-10">
+              <div className="px-10 py-3 bg-white/5 border border-white/10 rounded-full backdrop-blur-xl">
+                <p className="text-2xl font-bold text-white/95 tracking-tight">
+                  {round}/{GAME01_MESSAGES.totalRounds} 판
+                </p>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* 우측: 중앙 오른쪽부터. 점수 | AI | (대기 시) 게임 시작 버튼 */}
           <div className="absolute left-[calc(50%+6rem)] right-16 flex items-center gap-6 justify-start min-w-0">
