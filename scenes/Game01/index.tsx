@@ -232,7 +232,7 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
           <div className="h-px w-32 bg-gradient-to-r from-transparent via-slate-700 to-transparent mt-2"></div>
         </div>
 
-        {/* 우측: 중앙 오른쪽부터 영역. 내용은 왼쪽 정렬(중앙 쪽으로) */}
+        {/* 우측: 중앙 오른쪽부터. 점수 | AI | (대기 시) 게임 시작 버튼 */}
         <div className="absolute left-[calc(50%+6rem)] right-8 flex items-center gap-6 justify-start min-w-0">
           <p className={`text-6xl font-bold text-glow-red shrink-0 ${triggerEffect === 'lose' ? 'animate-score-bounce' : ''}`}>
             {game.score.ai}
@@ -240,6 +240,21 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
           <p className="text-3xl font-semibold text-red-400 tracking-[0.2em] uppercase drop-shadow-[0_0_8px_rgba(248,113,113,0.6)] shrink-0">
             {GAME01_MESSAGES.ui.aiCore}
           </p>
+          {game.status === 'idle' && (
+            <button
+              onClick={startGame}
+              disabled={!wsConnected}
+              className={`
+                ml-2 shrink-0 px-8 py-3 rounded-full border-2 font-scifi-kr text-base tracking-[0.2em]
+                transition-all hover:scale-105 active:scale-95
+                ${wsConnected
+                  ? 'bg-green-600/20 border-green-500/50 hover:bg-green-600/40 shadow-[0_0_40px_rgba(34,197,94,0.3)] text-green-400'
+                  : 'bg-gray-600/20 border-gray-500/50 text-gray-400 cursor-not-allowed opacity-50'}
+              `}
+            >
+              {wsConnected ? GAME01_MESSAGES.ui.startGame : GAME01_MESSAGES.ui.connecting}
+            </button>
+          )}
         </div>
       </div>
 
@@ -293,25 +308,6 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
           )}
         </div>
       </main>
-
-      {/* Start Button */}
-      {game.status === 'idle' && (
-        <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 z-50">
-          <button
-            onClick={startGame}
-            disabled={!wsConnected}
-            className={`
-              px-14 py-6 rounded-full border-2 font-scifi-kr text-xl tracking-[0.3em] 
-              transition-all hover:scale-110 active:scale-95
-              ${wsConnected
-                ? 'bg-green-600/20 border-green-500/50 hover:bg-green-600/40 shadow-[0_0_40px_rgba(34,197,94,0.3)] text-green-400'
-                : 'bg-gray-600/20 border-gray-500/50 text-gray-400 cursor-not-allowed opacity-50'}
-            `}
-          >
-            {wsConnected ? GAME01_MESSAGES.ui.startGame : GAME01_MESSAGES.ui.connecting}
-          </button>
-        </div>
-      )}
 
       {/* Decorative Borders */}
       <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-blue-500 to-transparent"></div>
