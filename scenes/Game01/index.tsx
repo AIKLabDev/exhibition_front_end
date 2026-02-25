@@ -181,7 +181,10 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
     }
   }, [game.status, onGameResult]);
 
-  useGameStartFromBackend(triggerStartFromBackend, startGame);
+  // 3/3 판일 때는 백엔드 GAME_START 무시 (결과 씬으로 전환 예정이므로). 수동 "다음 라운드" 클릭은 그대로 동작
+  useGameStartFromBackend(triggerStartFromBackend, startGame, {
+    onlyWhen: () => round < GAME01_MESSAGES.totalRounds,
+  });
 
   // 다음 라운드 (idle로 돌아감. 라운드 수는 startGame 시에만 증가)
   const resetGame = () => {
