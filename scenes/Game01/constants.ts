@@ -55,6 +55,16 @@ export const GAME01_MESSAGES = {
     startGame: "게임 시작",
     connecting: "연결 중...",
   },
+  /** 튜토리얼 (씬 진입 시마다 표시) */
+  tutorial: {
+    title: "가위바위보 튜토리얼",
+    steps: [
+      "게임 시작 버튼을 누르면 카운트다운이 시작됩니다.",
+      '"가위" "바위" "보" 순서에 맞춰 카메라에 손 모양을 보여주세요.',
+      "3판 중 많이 이기는 쪽이 승리합니다.",
+    ] as const,
+    startButton: "게임 시작하기",
+  },
   /** Python에서 받은 gesture → 화면에 표시할 문자열 (HUMAN 영역) */
   gestureDisplay: {
     rock: "바위",

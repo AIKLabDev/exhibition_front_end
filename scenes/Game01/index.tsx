@@ -12,6 +12,7 @@ import Game01ScoreHeader from './Game01ScoreHeader';
 import Game01IdleView from './Game01IdleView';
 import Game01HypingView from './Game01HypingView';
 import Game01ResultView from './Game01ResultView';
+import Game01TutorialView from './Game01TutorialView';
 import { GAME01_MESSAGES } from './constants';
 
 /** 감지 결과 gesture → RpsChoice (Game01 전용) */
@@ -43,6 +44,8 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
   const [triggerEffect, setTriggerEffect] = useState<RpsResult | null>(null);
   const [wsConnected, setWsConnected] = useState(false);
   const [round, setRound] = useState(0); // 0=게임 시작 전, 1~3=현재 판. 게임 시작 시마다 증가, 씬 전환 시 초기화(언마운트)
+  /** 씬 진입 시마다 튜토리얼 먼저. 참관객이 바뀌므로 매번 표시 */
+  const [phase, setPhase] = useState<'tutorial' | 'game'>('tutorial');
   const wsRef = useRef<VisionWebSocketService | null>(null);
 
   // Initialize Vision WebSocket connection (공통 Python 모듈, game_id 로 라우팅)
@@ -185,9 +188,9 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
     }
   }, [game.status, onGameResult]);
 
-  // 3/3 판일 때는 백엔드 GAME_START 무시 (결과 씬으로 전환 예정이므로). 수동 "다음 라운드" 클릭은 그대로 동작
+  // 튜토리얼 중이거나 3/3 판일 때는 백엔드 GAME_START 무시
   useGameStartFromBackend(triggerStartFromBackend, startGame, {
-    onlyWhen: () => round < GAME01_MESSAGES.totalRounds,
+    onlyWhen: () => phase === 'game' && round < GAME01_MESSAGES.totalRounds,
   });
 
   // 다음 라운드 (idle로 돌아감. 라운드 수는 startGame 시에만 증가)
@@ -213,42 +216,51 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
       <div className={`
         absolute top-0 left-0 w-[76.92%] h-[76.92%] origin-top-left scale-[1.3] text-white font-sans
         flex flex-col items-center justify-center bg-grid-rps
-        ${game.status === 'idle' ? 'bg-slate-950' : 'bg-slate-950/90'}
+        ${phase === 'tutorial' ? 'bg-slate-950' : game.status === 'idle' ? 'bg-slate-950' : 'bg-slate-950/90'}
       `}>
-        {/* Visual Feedback Overlays */}
-        {triggerEffect === 'lose' && <div className="fixed inset-0 pointer-events-none flash-red z-[60]" />}
-        {triggerEffect === 'win' && <div className="fixed inset-0 pointer-events-none flash-green z-[60]" />}
-        {triggerEffect === 'win' && <Fireworks />}
+        {/* 씬 진입 시마다 튜토리얼 먼저 표시. 참관객이 바뀌므로 매번 보여줌 */}
+        {phase === 'tutorial' && (
+          <Game01TutorialView onStart={() => setPhase('game')} />
+        )}
 
-        <Game01ScoreHeader
-          game={game}
-          round={round}
-          wsConnected={wsConnected}
-          triggerEffect={triggerEffect}
-          onStartGame={startGame}
-          onNextRound={resetGame}
-        />
+        {phase === 'game' && (
+          <>
+            {/* Visual Feedback Overlays */}
+            {triggerEffect === 'lose' && <div className="fixed inset-0 pointer-events-none flash-red z-[60]" />}
+            {triggerEffect === 'win' && <div className="fixed inset-0 pointer-events-none flash-green z-[60]" />}
+            {triggerEffect === 'win' && <Fireworks />}
 
-        {/* Main Content: HandDisplay(공통) + state별 뷰. 씬 전환 시 튜토리얼 추가 시 여기서 분기하면 됨 */}
-        <main className="relative w-full max-w-5xl h-full z-20">
-          <div className="absolute inset-0 flex items-center justify-center z-10">
-            <HandDisplay choice={game.aiChoice} status={game.status} lastResult={game.lastResult} />
-          </div>
+            <Game01ScoreHeader
+              game={game}
+              round={round}
+              wsConnected={wsConnected}
+              triggerEffect={triggerEffect}
+              onStartGame={startGame}
+              onNextRound={resetGame}
+            />
 
-          {game.status === 'idle' && (
-            <Game01IdleView hypeText={game.hypeText} hypeKey={hypeKey} />
-          )}
-          {game.status === 'hyping' && (
-            <Game01HypingView hypeText={game.hypeText} hypeKey={hypeKey} />
-          )}
-          {game.status === 'result' && (
-            <Game01ResultView game={game} hypeKey={hypeKey} />
-          )}
-        </main>
+            {/* Main Content: HandDisplay(공통) + state별 뷰 */}
+            <main className="relative w-full max-w-5xl h-full z-20">
+              <div className="absolute inset-0 flex items-center justify-center z-10">
+                <HandDisplay choice={game.aiChoice} status={game.status} lastResult={game.lastResult} />
+              </div>
 
-        {/* Decorative Borders */}
-        <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-blue-500 to-transparent"></div>
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-red-500 to-transparent"></div>
+              {game.status === 'idle' && (
+                <Game01IdleView hypeText={game.hypeText} hypeKey={hypeKey} />
+              )}
+              {game.status === 'hyping' && (
+                <Game01HypingView hypeText={game.hypeText} hypeKey={hypeKey} />
+              )}
+              {game.status === 'result' && (
+                <Game01ResultView game={game} hypeKey={hypeKey} />
+              )}
+            </main>
+
+            {/* Decorative Borders */}
+            <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-blue-500 to-transparent"></div>
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-red-500 to-transparent"></div>
+          </>
+        )}
       </div>
     </div>
   );
