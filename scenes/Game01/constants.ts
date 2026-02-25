@@ -44,6 +44,8 @@ export const GAME01_MESSAGES = {
     hypeText: "다시 시작해볼까?",
     aiComment: "다음 번에 이겨보자.",
   },
+  /** 한 판당 라운드 수 (n/3 판 표시용) */
+  totalRounds: 3,
   /** UI 라벨 (스코어, 버튼 등) */
   ui: {
     human: "HUMAN",

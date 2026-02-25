@@ -38,6 +38,7 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
   const [hypeKey, setHypeKey] = useState(0);
   const [triggerEffect, setTriggerEffect] = useState<RpsResult | null>(null);
   const [wsConnected, setWsConnected] = useState(false);
+  const [round, setRound] = useState(1); // 현재 라운드 (1~3, n/3 판 표시용)
   const wsRef = useRef<VisionWebSocketService | null>(null);
 
   // Initialize Vision WebSocket connection (공통 Python 모듈, game_id 로 라우팅)
@@ -180,8 +181,9 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
 
   useGameStartFromBackend(triggerStartFromBackend, startGame);
 
-  // 다음 라운드
+  // 다음 라운드 (다음 라운드 버튼 클릭 시: 라운드 1→2→3→1 반복)
   const resetGame = () => {
+    setRound(prev => (prev >= GAME01_MESSAGES.totalRounds ? 1 : prev + 1));
     setGame(prev => ({
       ...prev,
       status: 'idle',
@@ -205,29 +207,38 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
       {triggerEffect === 'win' && <div className="fixed inset-0 pointer-events-none flash-green z-[60]" />}
       {triggerEffect === 'win' && <Fireworks />}
 
-      {/* Score Header */}
-      <div className="absolute top-24 w-full max-w-4xl flex justify-between items-center px-16 z-50 font-scifi-kr">
-        <div className="text-center">
-          <p className="text-xs text-blue-400 tracking-[0.3em] uppercase opacity-70">{GAME01_MESSAGES.ui.human}</p>
-          <p className={`text-6xl font-bold text-glow-blue ${triggerEffect === 'win' ? 'animate-score-bounce' : ''}`}>
-            {game.score.user}
-          </p>
-          <p className="mt-2 text-sm text-slate-400 tracking-wider uppercase">
+      {/* Score Header - "1/3 판"을 화면 정중앙에 고정하고, 좌/우는 이 기준으로만 펼쳐지도록 absolute 배치 */}
+      <div className="absolute top-8 left-0 right-0 w-full h-24 flex items-center font-scifi-kr z-50 px-8">
+        {/* 좌측: 중앙 왼쪽까지 영역. 내용은 오른쪽 정렬(중앙 쪽으로) */}
+        <div className="absolute right-[calc(50%+6rem)] left-8 flex items-center gap-6 justify-end min-w-0">
+          <p className="text-lg text-slate-400 tracking-wider uppercase min-w-[3rem] shrink-0">
             {game.userChoice ? GAME01_MESSAGES.gestureDisplay[game.userChoice] : GAME01_MESSAGES.gestureDisplay.none}
           </p>
+          <p className="text-3xl font-semibold text-blue-400 tracking-[0.2em] uppercase drop-shadow-[0_0_8px_rgba(56,189,248,0.6)] shrink-0">
+            {GAME01_MESSAGES.ui.human}
+          </p>
+          <p className={`text-6xl font-bold text-glow-blue shrink-0 ${triggerEffect === 'win' ? 'animate-score-bounce' : ''}`}>
+            {game.score.user}
+          </p>
         </div>
 
-        <div className="flex flex-col items-center">
-          <div className="px-8 py-2 bg-white/5 border border-white/10 rounded-full backdrop-blur-xl mb-2">
-            <p className="text-sm text-slate-400 tracking-tighter uppercase font-bold">{GAME01_MESSAGES.ui.gameTitle}</p>
+        {/* 중앙: 항상 화면 50%에 고정. 내용 변경에 영향받지 않음 */}
+        <div className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center justify-center z-10">
+          <div className="px-10 py-3 bg-white/5 border border-white/10 rounded-full backdrop-blur-xl">
+            <p className="text-2xl font-bold text-white/95 tracking-tight">
+              {round}/{GAME01_MESSAGES.totalRounds} 판
+            </p>
           </div>
-          <div className="h-px w-32 bg-gradient-to-r from-transparent via-slate-700 to-transparent"></div>
+          <div className="h-px w-32 bg-gradient-to-r from-transparent via-slate-700 to-transparent mt-2"></div>
         </div>
 
-        <div className="text-center">
-          <p className="text-xs text-red-400 tracking-[0.3em] uppercase opacity-70">{GAME01_MESSAGES.ui.aiCore}</p>
-          <p className={`text-6xl font-bold text-glow-red ${triggerEffect === 'lose' ? 'animate-score-bounce' : ''}`}>
+        {/* 우측: 중앙 오른쪽부터 영역. 내용은 왼쪽 정렬(중앙 쪽으로) */}
+        <div className="absolute left-[calc(50%+6rem)] right-8 flex items-center gap-6 justify-start min-w-0">
+          <p className={`text-6xl font-bold text-glow-red shrink-0 ${triggerEffect === 'lose' ? 'animate-score-bounce' : ''}`}>
             {game.score.ai}
+          </p>
+          <p className="text-3xl font-semibold text-red-400 tracking-[0.2em] uppercase drop-shadow-[0_0_8px_rgba(248,113,113,0.6)] shrink-0">
+            {GAME01_MESSAGES.ui.aiCore}
           </p>
         </div>
       </div>
