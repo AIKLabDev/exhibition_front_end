@@ -7,7 +7,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { CardType } from './Game03.types';
-import { GAME03_STRINGS, CARD_FACE_CONFIG, FLIPPING_BACK_DURATION } from './constants';
+import { GAME03_STRINGS, CARD_FACE_CONFIG, CARD_LAYOUT_TRANSITION, FLIPPING_BACK_DURATION } from './constants';
 import logoUrl from '../../resources/AIK_logo_white.png';
 
 interface CardProps {
@@ -37,7 +37,7 @@ const Card: React.FC<CardProps> = ({ type, isFlipped, onClick, disabled, positio
   return (
     <motion.div
       layout
-      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+      transition={CARD_LAYOUT_TRANSITION}
       className="relative cursor-pointer select-none flex-shrink-0"
       style={{ perspective: '1000px', width, height }}
       onClick={() => !disabled && onClick()}

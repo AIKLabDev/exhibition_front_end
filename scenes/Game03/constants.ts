@@ -13,6 +13,13 @@ export const NUM_CARDS = 5;
 export const SHUFFLE_START_INTERVAL_MS = 500;
 export const SHUFFLE_END_INTERVAL_MS = 300;
 
+/** 카드 위치 이동(셔플) 시 layout 애니메이션 — stiffness↓ 느리게, damping 조절로 떨림 제어 */
+export const CARD_LAYOUT_TRANSITION = {
+  type: 'spring' as const,
+  stiffness: 300,
+  damping: 30,
+};
+
 /** Game03 UI 문자열 — 수정 시 이 객체만 편집 */
 export const GAME03_STRINGS = {
   /** 튜토리얼 (헤더 한 줄용: 타이틀 + 이 문구 + 버튼) */
