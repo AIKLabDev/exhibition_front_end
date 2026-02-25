@@ -207,10 +207,10 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
       {triggerEffect === 'win' && <div className="fixed inset-0 pointer-events-none flash-green z-[60]" />}
       {triggerEffect === 'win' && <Fireworks />}
 
-      {/* Score Header - "1/3 판"을 화면 정중앙에 고정하고, 좌/우는 이 기준으로만 펼쳐지도록 absolute 배치 */}
-      <div className="absolute top-8 left-0 right-0 w-full h-24 flex items-center font-scifi-kr z-50 px-8">
-        {/* 좌측: 중앙 왼쪽까지 영역. 내용은 오른쪽 정렬(중앙 쪽으로) */}
-        <div className="absolute right-[calc(50%+6rem)] left-8 flex items-center gap-6 justify-end min-w-0">
+      {/* Score Header - 상단에 더 가깝게. 1/3 판은 정중앙 고정 */}
+      <div className="absolute top-2 left-0 right-0 w-full h-24 flex items-center font-scifi-kr z-50 px-16">
+        {/* 좌측: 로고 영역 다음부터 중앙 전까지. 내용은 오른쪽 정렬 */}
+        <div className="absolute right-[calc(50%+6rem)] left-20 flex items-center gap-6 justify-end min-w-0">
           <p className="text-lg text-slate-400 tracking-wider uppercase min-w-[3rem] shrink-0">
             {game.userChoice ? GAME01_MESSAGES.gestureDisplay[game.userChoice] : GAME01_MESSAGES.gestureDisplay.none}
           </p>
@@ -233,7 +233,7 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
         </div>
 
         {/* 우측: 중앙 오른쪽부터. 점수 | AI | (대기 시) 게임 시작 버튼 */}
-        <div className="absolute left-[calc(50%+6rem)] right-8 flex items-center gap-6 justify-start min-w-0">
+        <div className="absolute left-[calc(50%+6rem)] right-16 flex items-center gap-6 justify-start min-w-0">
           <p className={`text-6xl font-bold text-glow-red shrink-0 ${triggerEffect === 'lose' ? 'animate-score-bounce' : ''}`}>
             {game.score.ai}
           </p>
