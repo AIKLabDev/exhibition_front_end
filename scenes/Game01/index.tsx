@@ -8,6 +8,10 @@ import {
 import { useGameStartFromBackend } from '../../hooks/useGameStartFromBackend';
 import HandDisplay from './HandDisplay';
 import Fireworks from './Fireworks';
+import Game01ScoreHeader from './Game01ScoreHeader';
+import Game01IdleView from './Game01IdleView';
+import Game01HypingView from './Game01HypingView';
+import Game01ResultView from './Game01ResultView';
 import { GAME01_MESSAGES } from './constants';
 
 /** 감지 결과 gesture → RpsChoice (Game01 전용) */
@@ -216,108 +220,30 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
         {triggerEffect === 'win' && <div className="fixed inset-0 pointer-events-none flash-green z-[60]" />}
         {triggerEffect === 'win' && <Fireworks />}
 
-        {/* Score Header - 상단에 더 가깝게. 1/3 판은 정중앙 고정 */}
-        <div className="absolute top-2 left-0 right-0 w-full h-24 flex items-center font-scifi-kr z-50 px-16">
-          {/* 좌측: 로고 영역 다음부터 중앙 전까지. 내용은 오른쪽 정렬 */}
-          <div className="absolute right-[calc(50%+6rem)] left-20 flex items-center gap-6 justify-end min-w-0">
-            <p className="text-lg text-slate-400 tracking-wider uppercase min-w-[3rem] shrink-0">
-              {game.userChoice ? GAME01_MESSAGES.gestureDisplay[game.userChoice] : GAME01_MESSAGES.gestureDisplay.none}
-            </p>
-            <p className="text-3xl font-semibold text-blue-400 tracking-[0.2em] uppercase drop-shadow-[0_0_8px_rgba(56,189,248,0.6)] shrink-0">
-              {GAME01_MESSAGES.ui.human}
-            </p>
-            <p className={`text-6xl font-bold text-glow-blue shrink-0 ${triggerEffect === 'win' ? 'animate-score-bounce' : ''}`}>
-              {game.score.user}
-            </p>
-          </div>
+        <Game01ScoreHeader
+          game={game}
+          round={round}
+          wsConnected={wsConnected}
+          triggerEffect={triggerEffect}
+          onStartGame={startGame}
+          onNextRound={resetGame}
+        />
 
-          {/* 중앙: 게임 시작 후에만 n/3 판 표시 (idle 시 숨김) */}
-          {game.status !== 'idle' && round >= 1 && (
-            <div className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center justify-center z-10">
-              <div className="px-10 py-3 bg-white/5 border border-white/10 rounded-full backdrop-blur-xl">
-                <p className="text-2xl font-bold text-white/95 tracking-tight">
-                  {round}/{GAME01_MESSAGES.totalRounds} 판
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* 우측: 중앙 오른쪽부터. 점수 | AI | (대기 시) 게임 시작 버튼 */}
-          <div className="absolute left-[calc(50%+6rem)] right-16 flex items-center gap-6 justify-start min-w-0">
-            <p className={`text-6xl font-bold text-glow-red shrink-0 ${triggerEffect === 'lose' ? 'animate-score-bounce' : ''}`}>
-              {game.score.ai}
-            </p>
-            <p className="text-3xl font-semibold text-red-400 tracking-[0.2em] uppercase drop-shadow-[0_0_8px_rgba(248,113,113,0.6)] shrink-0">
-              {GAME01_MESSAGES.ui.aiCore}
-            </p>
-            {game.status === 'idle' && (
-              <button
-                onClick={startGame}
-                disabled={!wsConnected}
-                className={`
-                ml-2 shrink-0 px-8 py-3 rounded-full border-2 font-scifi-kr text-base tracking-[0.2em]
-                transition-all hover:scale-105 active:scale-95
-                ${wsConnected
-                    ? 'bg-green-600/20 border-green-500/50 hover:bg-green-600/40 shadow-[0_0_40px_rgba(34,197,94,0.3)] text-green-400'
-                    : 'bg-gray-600/20 border-gray-500/50 text-gray-400 cursor-not-allowed opacity-50'}
-              `}
-              >
-                {wsConnected ? GAME01_MESSAGES.ui.startGame : GAME01_MESSAGES.ui.connecting}
-              </button>
-            )}
-            {game.status === 'result' && (
-              <button
-                onClick={resetGame}
-                className={`
-                ml-2 shrink-0 px-8 py-3 rounded-full border-2 font-scifi-kr text-base tracking-[0.2em]
-                transition-all hover:scale-105 active:scale-95
-                ${game.lastResult === 'win' ? 'bg-green-600/20 border-green-400/50 hover:bg-green-600/40 shadow-[0_0_40px_rgba(34,197,94,0.3)] text-green-400' :
-                    game.lastResult === 'lose' ? 'bg-red-600/20 border-red-400/50 hover:bg-red-600/40 shadow-[0_0_40px_rgba(239,68,68,0.3)] text-red-400' :
-                      'bg-white/10 border-white/30 hover:bg-white/20'}
-              `}
-              >
-                {GAME01_MESSAGES.ui.nextRound}
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Main Content Area */}
+        {/* Main Content: HandDisplay(공통) + state별 뷰. 씬 전환 시 튜토리얼 추가 시 여기서 분기하면 됨 */}
         <main className="relative w-full max-w-5xl h-full z-20">
-          {/* 주먹 이모지: 화면 세로 정중앙에 고정 (absolute로 기준점 통일) */}
           <div className="absolute inset-0 flex items-center justify-center z-10">
             <HandDisplay choice={game.aiChoice} status={game.status} lastResult={game.lastResult} />
           </div>
 
-          {/* Floating Text Container */}
-          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-30">
-            <div
-              key={hypeKey}
-              className={`
-              font-arcade-kr transition-all duration-300 drop-shadow-[0_0_50px_rgba(0,0,0,1)] text-center
-              ${game.status === 'hyping' ? 'text-7xl md:text-[12rem] text-yellow-400 animate-text-impact text-glow-yellow' : 'text-5xl md:text-8xl'}
-              ${game.status === 'result' ? 'animate-result-pop' : ''}
-              ${game.status === 'result' && game.lastResult === 'win' ? 'text-green-400 text-glow-green' : ''}
-              ${game.status === 'result' && game.lastResult === 'lose' ? 'text-red-500 text-glow-red' : ''}
-              ${game.status === 'result' && game.lastResult === 'draw' ? 'text-blue-400 text-glow-blue' : ''}
-              ${game.status === 'idle' ? 'opacity-30 tracking-widest' : ''}
-            `}
-            >
-              {game.hypeText}
-            </div>
-
-            {/* AI 코멘트("You got me!" 등): 아래쪽에 배치 */}
-            <div className={`
-            mt-28 font-scifi-kr text-lg italic text-white max-w-xl text-center px-10 transition-all duration-1000 delay-300
-            ${game.status === 'result' ? 'opacity-100 translate-y-0 scale-110' : 'opacity-0 translate-y-10 scale-90'}
-          `}>
-              {game.status === 'result' && (
-                <div className="bg-black/80 border border-white/20 px-8 py-4 rounded-3xl backdrop-blur-xl shadow-[0_0_50px_rgba(0,0,0,0.5)] border-t-white/30">
-                  "{game.aiComment}"
-                </div>
-              )}
-            </div>
-          </div>
+          {game.status === 'idle' && (
+            <Game01IdleView hypeText={game.hypeText} hypeKey={hypeKey} />
+          )}
+          {game.status === 'hyping' && (
+            <Game01HypingView hypeText={game.hypeText} hypeKey={hypeKey} />
+          )}
+          {game.status === 'result' && (
+            <Game01ResultView game={game} hypeKey={hypeKey} />
+          )}
         </main>
 
         {/* Decorative Borders */}
