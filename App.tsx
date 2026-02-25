@@ -38,6 +38,8 @@ const App: React.FC = () => {
   const [game05InputMode, setGame05InputMode] = useState<'mouse' | 'vision'>('vision');
   /** Welcome 씬에서 human detect 시 "환영합니다" 메시지 표시 여부 */
   const [showWelcomeGreeting, setShowWelcomeGreeting] = useState(false);
+  /** 디버그: GAME_RESULT 메시지 전송 여부. 끄면 시퀀스(결과 씬 전환 등)가 진행되지 않음 */
+  const [sendGameResultMessage, setSendGameResultMessage] = useState(true);
 
   const currentSceneRef = useRef(currentScene);
   currentSceneRef.current = currentScene;
@@ -124,6 +126,14 @@ const App: React.FC = () => {
     backendWsService.sendCommand(name, data);
   }, []);
 
+  /** 게임 결과 전송. 디버그에서 끄면 백엔드로 보내지 않아 시퀀스가 진행되지 않음 */
+  const sendGameResult = useCallback(
+    (data: any) => {
+      if (sendGameResultMessage) handleUIEvent('GAME_RESULT', data);
+    },
+    [sendGameResultMessage, handleUIEvent]
+  );
+
   const renderScene = () => {
     switch (currentScene) {
       case SceneDefine.WELCOME:
@@ -151,7 +161,7 @@ const App: React.FC = () => {
         return (
           <Game01
             onGameResult={(result, userChoice, aiChoice) => {
-              handleUIEvent('GAME_RESULT', { result, userChoice, aiChoice });
+              sendGameResult({ result, userChoice, aiChoice });
             }}
             triggerStartFromBackend={gameStartTrigger}
           />
@@ -159,18 +169,14 @@ const App: React.FC = () => {
       case SceneDefine.GAME02:
         return (
           <Game02
-            onGameResult={(result) => {
-              handleUIEvent('GAME_RESULT', { result });
-            }}
+            onGameResult={(result) => sendGameResult({ result })}
             triggerStartFromBackend={gameStartTrigger}
           />
         );
       case SceneDefine.GAME03:
         return (
           <Game03
-            onGameResult={(result) => {
-              handleUIEvent('GAME_RESULT', { result });
-            }}
+            onGameResult={(result) => sendGameResult({ result })}
             triggerStartFromBackend={gameStartTrigger}
           />
         );
@@ -178,9 +184,7 @@ const App: React.FC = () => {
         return (
           <Game04
             inputMode={game04InputMode}
-            onGameResult={(result) => {
-              handleUIEvent('GAME_RESULT', { result });
-            }}
+            onGameResult={(result) => sendGameResult({ result })}
             triggerStartFromBackend={gameStartTrigger}
           />
         );
@@ -188,9 +192,7 @@ const App: React.FC = () => {
         return (
           <Game05
             inputMode={game05InputMode}
-            onGameResult={(result) => {
-              handleUIEvent('GAME_RESULT', { result });
-            }}
+            onGameResult={(result) => sendGameResult({ result })}
             triggerStartFromBackend={gameStartTrigger}
           />
         );
@@ -287,6 +289,28 @@ const App: React.FC = () => {
                   <div className={`w-2 h-2 rounded-full shrink-0 ${pythonConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
                   <span className="font-bold tracking-wider uppercase opacity-80 truncate">{pythonConnected ? 'CONNECTED' : 'DISCONNECTED'}</span>
                 </div>
+              </div>
+            </div>
+          </div>
+          {/* GAME_RESULT 전송 토글: 끄면 게임 결과를 백엔드로 보내지 않아 시퀀스(결과 씬 전환 등)가 진행되지 않음 */}
+          <div className="mb-6 pb-4 border-b border-white/10">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider shrink-0">GAME_RESULT</span>
+              <div className="flex rounded-lg border border-white/20 overflow-hidden shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setSendGameResultMessage(true)}
+                  className={`px-3 py-1.5 text-xs font-bold transition-colors ${sendGameResultMessage ? 'bg-blue-600 text-white' : 'bg-white/5 text-zinc-400 hover:bg-white/10'}`}
+                >
+                  전송
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSendGameResultMessage(false)}
+                  className={`px-3 py-1.5 text-xs font-bold transition-colors ${!sendGameResultMessage ? 'bg-amber-600 text-white' : 'bg-white/5 text-zinc-400 hover:bg-white/10'}`}
+                >
+                  미전송
+                </button>
               </div>
             </div>
           </div>
