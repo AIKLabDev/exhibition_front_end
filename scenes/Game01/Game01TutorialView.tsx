@@ -23,7 +23,7 @@ const Game01TutorialView: React.FC<Game01TutorialViewProps> = ({ onStart }) => (
               <span className="flex-shrink-0 w-14 h-14 rounded-full bg-blue-500/40 border-2 border-blue-400/60 flex items-center justify-center text-blue-200 text-2xl font-bold">
                 {i + 1}
               </span>
-              <span>{step}</span>
+              <span className={i === 2 ? 'whitespace-nowrap' : 'whitespace-pre-line'}>{step}</span>
             </li>
           ))}
         </ul>
