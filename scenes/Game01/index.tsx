@@ -198,10 +198,15 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
 
   return (
     <div className={`
-      h-full w-full flex flex-col items-center justify-center text-white font-sans overflow-hidden transition-all duration-700 bg-grid-rps
+      h-full w-full overflow-hidden transition-all duration-700
       ${triggerEffect === 'lose' ? 'shake-hit' : ''}
-      ${game.status === 'idle' ? 'bg-slate-950' : 'bg-slate-950/90'}
     `}>
+      {/* Game01만 130% 비율: 씬 내부만 확대, 로고/DEBUG는 App에서 그대로 */}
+      <div className={`
+        absolute top-0 left-0 w-[76.92%] h-[76.92%] origin-top-left scale-[1.3] text-white font-sans
+        flex flex-col items-center justify-center bg-grid-rps
+        ${game.status === 'idle' ? 'bg-slate-950' : 'bg-slate-950/90'}
+      `}>
       {/* Visual Feedback Overlays */}
       {triggerEffect === 'lose' && <div className="fixed inset-0 pointer-events-none flash-red z-[60]" />}
       {triggerEffect === 'win' && <div className="fixed inset-0 pointer-events-none flash-green z-[60]" />}
@@ -311,6 +316,7 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
       {/* Decorative Borders */}
       <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-blue-500 to-transparent"></div>
       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-red-500 to-transparent"></div>
+      </div>
     </div>
   );
 };
