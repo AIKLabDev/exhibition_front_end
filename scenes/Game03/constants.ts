@@ -9,6 +9,10 @@ export const FLIPPING_BACK_DURATION = 600; // 0.6초
 export const SHUFFLE_DURATION = 5000; // 5초
 export const NUM_CARDS = 5;
 
+/** 셔플 스왑 간격(ms): lerp(시작, 끝, progress) — 처음 느리게, 끝에 빠르게 */
+export const SHUFFLE_START_INTERVAL_MS = 500;
+export const SHUFFLE_END_INTERVAL_MS = 300;
+
 /** Game03 UI 문자열 — 수정 시 이 객체만 편집 */
 export const GAME03_STRINGS = {
   /** 튜토리얼 (헤더 한 줄용: 타이틀 + 이 문구 + 버튼) */

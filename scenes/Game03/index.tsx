@@ -8,7 +8,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { GameState, CardData, Game03Props, CardType, Game03Layout } from './Game03.types';
 import { useGameStartFromBackend, isStartableState, useResetResultReportRefWhenEnteringRound } from '../../hooks/useGameStartFromBackend';
-import { REVEAL_DURATION, SHUFFLE_DURATION, NUM_CARDS, FLIPPING_BACK_DURATION } from './constants';
+import { REVEAL_DURATION, SHUFFLE_DURATION, NUM_CARDS, FLIPPING_BACK_DURATION, SHUFFLE_START_INTERVAL_MS, SHUFFLE_END_INTERVAL_MS } from './constants';
+import { lerp } from '../../utils/math';
 import { TutorialHeader, TutorialContent } from './TutorialScreen';
 import { IdleHeader, IdleContent } from './IdleScreen';
 import { RevealingHeader } from './RevealingScreen';
@@ -109,7 +110,7 @@ const Game03: React.FC<Game03Props> = ({ onGameResult, triggerStartFromBackend =
         return;
       }
 
-      const currentInterval = 500 - progress * 440;
+      const currentInterval = lerp(SHUFFLE_START_INTERVAL_MS, SHUFFLE_END_INTERVAL_MS, progress);
 
       setCards((prev) => {
         const next = [...prev];
