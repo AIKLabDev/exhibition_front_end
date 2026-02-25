@@ -34,6 +34,17 @@ function shuffleMethod1(prev: CardData[]): CardData[] {
   return next;
 }
 
+/** idx1 제외한 인덱스에서 idx2를 한 번에 선택 — while 없이 항상 서로 다른 두 장 스왑 */
+function shuffleMethod2(prev: CardData[]): CardData[] {
+  const next = [...prev];
+  const idx1 = Math.floor(Math.random() * NUM_CARDS);
+  const idx2 = (idx1 + 1 + Math.floor(Math.random() * (NUM_CARDS - 1))) % NUM_CARDS;
+  const tempPos = next[idx1].positionIndex;
+  next[idx1].positionIndex = next[idx2].positionIndex;
+  next[idx2].positionIndex = tempPos;
+  return next;
+}
+
 function useLayout(): Game03Layout {
   const [viewportWidth, setViewportWidth] = useState(window.innerWidth);
   const [viewportHeight, setViewportHeight] = useState(window.innerHeight);
@@ -124,7 +135,7 @@ const Game03: React.FC<Game03Props> = ({ onGameResult, triggerStartFromBackend =
 
       const currentInterval = lerp(SHUFFLE_START_INTERVAL_MS, SHUFFLE_END_INTERVAL_MS, progress);
 
-      setCards(shuffleMethod1);
+      setCards(shuffleMethod2);
 
       shuffleTimerRef.current = window.setTimeout(runShuffle, currentInterval);
     };
