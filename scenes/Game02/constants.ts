@@ -19,13 +19,12 @@ export const ANNOUNCING_DURATION = 3000;
 export const CLICK_PADDING_RATIO = 0.6;
 export const CLICK_PADDING_MIN = 20;
 
-// HumanTrack HeadPose 설정
-export const HEADPOSE_YAW_RANGE_DEG = 30;    // 좌우 회전 범위 (±도)
-export const HEADPOSE_PITCH_RANGE_DEG = 20;  // 상하 회전 범위 (±도)
-export const HEADPOSE_DEADZONE = 0.08;       // 데드존 (정규화된 값)
-export const HEADPOSE_SMOOTH_ALPHA = 0.18;   // EMA 스무딩 계수
-export const HEADPOSE_STALE_MS = 800;        // 오래된 포즈 무시 시간 (ms)
-export const HEADPOSE_MAX_DELTA_DEG = 90;    // 최대 허용 각도 변화
+// VIEW_POSE (X,Y mm) → 뷰포트 이동
+export const VIEW_MM_RANGE_X = 100;           // X(mm) ±이 범위가 뷰포트 좌우 전체 이동에 대응
+export const VIEW_MM_RANGE_Y = 100;           // Y(mm) ±이 범위가 뷰포트 상하 전체 이동에 대응
+export const VIEW_MM_DEADZONE = 5;            // 이 거리(mm) 이하는 무시 (떨림 방지)
+export const VIEW_POSE_SMOOTH_ALPHA = 0.18;   // EMA 스무딩 계수
+export const VIEW_POSE_STALE_MS = 800;        // 오래된 값 무시 시간 (ms)
 
 // Settings for image generation mode
 export const SETTINGS = {

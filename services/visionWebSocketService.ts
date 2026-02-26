@@ -14,7 +14,6 @@ import type {
   SceneData,
   VisionReqHandGesture,
   VisionResultHandGesture,
-  VisionHeadPoseData,
   VisionHumanDetectedData,
   VisionGame04DirectionData,
   VisionQRScannedData,
@@ -26,7 +25,7 @@ import {
 } from '../protocol';
 
 // Re-export for consumers
-export type { SceneData, VisionReqHandGesture, VisionResultHandGesture, VisionHeadPoseData, VisionHumanDetectedData } from '../protocol';
+export type { SceneData, VisionReqHandGesture, VisionResultHandGesture, VisionHumanDetectedData } from '../protocol';
 
 
 /** 프론트 → Python 전송 시 sender는 FRONTEND */
@@ -96,7 +95,6 @@ export class VisionWebSocketService {
   private onErrorCallback?: (error: Error) => void;
   private onGameStartCallback?: () => void;
   private onGameStopCallback?: () => void;
-  private onPoseCallback?: (payload: VisionHeadPoseData) => void;
   private onHumanDetectedCallback?: (data: VisionHumanDetectedData) => void;
   private onGame04DirectionCallback?: (data: VisionGame04DirectionData) => void;
   private onQRScannedCallback?: (data: VisionQRScannedData) => void;
@@ -293,7 +291,7 @@ export class VisionWebSocketService {
   /**
    * WebSocket onmessage에서 호출. Python에서 오는 모든 메시지는 여기서 한 번에 처리.
    * - RES_HAND_GESTURE: requestHandGesture()가 만든 Promise를 request_id로 찾아 resolve → await가 풀림.
-   * - GAME_START / GAME_STOP / HEAD_POSE: 콜백 호출.
+   * - GAME_START / GAME_STOP: 콜백 호출.
    * - 파싱/분기 제거 시 request-response 결과를 받을 수 없으므로 반드시 유지.
    */
   private handleMessage(data: string | ArrayBuffer): void {
@@ -322,17 +320,6 @@ export class VisionWebSocketService {
         this.onGameStartCallback?.();
       } else if (name === VisionMessageName.GAME_STOP) {
         this.onGameStopCallback?.();
-      } else if (name === VisionMessageName.HEAD_POSE) {
-        const msg = payload as { primary?: { yaw?: number; pitch?: number; forward?: number; center_depth_m?: number | null } };
-        const primary = msg?.primary;
-        if (primary != null && typeof primary.yaw === 'number' && typeof primary.pitch === 'number') {
-          this.onPoseCallback?.({
-            yaw: primary.yaw,
-            pitch: primary.pitch,
-            forward: primary.forward,
-            center_depth_m: primary.center_depth_m ?? undefined,
-          });
-        }
       } else if (name === VisionMessageName.HUMAN_DETECTED) {
         const humanData = payload as VisionHumanDetectedData;
         if (humanData && humanData.detected === true) {
@@ -408,12 +395,6 @@ export class VisionWebSocketService {
   }
   onGameStop(cb: () => void): void {
     this.onGameStopCallback = cb;
-  }
-
-  /** Game02 HumanTrack: 헤드포즈 스트림 구독 (Python HEAD_POSE, primary.yaw/pitch/forward/center_depth_m) */
-  onPose(cb: (payload: VisionHeadPoseData) => void): () => void {
-    this.onPoseCallback = cb;
-    return () => { this.onPoseCallback = undefined; };
   }
 
   /** Welcome 씬에서 human 감지 시 Python이 보낸 HUMAN_DETECTED 구독. 프론트는 백엔드에 알린 뒤 백엔드가 SET_SCENE QR 전송. */
