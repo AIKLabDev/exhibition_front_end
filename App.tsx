@@ -237,9 +237,9 @@ const App: React.FC = () => {
       {/* Debug Panel */}
       {isDebugOpen && (
         <div className="absolute bottom-24 left-16 z-[100] bg-slate-900/95 border border-white/10 rounded-3xl p-8 shadow-2xl backdrop-blur-xl w-[450px]">
-          {/* Connection Status - Debug용: cpp(백엔드), python(Vision). GAME04/GAME05일 때 입력 모드 토글 */}
-          <div className="mb-6 pb-4 border-b border-white/10">
-            <div className="flex flex-col gap-2">
+          {/* Connection Status(좌) + GAME_RESULT 전송 토글(우) - 한 줄에 배치해 UI 밀림 방지 */}
+          <div className="mb-6 pb-4 border-b border-white/10 flex flex-row gap-4 items-start">
+            <div className="flex flex-col gap-2 min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider w-12 shrink-0">cpp</span>
                 <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm flex-1 min-w-0 ${status === ConnectionStatus.CONNECTED ? 'border-green-500/50 bg-green-500/10' : 'border-red-500/50 bg-red-500/10'}`}>
@@ -291,12 +291,10 @@ const App: React.FC = () => {
                 </div>
               </div>
             </div>
-          </div>
-          {/* GAME_RESULT 전송 토글: 끄면 게임 결과를 백엔드로 보내지 않아 시퀀스(결과 씬 전환 등)가 진행되지 않음 */}
-          <div className="mb-6 pb-4 border-b border-white/10">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider shrink-0">GAME_RESULT</span>
-              <div className="flex rounded-lg border border-white/20 overflow-hidden shrink-0">
+            {/* GAME_RESULT 전송 토글: 끄면 게임 결과를 백엔드로 보내지 않아 시퀀스(결과 씬 전환 등)가 진행되지 않음 */}
+            <div className="flex flex-col gap-1 shrink-0 border-l border-white/10 pl-4">
+              <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">GAME_RESULT</span>
+              <div className="flex rounded-lg border border-white/20 overflow-hidden">
                 <button
                   type="button"
                   onClick={() => setSendGameResultMessage(true)}
