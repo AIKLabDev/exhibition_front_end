@@ -123,7 +123,7 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
     }));
     setHypeKey(prev => prev + 1);
 
-    // "보" 구간에서 detection 요청
+    // "보" 구간에서 detection 요청. "보" 표시 후 gestureRequestDelayMs 지연 후 요청해 사용자가 손을 보여줄 시간 확보
     let handGesturePromise: ReturnType<VisionWebSocketService['requestHandGesture']> | null = null;
     for (let i = 0; i < sequence.length; i++) {
       await new Promise(r => setTimeout(r, sequence[i].delay));
@@ -131,6 +131,7 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
         setGame(prev => ({ ...prev, hypeText: sequence[i + 1].text }));
         setHypeKey(prev => prev + 1);
         if (i + 1 === sequence.length - 1) {
+          await new Promise(r => setTimeout(r, GAME01_MESSAGES.gestureRequestDelayMs));
           handGesturePromise = wsRef.current!.requestHandGesture({ game_id: 'GAME01' });
         }
       }

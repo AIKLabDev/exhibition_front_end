@@ -26,6 +26,8 @@ export const GAME01_MESSAGES = {
   visionNotConnected: "Vision server not connected. Please check the connection.",
   /** 카운트다운 문구 (가위 → 바위 → 보) */
   countdown: ["가위", "바위", "보"] as const,
+  /** "보" 표시 후 제스처 요청까지 대기(ms). 사용자가 손을 보여줄 시간 확보. 200~400 권장 */
+  gestureRequestDelayMs: 300,
   /** 손 인식 중 */
   calculating: "인식 중...",
   /** 결과 - 승리 / 패배 / 무승부 */
