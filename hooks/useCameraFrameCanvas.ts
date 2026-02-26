@@ -11,7 +11,7 @@ import type { CameraFrameData } from '../types';
 import { drawRawFrameToCanvas } from '../utils/drawCameraFrame';
 
 export interface UseCameraFrameCanvasOptions {
-  /** false면 구독·rAF 중단. Game02는 ALIGNING일 때만 true */
+  /** false면 구독·rAF 중단 (QR 등 카메라 미리보기에서 true) */
   enabled?: boolean;
   /** 프레임 수신 시마다 호출 (FPS 카운트, lastFrameTime 등 ref 갱신용) */
   onFrame?: () => void;
@@ -57,7 +57,7 @@ export function useCameraFrameCanvas(
     };
   }, [enabled, onFrame]);
 
-  // enabled 꺼질 때 hasFrame·frameSize 리셋 (Game02가 ALIGNING 벗어날 때)
+  // enabled 꺼질 때 hasFrame·frameSize 리셋
   useEffect(() => {
     if (!enabled) {
       frameRef.current = null;

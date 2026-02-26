@@ -88,7 +88,6 @@ interface WSMessageV2 {
 | type | 설명 |
 |------|------|
 | `detection_result` | 감지 결과 (`request_id`로 매칭, 필요 시 `game_id` 포함) |
-| `HEAD_POSE` | Game02 HumanTrack 헤드포즈 (yaw, pitch). 공통 Python이 UDP 등 수신 후 WebSocket으로 전달 |
 | `game_start` | (레거시) 게임 시작 신호 — 신규는 백엔드 GAME_START 사용 권장 |
 | `game_stop` | (레거시) 게임 종료 신호 |
 | `error` | 오류 |
@@ -101,17 +100,16 @@ interface WSMessageV2 {
 - **컨텍스트 전송**: `App.tsx`에서 백엔드 `SET_SCENE` 수신 시 `getVisionWsService().sendScene({ scene, text, result })` 호출.
 - **GAME_START / GAME_STOP**: `App.tsx`에서 백엔드 `GAME_START` 수신 시 `sendGameStart()` 호출 후 `gameStartTrigger` 증가 → Game01이 `triggerStartFromBackend`로 버튼 없이 시작. `GAME_STOP` 수신 시 `sendGameStop()` 호출.
 - **감지 요청**: Game01은 `requestDetection({ game_id: 'GAME01' })`, Game02 등은 동일 패턴으로 `game_id` 지정.
-- **헤드포즈**: Game02는 `getVisionWsService().onPose(cb)`로 `HEAD_POSE` 스트림 구독. UDP/Vite 플러그인 없음.
+- **뷰 포즈 (Game02)**: Game02는 백엔드 WebSocket에서 `VIEW_POSE` 메시지 수신. `data: { X, Y }` (도 단위). 백엔드(C++) Game02DataParser가 얼굴 추적 후 전송.
 - **연결**: `getVisionWsService()` 싱글톤, Game01/Game02 마운트 시 각자 `connect()` 또는 `onPose` 등으로 사용.
 
 ---
 
-## 3. Game02 HumanTrack (WebSocket 통합)
+## 3. Game02 뷰 포즈 (Backend → Frontend)
 
-브라우저는 **UDP를 직접 사용할 수 없으므로**, Game02 헤드포즈는 **공통 Python WebSocket** 한 경로로만 수신한다.
+Game02 본게임 중 뷰 제어(헤드 추적)는 **백엔드(C++)**가 담당한다.
 
-- **흐름**: Python 공통 모듈이 헤드포즈를 수집(UDP/로컬 등 자유)한 뒤, 프론트와의 WebSocket으로 `type: 'HEAD_POSE'`, `yaw`, `pitch` 를 보낸다. Game02는 `visionWebSocketService.onPose(cb)`로 구독.
-- **과거**: Vite 플러그인이 UDP 수신 후 HMR WebSocket/HTTP로 브라우저에 전달하던 방식은 제거됨. 이제는 Python → WebSocket → 브라우저 한 경로만 사용.
+- **흐름**: 백엔드가 스테레오/공유 메모리·Python 결과로 얼굴 방향을 계산한 뒤, **Backend WebSocket**으로 `VIEW_POSE` 메시지 전송. `data: { X, Y }` (도 단위). 프론트는 `backendWsService` 메시지 리스너에서 `BackendMessageName.VIEW_POSE`로 수신해 뷰포트에 반영.
 
 ---
 

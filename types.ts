@@ -15,7 +15,6 @@ export type {
   VisionMessageNameType,
   VisionReqHandGesture,
   VisionResultHandGesture,
-  VisionHeadPoseData,
   VisionErrorData,
   VisionMessageTypeValue,
 } from './protocol';

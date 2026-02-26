@@ -57,9 +57,8 @@ export const BackendMessageName = {
   CAMERA_FRAME: 'CAMERA_FRAME',
   GAME_START: 'GAME_START',
   GAME_STOP: 'GAME_STOP',
-  GAME02_ALIGNMENT_COMPLETE: 'GAME02_ALIGNMENT_COMPLETE',
-  /** Game02 뷰 제어: 백엔드(C++)가 기준 로봇 대비 yaw, pitch 전송 (Python HEAD_POSE 대체) */
-  HEAD_POSE: 'HEAD_POSE',
+  /** Game02 뷰 제어: 백엔드(C++)가 기준 로봇 대비 뷰 포즈 전송. data: { X, Y } (도 단위) */
+  VIEW_POSE: 'VIEW_POSE',
   /** QR 씬: 중복 참여자(이미 참여한 티켓). 인식 완료 연출이 끝난 뒤에만 연출 표시 */
   QR_DUPLICATED: 'QR_DUPLICATED',
 } as const;
@@ -77,10 +76,8 @@ export const UIEventName = {
   ANIMATION_COMPLETE: 'ANIMATION_COMPLETE',
   /** Vision에서 human 감지 시(Welcome 씬) 프론트가 백엔드에 알림 → 백엔드가 SET_SCENE QR 전송 */
   HUMAN_DETECTED: 'HUMAN_DETECTED',
-  /** Game02 헤드포즈(yaw, pitch, forward, center_depth_m) → Exhibition에서 로봇 제어 등에 사용 */
-  GAME02_HEAD_POSE: 'GAME02_HEAD_POSE',
-  /** Game02: 게임 시작 클릭 후 얼굴 정렬 UI 진입. Exhibition이 정렬 phase 시작 */
-  GAME02_ALIGNMENT_START: 'GAME02_ALIGNMENT_START',
+  /** Game02: 본게임 시작 시점(찾을 이미지 3초 표시 후). Exhibition에서 얼굴 추적/로봇 본게임 시작 */
+  GAME02_MAINGAME_START: 'GAME02_MAINGAME_START',
   /** Vision에서 QR 인식 시(QR 씬) 프론트가 백엔드에 전달. data, bbox 포함 */
   QR_SCANNED: 'QR_SCANNED',
 } as const;
@@ -108,6 +105,12 @@ export interface ProgressData {
   label?: string;
 }
 
+/** VIEW_POSE 메시지의 data (Backend → Frontend, Game02 뷰 제어). X/Y는 도 단위 */
+export interface ViewPoseData {
+  X: number;
+  Y: number;
+}
+
 // =============================================================================
 // Frontend ↔ Vision (Python) — header.name 및 data 페이로드
 // WSMessageV2 공통 사용: header.name = VisionMessageName.XXX, data = 아래 타입
@@ -120,7 +123,6 @@ export const VisionMessageName = {
   RES_HAND_GESTURE: 'RES_HAND_GESTURE',
   GAME_START: 'GAME_START',
   GAME_STOP: 'GAME_STOP',
-  HEAD_POSE: 'HEAD_POSE',
   ERROR: 'ERROR',
   ACK: 'ACK',
   /** Welcome 씬에서 human 감지 시 Python → 프론트. 프론트는 백엔드에 HUMAN_DETECTED 전달 → 백엔드가 SET_SCENE QR */
@@ -153,16 +155,6 @@ export interface VisionResultHandGesture {
   };
   success: boolean;
   error_message?: string;
-}
-
-/** HEAD_POSE 메시지의 data (Python → 프론트). Python은 primary 안에 담아 보냄. */
-export interface VisionHeadPoseData {
-  yaw: number;
-  pitch: number;
-  /** 얼굴 방향 전방 벡터 (선택) */
-  forward?: number;
-  /** 코 중심점 깊이(m). 선택, 없으면 null */
-  center_depth_m?: number | null;
 }
 
 /** ERROR 메시지의 data (Python → 프론트) */
@@ -203,7 +195,6 @@ export const VisionMessageType = {
   RES_HAND_GESTURE: VisionMessageName.RES_HAND_GESTURE,
   GAME_START: VisionMessageName.GAME_START,
   GAME_STOP: VisionMessageName.GAME_STOP,
-  HEAD_POSE: VisionMessageName.HEAD_POSE,
   HUMAN_DETECTED: VisionMessageName.HUMAN_DETECTED,
   GAME04_DIRECTION: VisionMessageName.GAME04_DIRECTION,
   QR_SCANNED: VisionMessageName.QR_SCANNED,

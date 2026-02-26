@@ -18,19 +18,16 @@ import {
   ANNOUNCING_DURATION,
   CLICK_PADDING_RATIO,
   CLICK_PADDING_MIN,
-  HEADPOSE_YAW_RANGE_DEG,
-  HEADPOSE_PITCH_RANGE_DEG,
-  HEADPOSE_DEADZONE,
-  HEADPOSE_SMOOTH_ALPHA,
-  HEADPOSE_STALE_MS,
-  HEADPOSE_MAX_DELTA_DEG,
+  VIEW_MM_RANGE_X,
+  VIEW_MM_RANGE_Y,
+  VIEW_MM_DEADZONE,
+  VIEW_POSE_SMOOTH_ALPHA,
+  VIEW_POSE_STALE_MS,
   SETTINGS,
 } from './constants';
 import { generateLocalGameScenario } from './localScenarioService';
 import { backendWsService } from '../../services/backendWebSocketService';
 import { BackendMessageName } from '../../protocol';
-import { LAYOUT_CAMERA_SIDEBAR_WIDTH_PX } from '../../layoutConstants';
-import { useCameraFrameCanvas } from '../../hooks/useCameraFrameCanvas';
 import { useGameStartFromBackend, isStartableState, useResetResultReportRefWhenEnteringRound } from '../../hooks/useGameStartFromBackend';
 import ResultOverlay from './ResultOverlay';
 import ruleBgImg from '../../images/Game02 Rule.png';
@@ -106,12 +103,6 @@ const Game02: React.FC<Game02Props> = ({ onGameResult, triggerStartFromBackend =
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const resultReportedRef = useRef(false);
   const viewportRef = useRef<HTMLDivElement | null>(null);
-  const alignCanvasRef = useRef<HTMLCanvasElement>(null);
-  const { hasFrame: alignHasFrame } = useCameraFrameCanvas(alignCanvasRef, {
-    enabled: state === Game02State.ALIGNING,
-  });
-  /** 0~1, 3초 유지 = 100%. 10도 벗어나면 백엔드가 0으로 리셋 */
-  const [alignProgress, setAlignProgress] = useState(0);
 
   const [viewportAspect, setViewportAspect] = useState<number>(DEFAULT_SCENE_ASPECT);
   const viewWindow = useMemo(
@@ -145,19 +136,18 @@ const Game02: React.FC<Game02Props> = ({ onGameResult, triggerStartFromBackend =
     moved: false,
   });
 
-  // HumanTrack HeadPose 상태
-  const headPoseRef = useRef<{ yaw: number; pitch: number; atMs: number } | null>(null);
-  const prevPoseRef = useRef<{ yaw: number; pitch: number } | null>(null);
-  const [headPoseStatus, setHeadPoseStatus] = useState<{
+  // VIEW_POSE (X,Y mm) 상태
+  const viewPoseRef = useRef<{ X: number; Y: number; atMs: number } | null>(null);
+  const [viewPoseStatus, setViewPoseStatus] = useState<{
     connected: boolean;
     lastUpdate: number | null;
-    yaw: number | null;
-    pitch: number | null;
+    X: number | null;
+    Y: number | null;
   }>({
     connected: false,
     lastUpdate: null,
-    yaw: null,
-    pitch: null,
+    X: null,
+    Y: null,
   });
 
   const isGameScreen =
@@ -224,13 +214,7 @@ const Game02: React.FC<Game02Props> = ({ onGameResult, triggerStartFromBackend =
     []
   );
 
-  // 게임 시작 클릭 → 얼굴 정렬 UI로 진입 (정렬 완료 시 startGame은 백엔드 신호로 호출)
-  const requestGameStartWithAlignment = useCallback(() => {
-    setState(Game02State.ALIGNING);
-    backendWsService.sendCommand('GAME02_ALIGNMENT_START', {});
-  }, []);
-
-  // 게임 시작 (시나리오 생성 → ANNOUNCING → PLAYING). 버튼(정렬 후) 또는 백엔드 GAME_START 시 호출
+  // 게임 시작 (시나리오 생성 → ANNOUNCING → 3초 후 PLAYING). 버튼 또는 백엔드 GAME_START 시 호출
   const startGame = useCallback(async () => {
     setState(Game02State.GENERATING);
     setLastClick(null);
@@ -252,6 +236,11 @@ const Game02: React.FC<Game02Props> = ({ onGameResult, triggerStartFromBackend =
       setState(Game02State.INTRO);
     }
   }, [centerTopLeft]);
+
+  // 인트로 화면 게임 시작 버튼 클릭 → startGame 호출
+  const onIntroStartClick = useCallback(() => {
+    startGame();
+  }, [startGame]);
 
   // 시나리오 변경 시 뷰포트 중앙으로 리셋
   useEffect(() => {
@@ -286,10 +275,11 @@ const Game02: React.FC<Game02Props> = ({ onGameResult, triggerStartFromBackend =
     }));
   }, [viewWindow.h, viewWindow.w]);
 
-  // ANNOUNCING → PLAYING 전환 (3초 후)
+  // ANNOUNCING → PLAYING 전환 (3초 후). 본게임 시작 시점에 Exhibition에 GAME02_MAINGAME_START 전송
   useEffect(() => {
     if (state === Game02State.ANNOUNCING) {
       const timeout = setTimeout(() => {
+        backendWsService.sendCommand('GAME02_MAINGAME_START', {});
         setState(Game02State.PLAYING);
       }, ANNOUNCING_DURATION);
       return () => clearTimeout(timeout);
@@ -336,7 +326,6 @@ const Game02: React.FC<Game02Props> = ({ onGameResult, triggerStartFromBackend =
   // 대기 중 또는 결과 화면에서 백엔드 GAME_START 시 시작/재시작 (3판 진행 시 재시작 포함)
   const game02StartableStates: readonly Game02State[] = [
     Game02State.INTRO,
-    Game02State.ALIGNING,
     Game02State.SUCCESS,
     Game02State.FAILURE,
   ];
@@ -344,40 +333,28 @@ const Game02: React.FC<Game02Props> = ({ onGameResult, triggerStartFromBackend =
     onlyWhen: () => isStartableState(state, game02StartableStates),
   });
 
-  // Backend → GAME02_ALIGNMENT_COMPLETE 수신 시 게임 시작, HEAD_POSE 수신 시 뷰용 yaw/pitch 갱신
+  // Backend → VIEW_POSE 수신 시 X/Y(mm) 갱신 (본게임 중 뷰 제어)
   useEffect(() => {
     const unsub = backendWsService.addMessageListener((msg) => {
       const name = msg.header?.name;
-      if (name === BackendMessageName.GAME02_ALIGNMENT_COMPLETE) {
-        startGame();
-      } else if (name === BackendMessageName.HEAD_POSE) {
-        const data = msg.data as { yaw?: number; pitch?: number; progress?: number };
-        if (data != null && Number.isFinite(data.yaw) && Number.isFinite(data.pitch)) {
+      if (name === BackendMessageName.VIEW_POSE) {
+        const data = msg.data as { X?: number; Y?: number };
+        if (data != null && Number.isFinite(data.X) && Number.isFinite(data.Y)) {
           const now = Date.now();
-          console.log('[Game02] HEAD_POSE', { yaw: data.yaw, pitch: data.pitch, atMs: now, at: new Date(now).toISOString() });
-          headPoseRef.current = { yaw: data.yaw!, pitch: data.pitch!, atMs: now };
-          if (!prevPoseRef.current) prevPoseRef.current = { yaw: data.yaw!, pitch: data.pitch! };
-          setHeadPoseStatus({
+          viewPoseRef.current = { X: data.X!, Y: data.Y!, atMs: now };
+          setViewPoseStatus({
             connected: true,
             lastUpdate: now,
-            yaw: data.yaw!,
-            pitch: data.pitch!,
+            X: data.X!,
+            Y: data.Y!,
           });
-        }
-        if (data != null && typeof data.progress === 'number' && data.progress >= 0 && data.progress <= 1) {
-          setAlignProgress(data.progress);
         }
       }
     });
     return () => { unsub(); };
-  }, [startGame]);
+  }, []);
 
-  // 얼굴 정렬 화면 진입 시 진행 바 0으로 초기화
-  useEffect(() => {
-    if (state === Game02State.ALIGNING) setAlignProgress(0);
-  }, [state]);
-
-  // 게임 중 헤드포즈로 뷰포트 이동
+  // 게임 중 VIEW_POSE(X,Y mm)로 뷰포트 이동
   useEffect(() => {
     if (state !== Game02State.PLAYING) return;
     let raf = 0;
@@ -386,64 +363,37 @@ const Game02: React.FC<Game02Props> = ({ onGameResult, triggerStartFromBackend =
       raf = window.requestAnimationFrame(tick);
       if (dragRef.current.active) return; // 드래그 중이면 무시
 
-      const pose = headPoseRef.current;
+      const pose = viewPoseRef.current;
       if (!pose) return;
 
       const age = Date.now() - pose.atMs;
-      if (age > HEADPOSE_STALE_MS) {
-        if (headPoseStatus.connected) {
-          setHeadPoseStatus((prev) => ({ ...prev, connected: false }));
+      if (age > VIEW_POSE_STALE_MS) {
+        if (viewPoseStatus.connected) {
+          setViewPoseStatus((prev) => ({ ...prev, connected: false }));
         }
         return;
       }
 
-      let yaw = pose.yaw;
-      let pitch = pose.pitch;
-
-      // 큰 변화 필터링
-      if (prevPoseRef.current) {
-        const normalizeAngleDelta = (current: number, prev: number): number => {
-          let delta = current - prev;
-          while (delta > 180) delta -= 360;
-          while (delta < -180) delta += 360;
-          return delta;
-        };
-
-        const yawDelta = normalizeAngleDelta(yaw, prevPoseRef.current.yaw);
-        const pitchDelta = normalizeAngleDelta(pitch, prevPoseRef.current.pitch);
-
-        if (Math.abs(yawDelta) > HEADPOSE_MAX_DELTA_DEG) {
-          yaw = prevPoseRef.current.yaw;
-        }
-        if (Math.abs(pitchDelta) > HEADPOSE_MAX_DELTA_DEG) {
-          pitch = prevPoseRef.current.pitch;
-        }
-      }
-
-      prevPoseRef.current = { yaw, pitch };
-
       const maxX = 1 - viewWindow.w;
       const maxY = 1 - viewWindow.h;
 
-      let nx = clamp(yaw / HEADPOSE_YAW_RANGE_DEG, -1, 1);
-      let ny = clamp(-pitch / HEADPOSE_PITCH_RANGE_DEG, -1, 1); // - 부호: pitch(-) → 뷰 아래로
-
-      if (Math.abs(nx) < HEADPOSE_DEADZONE) nx = 0;
-      if (Math.abs(ny) < HEADPOSE_DEADZONE) ny = 0;
+      // X,Y(mm) → -1~1 정규화, 데드존 적용
+      const nx = Math.abs(pose.X) < VIEW_MM_DEADZONE ? 0 : clamp(-pose.X / VIEW_MM_RANGE_X, -1, 1);
+      const ny = Math.abs(pose.Y) < VIEW_MM_DEADZONE ? 0 : clamp(pose.Y / VIEW_MM_RANGE_Y, -1, 1);
 
       const targetX = clamp(maxX / 2 + nx * (maxX / 2), 0, maxX);
       const targetY = clamp(maxY / 2 + ny * (maxY / 2), 0, maxY);
 
       setViewTopLeft((prev) => {
-        const newX = prev.x + (targetX - prev.x) * HEADPOSE_SMOOTH_ALPHA;
-        const newY = prev.y + (targetY - prev.y) * HEADPOSE_SMOOTH_ALPHA;
+        const newX = prev.x + (targetX - prev.x) * VIEW_POSE_SMOOTH_ALPHA;
+        const newY = prev.y + (targetY - prev.y) * VIEW_POSE_SMOOTH_ALPHA;
         return { x: newX, y: newY };
       });
     };
 
     raf = window.requestAnimationFrame(tick);
     return () => window.cancelAnimationFrame(raf);
-  }, [state, viewWindow.h, viewWindow.w, headPoseStatus.connected]);
+  }, [state, viewWindow.h, viewWindow.w, viewPoseStatus.connected]);
 
   // 뷰포트 클릭 처리
   const handleViewportClick = useCallback(
@@ -553,10 +503,10 @@ const Game02: React.FC<Game02Props> = ({ onGameResult, triggerStartFromBackend =
             className="absolute inset-0 bg-cover bg-center bg-no-repeat"
             style={{ backgroundImage: `url(${ruleBgImg})` }}
           />
-          {/* 게임 시작 버튼 클릭 → 얼굴 정렬 UI로 진입 후 정렬 완료 시 게임 시작 */}
+          {/* 게임 시작 버튼 클릭 → 찾을 이미지 3초 표시 후 본게임 시작 */}
           <button
             type="button"
-            onClick={requestGameStartWithAlignment}
+            onClick={onIntroStartClick}
             className="absolute left-[40%] right-[40%] top-[85%] h-[12%] cursor-pointer flex items-center justify-center"
             aria-label="게임 시작"
           >
@@ -594,91 +544,7 @@ const Game02: React.FC<Game02Props> = ({ onGameResult, triggerStartFromBackend =
         </div>
       )}
 
-      {/* 2. Aligning Screen - vision + 스캔 박스 + "화면에 3초이상 얼굴을 고정해주세요" */}
-      {state === Game02State.ALIGNING && (
-        <div className="absolute inset-0 z-10 flex flex-col bg-slate-900">
-          <div
-            className="flex-1 relative grid min-h-0"
-            style={{ gridTemplateColumns: `1fr ${LAYOUT_CAMERA_SIDEBAR_WIDTH_PX}px` }}
-          >
-            <div className="relative bg-black overflow-hidden flex items-center justify-center">
-              {alignHasFrame ? (
-                <div className="w-full h-full relative">
-                  <canvas
-                    ref={alignCanvasRef}
-                    className="w-full h-full object-cover"
-                    style={{ display: 'block', width: '100%', height: '100%', objectFit: 'cover' }}
-                  />
-                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <div className="w-[400px] mb-3">
-                      <div className="h-2 bg-zinc-700/80 rounded-full overflow-hidden border border-white/10">
-                        <div
-                          className="h-full bg-indigo-500 transition-all duration-150 ease-out"
-                          style={{ width: `${Math.round(alignProgress * 100)}%` }}
-                        />
-                      </div>
-                      <p className="text-center text-xs text-zinc-500 mt-1">3초 유지 (100%)</p>
-                    </div>
-                    <div className="relative w-[400px] h-[400px] border-4 border-indigo-500/60 rounded-[2rem]">
-                      <div className="absolute top-0 left-0 w-12 h-12 border-t-4 border-l-4 border-indigo-400 rounded-tl-2xl" />
-                      <div className="absolute top-0 right-0 w-12 h-12 border-t-4 border-r-4 border-indigo-400 rounded-tr-2xl" />
-                      <div className="absolute bottom-0 left-0 w-12 h-12 border-b-4 border-l-4 border-indigo-400 rounded-bl-2xl" />
-                      <div className="absolute bottom-0 right-0 w-12 h-12 border-b-4 border-r-4 border-indigo-400 rounded-br-2xl" />
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center p-12 text-center">
-                  <div className="w-20 h-20 border-4 border-slate-600 border-t-indigo-500 rounded-full animate-spin mb-6" />
-                  <p className="text-xl text-slate-400">카메라 연결 대기 중...</p>
-                </div>
-              )}
-            </div>
-            <div className="border-l border-white/10 p-12 flex flex-col justify-center">
-              <h2 className="text-4xl font-black text-white mb-6 tracking-tight">
-                얼굴을 맞춰주세요
-              </h2>
-              <p className="text-2xl text-indigo-300 font-bold mb-8">
-                화면에 3초이상 얼굴을 고정해주세요
-              </p>
-              <p className="text-slate-400 text-lg">
-                로봇이 카메라를 맞춘 뒤 게임이 시작됩니다.
-              </p>
-              {SETTINGS.DEBUG_MODE && (
-                <div className="mt-8 rounded-[2rem] bg-zinc-900/60 border border-white/10 p-5">
-                  <p className="text-sm font-black text-zinc-500 mb-2 italic">
-                    헤드 포즈
-                  </p>
-                  <div className="flex items-center gap-2 mb-2">
-                    <div
-                      className={`w-3 h-3 rounded-full ${headPoseStatus.connected
-                        ? 'bg-green-500 animate-pulse'
-                        : 'bg-red-500'
-                        }`}
-                    />
-                    <span className="text-sm font-bold text-white">
-                      {headPoseStatus.connected ? '연결됨' : '연결 안됨'}
-                    </span>
-                  </div>
-                  {headPoseStatus.yaw !== null && headPoseStatus.pitch !== null && (
-                    <div className="text-xs text-zinc-400 font-mono">
-                      <div>Yaw: {headPoseStatus.yaw.toFixed(1)}°</div>
-                      <div>Pitch: {headPoseStatus.pitch.toFixed(1)}°</div>
-                      {headPoseStatus.lastUpdate != null && (
-                        <div className="text-zinc-500 mt-1">
-                          {Math.round((Date.now() - headPoseStatus.lastUpdate) / 1000)}초 전
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 3. Generating Screen */}
+      {/* 2. Generating Screen */}
       {state === Game02State.GENERATING && (
         <div className="text-center z-10 animate-game02-fade-in">
           {/* Spinner */}
@@ -689,7 +555,7 @@ const Game02: React.FC<Game02Props> = ({ onGameResult, triggerStartFromBackend =
         </div>
       )}
 
-      {/* 3. Announcing Screen */}
+      {/* 3. Announcing Screen - 찾을 이미지 3초 표시 후 본게임(PLAYING) 진입 시 GAME02_MAINGAME_START 전송 */}
       {state === Game02State.ANNOUNCING && targetCropUrl && (
         <div className="text-center z-10 animate-game02-zoom-in flex flex-col items-center">
           <h2 className="font-korean-dynamic text-[120px] tracking-tighter mb-12 text-white leading-none drop-shadow-[0_8px_8px_rgba(0,0,0,0.8)]">
@@ -708,7 +574,7 @@ const Game02: React.FC<Game02Props> = ({ onGameResult, triggerStartFromBackend =
         </div>
       )}
 
-      {/* 4. Game Play Screen */}
+      {/* 4. Game Play Screen (본게임) */}
       {isGameScreen && scenario && (
         <div className="w-full h-full flex flex-row min-h-0 animate-game02-fade-in">
           {/* Left Sidebar */}
@@ -770,22 +636,22 @@ const Game02: React.FC<Game02Props> = ({ onGameResult, triggerStartFromBackend =
                 </p>
                 <div className="flex items-center gap-2 mb-2">
                   <div
-                    className={`w-3 h-3 rounded-full ${headPoseStatus.connected
+                    className={`w-3 h-3 rounded-full ${viewPoseStatus.connected
                       ? 'bg-green-500 animate-pulse'
                       : 'bg-red-500'
                       }`}
                   />
                   <span className="text-sm font-bold text-white">
-                    {headPoseStatus.connected ? '연결됨' : '연결 안됨'}
+                    {viewPoseStatus.connected ? '연결됨' : '연결 안됨'}
                   </span>
                 </div>
-                {headPoseStatus.yaw !== null && headPoseStatus.pitch !== null && (
+                {viewPoseStatus.X !== null && viewPoseStatus.Y !== null && (
                   <div className="text-xs text-zinc-400 font-mono">
-                    <div>Yaw: {headPoseStatus.yaw.toFixed(1)}°</div>
-                    <div>Pitch: {headPoseStatus.pitch.toFixed(1)}°</div>
-                    {headPoseStatus.lastUpdate && (
+                    <div>X: {viewPoseStatus.X.toFixed(0)} mm</div>
+                    <div>Y: {viewPoseStatus.Y.toFixed(0)} mm</div>
+                    {viewPoseStatus.lastUpdate && (
                       <div className="text-zinc-500 mt-1">
-                        {Math.round((Date.now() - headPoseStatus.lastUpdate) / 1000)}초 전
+                        {Math.round((Date.now() - viewPoseStatus.lastUpdate) / 1000)}초 전
                       </div>
                     )}
                   </div>
