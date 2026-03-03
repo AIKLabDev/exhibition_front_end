@@ -194,9 +194,11 @@ export function useGame02(
   useEffect(() => {
     if (state === Game02State.SUCCESS && !resultReportedRef.current) {
       resultReportedRef.current = true;
+      backendWsService.sendCommand('GAME02_IDLE', {});
       onGameResult('WIN');
     } else if (state === Game02State.FAILURE && !resultReportedRef.current) {
       resultReportedRef.current = true;
+      backendWsService.sendCommand('GAME02_IDLE', {});
       onGameResult('LOSE');
     }
   }, [state, onGameResult]);
@@ -207,6 +209,13 @@ export function useGame02(
     state === Game02State.PLAYING,
     resultReportedRef
   );
+
+  // Game02 씬을 벗어날 때(언마운트) 백엔드에 대기 상태 알림
+  useEffect(() => {
+    return () => {
+      backendWsService.sendCommand('GAME02_IDLE', {});
+    };
+  }, []);
 
   const game02StartableStates: readonly Game02State[] = [
     Game02State.INTRO,
