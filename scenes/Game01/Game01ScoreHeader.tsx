@@ -29,7 +29,7 @@ const Game01ScoreHeader: React.FC<Game01ScoreHeaderProps> = ({
       <p className="text-3xl font-semibold text-blue-400 tracking-[0.2em] uppercase drop-shadow-[0_0_8px_rgba(56,189,248,0.6)] shrink-0">
         {GAME01_MESSAGES.ui.human}
       </p>
-      <p className={`text-6xl font-bold text-glow-blue shrink-0 ${triggerEffect === 'win' ? 'animate-score-bounce' : ''}`}>
+      <p className={`text-6xl font-bold text-glow-blue shrink-0 ${triggerEffect === 'WIN' ? 'animate-score-bounce' : ''}`}>
         {game.score.user}
       </p>
     </div>
@@ -47,7 +47,7 @@ const Game01ScoreHeader: React.FC<Game01ScoreHeaderProps> = ({
 
     {/* 우측: 점수 | AI | (idle) 게임 시작 / (result) 다음 라운드 */}
     <div className="absolute left-[calc(50%+6rem)] right-16 flex items-center gap-6 justify-start min-w-0">
-      <p className={`text-6xl font-bold text-glow-red shrink-0 ${triggerEffect === 'lose' ? 'animate-score-bounce' : ''}`}>
+      <p className={`text-6xl font-bold text-glow-red shrink-0 ${triggerEffect === 'LOSE' ? 'animate-score-bounce' : ''}`}>
         {game.score.ai}
       </p>
       <p className="text-3xl font-semibold text-red-400 tracking-[0.2em] uppercase drop-shadow-[0_0_8px_rgba(248,113,113,0.6)] shrink-0">
@@ -74,8 +74,8 @@ const Game01ScoreHeader: React.FC<Game01ScoreHeaderProps> = ({
           className={`
             ml-2 shrink-0 px-8 py-3 rounded-full border-2 font-scifi-kr text-base tracking-[0.2em]
             transition-all hover:scale-105 active:scale-95
-            ${game.lastResult === 'win' ? 'bg-green-600/20 border-green-400/50 hover:bg-green-600/40 shadow-[0_0_40px_rgba(34,197,94,0.3)] text-green-400' :
-              game.lastResult === 'lose' ? 'bg-red-600/20 border-red-400/50 hover:bg-red-600/40 shadow-[0_0_40px_rgba(239,68,68,0.3)] text-red-400' :
+            ${game.lastResult === 'WIN' ? 'bg-green-600/20 border-green-400/50 hover:bg-green-600/40 shadow-[0_0_40px_rgba(34,197,94,0.3)] text-green-400' :
+              game.lastResult === 'LOSE' ? 'bg-red-600/20 border-red-400/50 hover:bg-red-600/40 shadow-[0_0_40px_rgba(239,68,68,0.3)] text-red-400' :
               'bg-white/10 border-white/30 hover:bg-white/20'}
           `}
         >

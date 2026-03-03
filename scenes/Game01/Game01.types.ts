@@ -7,7 +7,7 @@ export type RpsChoice = 'rock' | 'paper' | 'scissors';
 
 export type RpsGameStatus = 'idle' | 'hyping' | 'result';
 
-export type RpsResult = 'win' | 'lose' | 'draw';
+export type RpsResult = 'WIN' | 'LOSE' | 'DRAW';
 
 export interface RpsGameState {
   userChoice: RpsChoice | null;

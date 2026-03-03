@@ -15,9 +15,9 @@ const HandDisplay: React.FC<HandDisplayProps> = ({ choice, status, lastResult })
 
   // 결과일 때 배경 글로우 = 게임 결과에 매칭 (win=green, draw=blue, lose=red)
   const resultGlowClass = isResult && lastResult
-    ? lastResult === 'win'
+    ? lastResult === 'WIN'
       ? 'bg-green-500/40'
-      : lastResult === 'draw'
+      : lastResult === 'DRAW'
         ? 'bg-blue-500/40'
         : 'bg-red-500/40'
     : 'bg-slate-900/10';

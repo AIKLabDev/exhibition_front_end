@@ -21,7 +21,7 @@ export interface GameScenario {
 }
 
 export interface Game02Props {
-  onGameResult: (result: 'win' | 'lose') => void;
+  onGameResult: (result: 'WIN' | 'LOSE') => void;
   /** 백엔드 GAME_START 수신 시 App이 증가시켜 전달. 0 → N 되면 버튼 없이 게임 시작 */
   triggerStartFromBackend?: number;
 }

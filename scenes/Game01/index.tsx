@@ -83,13 +83,13 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
 
   // 승패 판정
   const determineWinner = (user: RpsChoice, ai: RpsChoice): RpsResult => {
-    if (user === ai) return 'draw';
+    if (user === ai) return 'DRAW';
     if (
       (user === 'rock' && ai === 'scissors') ||
       (user === 'paper' && ai === 'rock') ||
       (user === 'scissors' && ai === 'paper')
-    ) return 'win';
-    return 'lose';
+    ) return 'WIN';
+    return 'LOSE';
   };
 
   // 게임 시작 (버튼 클릭 또는 백엔드 GAME_START 시 호출)
@@ -165,11 +165,11 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
         aiChoice,
         lastResult: gameResult,
         score: {
-          user: gameResult === 'win' ? prev.score.user + 1 : prev.score.user,
-          ai: gameResult === 'lose' ? prev.score.ai + 1 : prev.score.ai,
+          user: gameResult === 'WIN' ? prev.score.user + 1 : prev.score.user,
+          ai: gameResult === 'LOSE' ? prev.score.ai + 1 : prev.score.ai,
         },
-        hypeText: gameResult === 'win' ? GAME01_MESSAGES.result.win.hypeText : gameResult === 'lose' ? GAME01_MESSAGES.result.lose.hypeText : GAME01_MESSAGES.result.draw.hypeText,
-        aiComment: gameResult === 'win' ? GAME01_MESSAGES.result.win.aiComment : gameResult === 'lose' ? GAME01_MESSAGES.result.lose.aiComment : GAME01_MESSAGES.result.draw.aiComment,
+        hypeText: gameResult === 'WIN' ? GAME01_MESSAGES.result.win.hypeText : gameResult === 'LOSE' ? GAME01_MESSAGES.result.lose.hypeText : GAME01_MESSAGES.result.draw.hypeText,
+        aiComment: gameResult === 'WIN' ? GAME01_MESSAGES.result.win.aiComment : gameResult === 'LOSE' ? GAME01_MESSAGES.result.lose.aiComment : GAME01_MESSAGES.result.draw.aiComment,
       }));
       setHypeKey(prev => prev + 1);
       setTriggerEffect(gameResult);
@@ -203,7 +203,7 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
   return (
     <div className={`
       h-full w-full overflow-hidden transition-all duration-700
-      ${triggerEffect === 'lose' ? 'shake-hit' : ''}
+      ${triggerEffect === 'LOSE' ? 'shake-hit' : ''}
     `}>
       {/* Game01만 130% 비율: 씬 내부만 확대, 로고/DEBUG는 App에서 그대로 */}
       <div className={`
@@ -219,9 +219,9 @@ const Game01: React.FC<Game01PropsWithTrigger> = ({ onGameResult, triggerStartFr
         {phase === 'game' && (
           <>
             {/* Visual Feedback Overlays */}
-            {triggerEffect === 'lose' && <div className="fixed inset-0 pointer-events-none flash-red z-[60]" />}
-            {triggerEffect === 'win' && <div className="fixed inset-0 pointer-events-none flash-green z-[60]" />}
-            {triggerEffect === 'win' && <Fireworks />}
+            {triggerEffect === 'LOSE' && <div className="fixed inset-0 pointer-events-none flash-red z-[60]" />}
+            {triggerEffect === 'WIN' && <div className="fixed inset-0 pointer-events-none flash-green z-[60]" />}
+            {triggerEffect === 'WIN' && <Fireworks />}
 
             <Game01ScoreHeader
               game={game}

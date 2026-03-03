@@ -8,9 +8,9 @@ export interface Game01ResultViewProps {
 
 function resultTextClass(lastResult: RpsResult | null): string {
   const base = 'font-arcade-kr transition-all duration-300 drop-shadow-[0_0_50px_rgba(0,0,0,1)] text-center text-5xl md:text-8xl animate-result-pop ';
-  if (lastResult === 'win') return base + 'text-green-400 text-glow-green';
-  if (lastResult === 'lose') return base + 'text-red-500 text-glow-red';
-  if (lastResult === 'draw') return base + 'text-blue-400 text-glow-blue';
+  if (lastResult === 'WIN') return base + 'text-green-400 text-glow-green';
+  if (lastResult === 'LOSE') return base + 'text-red-500 text-glow-red';
+  if (lastResult === 'DRAW') return base + 'text-blue-400 text-glow-blue';
   return base;
 }
 

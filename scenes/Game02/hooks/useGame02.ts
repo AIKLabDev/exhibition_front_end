@@ -39,7 +39,7 @@ const DEFAULT_CENTER_TOP_LEFT = {
 };
 
 export function useGame02(
-  onGameResult: (result: 'win' | 'lose') => void,
+  onGameResult: (result: 'WIN' | 'LOSE') => void,
   triggerStartFromBackend: number
 ) {
   const [state, setState] = useState<Game02State>(Game02State.INTRO);
@@ -194,10 +194,10 @@ export function useGame02(
   useEffect(() => {
     if (state === Game02State.SUCCESS && !resultReportedRef.current) {
       resultReportedRef.current = true;
-      onGameResult('win');
+      onGameResult('WIN');
     } else if (state === Game02State.FAILURE && !resultReportedRef.current) {
       resultReportedRef.current = true;
-      onGameResult('lose');
+      onGameResult('LOSE');
     }
   }, [state, onGameResult]);
 
