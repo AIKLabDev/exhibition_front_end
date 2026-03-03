@@ -15,7 +15,6 @@ import type {
   VisionReqHandGesture,
   VisionResultHandGesture,
   VisionHumanDetectedData,
-  VisionGame04DirectionData,
   VisionQRScannedData,
   VisionQRROIData,
 } from '../protocol';
@@ -96,7 +95,6 @@ export class VisionWebSocketService {
   private onGameStartCallback?: () => void;
   private onGameStopCallback?: () => void;
   private onHumanDetectedCallback?: (data: VisionHumanDetectedData) => void;
-  private onGame04DirectionCallback?: (data: VisionGame04DirectionData) => void;
   private onQRScannedCallback?: (data: VisionQRScannedData) => void;
   private onQRROICallback?: (data: VisionQRROIData) => void;
   private onGame05AttackCallback?: () => void;
@@ -326,12 +324,6 @@ export class VisionWebSocketService {
           this.onHumanDetectedCallback?.(humanData);
           console.log('[VisionWS] HUMAN_DETECTED (forward to backend for SET_SCENE QR)');
         }
-      } else if (name === VisionMessageName.GAME04_DIRECTION) {
-        const directionData = payload as VisionGame04DirectionData;
-        if (directionData && directionData.direction === 'LEFT' || directionData.direction === 'RIGHT') {
-          this.onGame04DirectionCallback?.(directionData);
-          //console.log('[VisionWS] GAME04_DIRECTION:', directionData.direction, directionData.yaw, directionData.pitch);
-        }
       } else if (name === VisionMessageName.ERROR) {
         console.error('[VisionWS] Server error:', payload);
       } else if (name === VisionMessageName.ACK) {
@@ -401,10 +393,6 @@ export class VisionWebSocketService {
   onHumanDetected(cb: (data: VisionHumanDetectedData) => void): () => void {
     this.onHumanDetectedCallback = cb;
     return () => { this.onHumanDetectedCallback = undefined; };
-  }
-  onGame04Direction(cb: (data: VisionGame04DirectionData) => void): () => void {
-    this.onGame04DirectionCallback = cb;
-    return () => { this.onGame04DirectionCallback = undefined; };
   }
 
   /** QR 씬에서 Python이 QR 인식 시 구독. 프론트는 백엔드에 QR_SCANNED(data, bbox) 전달. */

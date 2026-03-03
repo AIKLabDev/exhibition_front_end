@@ -1,14 +1,15 @@
 /**
  * Game04: Zombie Defender (좀비고속도로)
  * Three.js 3D 슈팅 게임. 머리(또는 마우스)로 조준, 자동 발사.
- * visionWebSocketService.onGame04DirectionCallback()로 HEAD_DIRECTION(좌우) 수신
+ * 백엔드(Exhibition C++) WebSocket으로 GAME04_DIRECTION 수신 (Python → 공유메모리 → C++ → front_end).
  */
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Game04Props } from './Game04.types';
 import { PLAYER_MAX_HEALTH, GAME_DURATION, GAME04_STRINGS, RADAR_DETECT_RANGE, RADAR_ANGLE_DEGREES, PLAYER_VIEW_ANGLE_DEGREES } from './constants';
 import { GameCanvas, type NearbyZombieRadar } from './GameScene';
-import { getVisionWsService } from '../../services/visionWebSocketService';
+import { backendWsService } from '../../services/backendWebSocketService';
+import { BackendMessageName } from '../../protocol';
 import { useGameStartFromBackend, useResetResultReportRefWhenEnteringRound } from '../../hooks/useGameStartFromBackend';
 import './Game04.css';
 
@@ -145,14 +146,11 @@ const Game04: React.FC<Game04Props> = ({ onGameResult, inputMode: forceInputMode
   const scaleW = viewportWidth / BASE_WIDTH;
   const scaleH = viewportHeight / BASE_HEIGHT;
 
-  // vision websocket for human head direction
+  // 백엔드(Exhibition C++) WebSocket으로 GAME04_DIRECTION 수신 (direction, yaw, pitch)
   useEffect(() => {
-    const visionWs = getVisionWsService();
-    if (!visionWs.isConnected()) {
-      visionWs.connect().catch(() => { });
-    }
-
-    const unsubscribe = visionWs.onGame04Direction((data) => {
+    const unsubscribe = backendWsService.addMessageListener((msg) => {
+      if (msg.header?.name !== BackendMessageName.GAME04_DIRECTION || !msg.data) return;
+      const data = msg.data as { direction?: string; yaw?: number; pitch?: number };
       const { yaw, pitch } = data;
       if (!Number.isFinite(yaw) || !Number.isFinite(pitch)) return;
       if (forceInputMode === 'mouse') return; // 디버그에서 mouse 강제 시 헤드 데이터 무시
@@ -193,6 +191,8 @@ const Game04: React.FC<Game04Props> = ({ onGameResult, inputMode: forceInputMode
     setScore(0);
     setHealth(PLAYER_MAX_HEALTH);
     setTimeLeft(GAME_DURATION);
+    // 본게임 시작 시점을 백엔드에 알림 → Exhibition에서 헤드 추적/로봇 본게임 시작
+    backendWsService.sendCommand('GAME04_MAINGAME_START', {});
   }, []);
 
   // 대기 중 또는 게임오버(재시작) 화면에서 백엔드 GAME_START 시 재시작
@@ -202,10 +202,19 @@ const Game04: React.FC<Game04Props> = ({ onGameResult, inputMode: forceInputMode
 
   useResetResultReportRefWhenEnteringRound(gameStarted, resultReportedRef);
 
+  // Game04 씬을 벗어날 때(언마운트) 백엔드에 대기 상태 알림
+  useEffect(() => {
+    return () => {
+      backendWsService.sendCommand('GAME04_IDLE', {});
+    };
+  }, []);
+
   const handleGameOver = useCallback((finalScoreVal: number) => {
     setGameStarted(false);
     setGameOver(true);
     setFinalScore(finalScoreVal);
+    // 게임 종료 → 재시작 화면 진입 시 백엔드에 대기 상태 알림
+    backendWsService.sendCommand('GAME04_IDLE', {});
   }, []);
 
   const handlePlayerHit = useCallback(() => {

@@ -59,6 +59,8 @@ export const BackendMessageName = {
   GAME_STOP: 'GAME_STOP',
   /** Game02 뷰 제어: 백엔드(C++)가 기준 로봇 대비 뷰 포즈 전송. data: { X, Y } (도 단위) */
   VIEW_POSE: 'VIEW_POSE',
+  /** Game04 헤드 포즈: 백엔드(C++)가 Python 결과 수신 후 전송. data: { direction, yaw, pitch } */
+  GAME04_DIRECTION: 'GAME04_DIRECTION',
   /** QR 씬: 중복 참여자(이미 참여한 티켓). 인식 완료 연출이 끝난 뒤에만 연출 표시 */
   QR_DUPLICATED: 'QR_DUPLICATED',
 } as const;
@@ -80,6 +82,10 @@ export const UIEventName = {
   GAME02_MAINGAME_START: 'GAME02_MAINGAME_START',
   /** Game02: 대기 상태(씬 이탈 또는 목표 찾음/제한시간 실패로 종료). Exhibition에서 추적/로봇 대기 */
   GAME02_IDLE: 'GAME02_IDLE',
+  /** Game04: 본게임 시작 시점. Exhibition에서 헤드 추적/로봇 본게임 시작 */
+  GAME04_MAINGAME_START: 'GAME04_MAINGAME_START',
+  /** Game04: 대기 상태(게임 종료 후 재시작 화면 또는 씬 이탈). Exhibition에서 추적/로봇 대기 */
+  GAME04_IDLE: 'GAME04_IDLE',
   /** Vision에서 QR 인식 시(QR 씬) 프론트가 백엔드에 전달. data, bbox 포함 */
   QR_SCANNED: 'QR_SCANNED',
 } as const;
@@ -129,8 +135,6 @@ export const VisionMessageName = {
   ACK: 'ACK',
   /** Welcome 씬에서 human 감지 시 Python → 프론트. 프론트는 백엔드에 HUMAN_DETECTED 전달 → 백엔드가 SET_SCENE QR */
   HUMAN_DETECTED: 'HUMAN_DETECTED',
-  /** GAME04 씬에서 python vision module이 head의 왼쪽 오른쪽 방향만 제시 */
-  GAME04_DIRECTION: 'GAME04_DIRECTION',
   /** QR 씬에서 Python이 QR 인식 시 → 프론트는 백엔드에 QR_SCANNED 전달 */
   QR_SCANNED: 'QR_SCANNED',
   /** QR 씬에서 스캔 영역(ROI) 전달. left/top/width/height 비율(0~1). 프론트는 파란 상자 위치·크기에 반영 */
@@ -198,7 +202,6 @@ export const VisionMessageType = {
   GAME_START: VisionMessageName.GAME_START,
   GAME_STOP: VisionMessageName.GAME_STOP,
   HUMAN_DETECTED: VisionMessageName.HUMAN_DETECTED,
-  GAME04_DIRECTION: VisionMessageName.GAME04_DIRECTION,
   QR_SCANNED: VisionMessageName.QR_SCANNED,
   QR_ROI: VisionMessageName.QR_ROI,
   GAME05_ATTACK: VisionMessageName.GAME05_ATTACK,
