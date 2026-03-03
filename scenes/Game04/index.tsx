@@ -11,6 +11,7 @@ import { GameCanvas, type NearbyZombieRadar } from './GameScene';
 import { backendWsService } from '../../services/backendWebSocketService';
 import { BackendMessageName } from '../../protocol';
 import { useGameStartFromBackend, useResetResultReportRefWhenEnteringRound } from '../../hooks/useGameStartFromBackend';
+import ruleBgImg from '../../images/Game04 Rule.png';
 import './Game04.css';
 
 /** 기준 해상도 (전시 키오스크) */
@@ -310,25 +311,28 @@ const Game04: React.FC<Game04Props> = ({ onGameResult, inputMode: forceInputMode
         </div>
       )}
 
-      {/* 시작 화면 */}
+      {/* 시작 화면: 규칙 이미지 전체 + 게임 시작 버튼 영역 (Game02와 동일 패턴) */}
       {!gameStarted && !gameOver && (
-        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm text-white">
-          <h1
-            className="font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-yellow-300 to-green-400 animate-game04-gradient-x italic transform -skew-x-12 pr-4"
-            style={{ fontSize: `${titleFontSize}px` }}
-          >
-            {GAME04_STRINGS.TITLE}
-          </h1>
-          <p className="text-gray-400 max-w-full text-center font-black uppercase tracking-widest" style={{ fontSize: `${titleFontSize * 0.3}px`, marginBottom: `${32 * scaleH}px` }}>
-            {GAME04_STRINGS.SUBTITLE}
-          </p>
+        <div className="absolute inset-0 z-30 flex flex-col">
+          <div
+            className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+            style={{ backgroundImage: `url(${ruleBgImg})` }}
+          />
           <button
+            type="button"
             onClick={startGame}
-            className="group relative bg-green-600 overflow-hidden font-bold rounded-sm tracking-widest border border-green-400 shadow-[0_0_20px_rgba(74,222,128,0.5)] transition-all hover:scale-105 active:scale-95 text-white"
-            style={{ fontSize: `${buttonFontSize}px`, padding: `${16 * scaleH}px ${48 * scaleW}px` }}
+            className="absolute left-[40%] right-[40%] top-[85%] h-[12%] cursor-pointer flex items-center justify-center"
+            aria-label="게임 시작"
           >
-            <div className="absolute inset-0 w-full h-full bg-white/20 -translate-x-full skew-x-12 group-hover:translate-x-full transition-transform duration-500" />
-            {GAME04_STRINGS.START_BUTTON}
+            <span
+              className="absolute w-24 h-24 rounded-full border-4 border-white/40 animate-game04-start-pulse pointer-events-none"
+              aria-hidden
+            />
+            <span
+              className="absolute w-20 h-20 rounded-full border-2 border-green-400/50 animate-game04-start-pulse pointer-events-none"
+              style={{ animationDelay: '0.4s' }}
+              aria-hidden
+            />
           </button>
         </div>
       )}

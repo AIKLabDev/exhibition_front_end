@@ -3,19 +3,44 @@
  */
 
 @keyframes game04-shake {
-  0%, 100% { transform: translateX(0); }
-  10%, 30%, 50%, 70%, 90% { transform: translateX(-10px) translateY(5px); }
-  20%, 40%, 60%, 80% { transform: translateX(10px) translateY(-5px); }
+
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  10%,
+  30%,
+  50%,
+  70%,
+  90% {
+    transform: translateX(-10px) translateY(5px);
+  }
+
+  20%,
+  40%,
+  60%,
+  80% {
+    transform: translateX(10px) translateY(-5px);
+  }
 }
 
 .animate-game04-shake {
-  animation: game04-shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+  animation: game04-shake 0.4s cubic-bezier(.36, .07, .19, .97) both;
 }
 
 @keyframes game04-gradient-x {
-  0% { background-position: 0% 50% }
-  50% { background-position: 100% 50% }
-  100% { background-position: 0% 50% }
+  0% {
+    background-position: 0% 50%
+  }
+
+  50% {
+    background-position: 100% 50%
+  }
+
+  100% {
+    background-position: 0% 50%
+  }
 }
 
 .animate-game04-gradient-x {
@@ -24,8 +49,15 @@
 }
 
 @keyframes game04-confetti-fall {
-  0% { transform: translateY(0) rotate(0deg); opacity: 0.8; }
-  100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 0.8;
+  }
+
+  100% {
+    transform: translateY(100vh) rotate(720deg);
+    opacity: 0;
+  }
 }
 
 /* 레이더: 근접 좀비 경고 원형 UI */
@@ -38,6 +70,32 @@
 }
 
 @keyframes game04-radar-dot-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* 시작 화면 버튼 영역 펄스 (Game02와 동일 패턴) */
+@keyframes game04-start-pulse {
+
+  0%,
+  100% {
+    transform: scale(0.9);
+    opacity: 0.6;
+  }
+
+  50% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+}
+
+.animate-game04-start-pulse {
+  animation: game04-start-pulse 1.5s ease-in-out infinite;
 }
