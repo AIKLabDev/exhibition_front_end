@@ -15,7 +15,7 @@ export interface Game05Props {
 }
 
 // ── 게임 상태 타입 ──
-export type GameStateType = 'title' | 'playing' | 'victory' | 'defeat' | 'result';
+export type GameStateType = 'title' | 'rule' | 'playing' | 'victory' | 'defeat' | 'result';
 
 // ── 적/친구 엔티티 ──
 export interface EnemyLike {

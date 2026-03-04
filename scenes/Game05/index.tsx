@@ -11,6 +11,7 @@ import { initSounds, playSfx, stopAllSounds } from './sounds';
 import { stateHandlers, checkAttackHit } from './states';
 import { useGameStartFromBackend, isStartableState, useResetResultReportRefWhenEnteringRound } from '../../hooks/useGameStartFromBackend';
 import { getVisionWsService } from '../../services/visionWebSocketService';
+import ruleBgImg from '../../images/Game05 Rule.png';
 import './Game05.css';
 
 function createInitialState(): GameState {
@@ -56,6 +57,8 @@ const Game05: React.FC<Game05Props> = ({ onGameResult, triggerStartFromBackend =
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [gameStateUI, setGameStateUI] = useState<GameStateType>('title');
+  /** 캔버스 표시 스케일 (object-fit contain). Rule 화면 PRESS START를 타이틀과 동일 크기로 쓰기 위함 */
+  const [canvasScale, setCanvasScale] = useState(1);
 
   // 상태 전환 함수
   const changeState = useCallback((newState: GameStateType) => {
@@ -125,8 +128,8 @@ const Game05: React.FC<Game05Props> = ({ onGameResult, triggerStartFromBackend =
     changeState('playing');
   }, [resetGame, changeState]);
 
-  // 타이틀 또는 결과 화면에서 백엔드 GAME_START 시 시작/재시작 (3판 진행 시 재시작 포함)
-  const game05StartableStates: readonly GameStateType[] = ['title', 'result'];
+  // 타이틀/규칙 또는 결과 화면에서 백엔드 GAME_START 시 시작/재시작 (3판 진행 시 재시작 포함)
+  const game05StartableStates: readonly GameStateType[] = ['title', 'rule', 'result'];
   useGameStartFromBackend(triggerStartFromBackend, startGame, {
     onlyWhen: () => isStartableState(gameStateUI, game05StartableStates),
   });
@@ -138,7 +141,7 @@ const Game05: React.FC<Game05Props> = ({ onGameResult, triggerStartFromBackend =
     if (forceInputMode !== 'vision') return;
     const visionWs = getVisionWsService();
     if (!visionWs.isConnected()) {
-      visionWs.connect().catch(() => {});
+      visionWs.connect().catch(() => { });
     }
     const unsubscribe = visionWs.onGame05Attack(() => {
       startAttack();
@@ -148,28 +151,30 @@ const Game05: React.FC<Game05Props> = ({ onGameResult, triggerStartFromBackend =
     };
   }, [forceInputMode, startAttack]);
 
-  // 입력 처리 (타이틀: startGame, 플레이 중: mouse 모드일 때만 공격)
+  // 입력 처리 (타이틀: rule로 / 규칙: startGame / 플레이 중: 공격)
   const handleInput = useCallback(
     (e?: React.MouseEvent | React.TouchEvent | KeyboardEvent) => {
       e?.preventDefault();
       const s = stateRef.current;
       if (s.gameState === 'title') {
+        changeState('rule');
+      } else if (s.gameState === 'rule') {
         startGame();
       } else if (s.gameState === 'playing' && forceInputMode === 'mouse') {
         startAttack();
       }
     },
-    [startGame, startAttack, forceInputMode]
+    [changeState, startGame, startAttack, forceInputMode]
   );
 
-  // 재시작 (result → title)
+  // 재시작 (result → 바로 본게임). win/defeat 후 다시시작 시 Rule·title 없이 즉시 playing
   const handleRestart = useCallback(() => {
     const sounds = soundsRef.current;
     if (sounds) {
       stopAllSounds(sounds);
     }
-    changeState('title');
-  }, [changeState]);
+    startGame();
+  }, [startGame]);
 
   // 에셋 및 사운드 로드
   useEffect(() => {
@@ -246,6 +251,21 @@ const Game05: React.FC<Game05Props> = ({ onGameResult, triggerStartFromBackend =
     return () => cancelAnimationFrame(rafId);
   }, [loading, loadError, onGameResult, changeState]);
 
+  // 캔버스 표시 크기 측정 → Rule 화면 PRESS START를 타이틀(14px 캔버스 픽셀)과 동일 시각 크기로
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const measure = () => {
+      const rect = canvas.getBoundingClientRect();
+      const scale = Math.min(rect.width / W, rect.height / H);
+      setCanvasScale(scale);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(canvas);
+    return () => ro.disconnect();
+  }, [loading]);
+
   // 키보드 이벤트
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => handleInput(e);
@@ -289,6 +309,36 @@ const Game05: React.FC<Game05Props> = ({ onGameResult, triggerStartFromBackend =
         tabIndex={0}
         aria-label="게임 입력"
       />
+      {/* 규칙 화면: title 터치 후 표시. Game05 Rule.png + PRESS START(타이틀과 동일 폰트/점멸). 터치 시 본게임 시작 */}
+      {gameStateUI === 'rule' && (
+        <div
+          className="absolute inset-0 z-20 flex flex-col items-center justify-end cursor-pointer bg-cover bg-center bg-no-repeat"
+          style={{ backgroundImage: `url(${ruleBgImg})` }}
+          onClick={(e) => {
+            e.stopPropagation();
+            startGame();
+          }}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            startGame();
+          }}
+          role="button"
+          tabIndex={0}
+          aria-label="PRESS START - 게임 시작"
+        >
+          <span
+            className="game05-rule-press-start text-white text-center"
+            style={{
+              fontSize: `${10 * canvasScale}px`,
+              textShadow: '0 0 4px #000',
+              paddingBottom: `${10 * canvasScale}px`,
+            }}
+          >
+            PRESS START
+          </span>
+        </div>
+      )}
       {gameStateUI === 'result' && (
         <div className="absolute inset-0 z-20 flex items-end justify-center pb-8 pointer-events-none">
           <div className="pointer-events-auto">

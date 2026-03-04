@@ -4,6 +4,7 @@
 
 import { StateHandler, GameStateType } from '../Game05.types';
 import { titleState } from './titleState';
+import { ruleState } from './ruleState';
 import { playingState, checkAttackHit } from './playingState';
 import { victoryState } from './victoryState';
 import { defeatState } from './defeatState';
@@ -11,6 +12,7 @@ import { resultState } from './resultState';
 
 export const stateHandlers: Record<GameStateType, StateHandler> = {
   title: titleState,
+  rule: ruleState,
   playing: playingState,
   victory: victoryState,
   defeat: defeatState,
