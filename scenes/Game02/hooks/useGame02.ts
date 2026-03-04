@@ -233,7 +233,6 @@ export function useGame02(
         const data = msg.data as { X?: number; Y?: number };
         if (data != null && Number.isFinite(data.X) && Number.isFinite(data.Y)) {
           const now = Date.now();
-          console.log('[Game02] VIEW_POSE', { X: data.X, Y: data.Y, atMs: now });
           viewPoseRef.current = { X: data.X!, Y: data.Y!, atMs: now };
           setViewPoseStatus({
             connected: true,
