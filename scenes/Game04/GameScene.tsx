@@ -1,16 +1,15 @@
 /**
- * Game04 (Zombie Defender) Three.js 3D 씬
- * - RetroBackground: 레트로 네온 배경 (그리드, 산, 별)
- * - GameController: 총알 발사, 좀비 스폰/물리, 충돌 판정
- * - GameCanvas: <Canvas> 래퍼
- *
- * headRotation ref 로 외부에서 yaw/pitch를 넣으면 카메라가 따라 돌아감.
+ * Game04 (Zombie Defender) 3D scene.
+ * Uses a rigged FBX zombie model and plays the embedded animation clip.
  */
 
-import React, { useRef, useMemo, useEffect } from 'react';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import React, { Suspense, useEffect, useMemo, useRef } from 'react';
+import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber';
 import { PerspectiveCamera, Stars } from '@react-three/drei';
 import * as THREE from 'three';
+import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
+import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js';
+import zombieFbxUrl from '../../3dModel/zombie.fbx';
 import {
   SPAWN_RADIUS,
   BULLET_SPEED,
@@ -23,20 +22,26 @@ import {
   PLAYER_VIEW_ANGLE_DEGREES,
 } from './constants';
 
-// --- 내부 상수 ---
+// Entity counts
 const MAX_BULLETS = 600;
-const MAX_ZOMBIES = 500;
+const MAX_ZOMBIES = 80;
 const MAX_PARTICLES = 800;
-/** 좀비 스폰 각도: PLAYER_VIEW_ANGLE_DEGREES와 동일(정면 70° 안에서만 스폰) */
+
+// Spawn only inside player front cone
 const SPAWN_HALF_ANGLE_RAD = (PLAYER_VIEW_ANGLE_DEGREES / 2) * (Math.PI / 180);
 const FLOOR_LEVEL = -1.5;
 
-// 네온 컬러
+// Zombie model tuning
+const ZOMBIE_TARGET_HEIGHT = 2.0;
+const ZOMBIE_MODEL_FORWARD_OFFSET_RAD = 0;
+const ZOMBIE_UNIFORM_SCALE = 2.0;
+const ZOMBIE_SCALE_FAR = 0.76;
+const ZOMBIE_SCALE_NEAR = 1.3;
+
+// Colors
 const COLOR_BG = '#020008';
 const COLOR_GRID_1 = '#00ffff';
 const COLOR_GRID_2 = '#ff00ff';
-const COLOR_ZOMBIE_SKIN = '#39ff14';
-const COLOR_ZOMBIE_SHIRT = '#2a0a3b';
 const COLOR_BULLET = '#ffff00';
 const COLOR_PARTICLE = '#ffff00';
 
@@ -56,13 +61,12 @@ const MeshStandardMaterial = 'meshStandardMaterial' as any;
 const InstancedMesh = 'instancedMesh' as any;
 const SphereGeometry = 'sphereGeometry' as any;
 const AmbientLight = 'ambientLight' as any;
+const HemisphereLight = 'hemisphereLight' as any;
 const DirectionalLight = 'directionalLight' as any;
 
-/** 레이더에 표시할 한 명의 근접 좀비 정보 (플레이어 기준 각도·거리) */
+/** Nearby zombie info for radar UI. */
 export interface NearbyZombieRadar {
-  /** 플레이어 정면(-Z) 기준 각도(라디안). 0 = 정면, Math.PI/2 = 오른쪽 */
   angle: number;
-  /** XZ 평면 거리 */
   distance: number;
 }
 
@@ -73,11 +77,79 @@ export interface GameSceneProps {
   gameStarted: boolean;
   setScore: (cb: (prev: number) => number) => void;
   setTimeLeft: (time: number) => void;
-  /** 근접 좀비 목록(레이더용). 매 프레임 호출됨 */
   onNearbyZombies?: (zombies: NearbyZombieRadar[]) => void;
 }
 
-// ---------- 레트로 배경 ----------
+interface ZombieRenderRig {
+  root: THREE.Group;
+  mixer: THREE.AnimationMixer | null;
+  action: THREE.AnimationAction | null;
+}
+
+const configureZombieMaterial = (material: THREE.Material) => {
+  const mat = material as any;
+
+  // Color textures must be treated as sRGB to keep original albedo colors.
+  if (mat.map) mat.map.colorSpace = THREE.SRGBColorSpace;
+  if (mat.emissiveMap) mat.emissiveMap.colorSpace = THREE.SRGBColorSpace;
+
+  // Data textures stay in linear/no-color space.
+  const dataMaps = ['normalMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'bumpMap', 'displacementMap', 'alphaMap', 'specularMap'];
+  for (const key of dataMaps) {
+    if (mat[key]) mat[key].colorSpace = THREE.NoColorSpace;
+  }
+
+  if (mat.color?.isColor) mat.color.set(0xffffff);
+  if (mat.emissive?.isColor) mat.emissive.multiplyScalar(0.85);
+  if (typeof mat.toneMapped === 'boolean') mat.toneMapped = false;
+  mat.needsUpdate = true;
+};
+
+const pickZombieClip = (clips: THREE.AnimationClip[]) => {
+  if (!clips.length) return null;
+  const preferred = clips.find((clip) => /walk|run|zombie|idle/i.test(clip.name));
+  return preferred ?? clips[0];
+};
+
+const createZombieRig = (source: THREE.Group, clip: THREE.AnimationClip | null): ZombieRenderRig => {
+  const root = cloneSkeleton(source) as THREE.Group;
+
+  root.traverse((child) => {
+    if ((child as THREE.Mesh).isMesh) {
+      const mesh = child as THREE.Mesh;
+      mesh.frustumCulled = false;
+      mesh.castShadow = false;
+      mesh.receiveShadow = false;
+      if (Array.isArray(mesh.material)) {
+        mesh.material.forEach((mat) => configureZombieMaterial(mat));
+      } else if (mesh.material) {
+        configureZombieMaterial(mesh.material);
+      }
+    }
+  });
+
+  let mixer: THREE.AnimationMixer | null = null;
+  let action: THREE.AnimationAction | null = null;
+  if (clip) {
+    mixer = new THREE.AnimationMixer(root);
+    action = mixer.clipAction(clip);
+    action.loop = THREE.LoopRepeat;
+    action.clampWhenFinished = false;
+    action.enabled = true;
+    action.play();
+  }
+
+  root.visible = false;
+  return { root, mixer, action };
+};
+
+const getZombieDistanceScale = (x: number, z: number) => {
+  const distance = Math.sqrt(x * x + z * z);
+  const proximity = 1 - THREE.MathUtils.clamp(distance / SPAWN_RADIUS, 0, 1);
+  return THREE.MathUtils.lerp(ZOMBIE_SCALE_FAR, ZOMBIE_SCALE_NEAR, proximity);
+};
+
+// ---------- Retro background ----------
 const RetroBackground = () => {
   const gridRef = useRef<THREE.Mesh>(null);
   const mountainRef = useRef<THREE.Group>(null);
@@ -127,35 +199,58 @@ const RetroBackground = () => {
   );
 };
 
-// ---------- 게임 로직 ----------
+// ---------- Main game logic ----------
 const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, setScore, setTimeLeft, onNearbyZombies }: GameSceneProps) => {
   const { camera } = useThree();
+  const zombieTemplate = useLoader(FBXLoader, zombieFbxUrl) as THREE.Group;
 
   const bulletsData = useRef(
     Array.from({ length: MAX_BULLETS }).map((_, i) => ({
-      active: false, pos: new THREE.Vector3(0, -500, 0), dir: new THREE.Vector3(0, 0, -1), id: i,
+      active: false,
+      pos: new THREE.Vector3(0, -500, 0),
+      dir: new THREE.Vector3(0, 0, -1),
+      id: i,
     }))
   );
   const zombiesData = useRef(
     Array.from({ length: MAX_ZOMBIES }).map((_, i) => ({
-      active: false, pos: new THREE.Vector3(0, -500, 0), speed: 0, id: i, wobbleOffset: Math.random() * 100, scale: 1,  // 스폰 시 랜덤으로 덮어씀
+      active: false,
+      pos: new THREE.Vector3(0, -500, 0),
+      speed: 0,
+      id: i,
+      scale: 1,
     }))
   );
   const particlesData = useRef(
     Array.from({ length: MAX_PARTICLES }).map((_, i) => ({
-      active: false, pos: new THREE.Vector3(0, -500, 0), velocity: new THREE.Vector3(), life: 0, scale: 1, id: i,
+      active: false,
+      pos: new THREE.Vector3(0, -500, 0),
+      velocity: new THREE.Vector3(),
+      life: 0,
+      scale: 1,
+      id: i,
     }))
   );
 
   const bulletMeshRef = useRef<THREE.InstancedMesh>(null);
   const particleMeshRef = useRef<THREE.InstancedMesh>(null);
 
-  const zombieBodyRef = useRef<THREE.InstancedMesh>(null);
-  const zombieHeadRef = useRef<THREE.InstancedMesh>(null);
-  const zombieArmsRef = useRef<THREE.InstancedMesh>(null);
-
   const gunGroupRef = useRef<THREE.Group>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
+
+  const zombieTemplateBounds = useMemo(() => new THREE.Box3().setFromObject(zombieTemplate), [zombieTemplate]);
+  const zombieTemplateMinY = useMemo(() => zombieTemplateBounds.min.y, [zombieTemplateBounds]);
+  const zombieTemplateHeight = useMemo(() => {
+    const size = new THREE.Vector3();
+    zombieTemplateBounds.getSize(size);
+    return Math.max(0.001, size.y);
+  }, [zombieTemplateBounds]);
+  const zombieBaseScale = useMemo(() => ZOMBIE_TARGET_HEIGHT / zombieTemplateHeight, [zombieTemplateHeight]);
+  const zombieAnimationClip = useMemo(() => pickZombieClip(zombieTemplate.animations ?? []), [zombieTemplate]);
+
+  const zombieRigs = useMemo(() => {
+    return Array.from({ length: MAX_ZOMBIES }).map(() => createZombieRig(zombieTemplate, zombieAnimationClip));
+  }, [zombieTemplate, zombieAnimationClip]);
 
   const shakeIntensity = useRef(0);
   const gameEndedTriggered = useRef(false);
@@ -167,6 +262,12 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, se
   const lastReportedTime = useRef(GAME_DURATION + 1);
 
   const audioCtxRef = useRef<AudioContext | null>(null);
+  const playerLightRef = useRef<THREE.PointLight>(null);
+
+  const tempLookDir = useMemo(() => new THREE.Vector3(), []);
+  const tempPlayerLightDir = useMemo(() => new THREE.Vector3(), []);
+  const tempZombieTarget = useMemo(() => new THREE.Vector3(), []);
+  const tempZombieBodyTarget = useMemo(() => new THREE.Vector3(), []);
 
   const playSound = (type: 'shoot' | 'hit' | 'damage') => {
     if (!audioCtxRef.current) {
@@ -187,21 +288,24 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, se
       osc.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.1);
       gain.gain.setValueAtTime(0.05, ctx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
-      osc.start(); osc.stop(ctx.currentTime + 0.1);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.1);
     } else if (type === 'hit') {
       osc.type = 'square';
       osc.frequency.setValueAtTime(200, ctx.currentTime);
       osc.frequency.linearRampToValueAtTime(50, ctx.currentTime + 0.1);
       gain.gain.setValueAtTime(0.05, ctx.currentTime);
       gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.1);
-      osc.start(); osc.stop(ctx.currentTime + 0.1);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.1);
     } else if (type === 'damage') {
       osc.type = 'sawtooth';
       osc.frequency.setValueAtTime(100, ctx.currentTime);
       osc.frequency.linearRampToValueAtTime(20, ctx.currentTime + 0.3);
       gain.gain.setValueAtTime(0.2, ctx.currentTime);
       gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.3);
-      osc.start(); osc.stop(ctx.currentTime + 0.3);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.3);
     }
   };
 
@@ -222,6 +326,14 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, se
   };
 
   useEffect(() => {
+    return () => {
+      if (audioCtxRef.current) {
+        audioCtxRef.current.close().catch(() => undefined);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     if (gameStarted) {
       startTime.current = 0;
       localScore.current = 0;
@@ -229,18 +341,34 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, se
       shakeIntensity.current = 0;
       gameEndedTriggered.current = false;
 
-      bulletsData.current.forEach((b) => { b.active = false; b.pos.set(0, -500, 0); });
-      zombiesData.current.forEach((z) => { z.active = false; z.pos.set(0, -500, 0); });
-      particlesData.current.forEach((p) => { p.active = false; p.pos.set(0, -500, 0); });
+      bulletsData.current.forEach((b) => {
+        b.active = false;
+        b.pos.set(0, -500, 0);
+      });
+      zombiesData.current.forEach((z) => {
+        z.active = false;
+        z.pos.set(0, -500, 0);
+      });
+      particlesData.current.forEach((p) => {
+        p.active = false;
+        p.pos.set(0, -500, 0);
+      });
+      zombieRigs.forEach((rig) => {
+        rig.root.visible = false;
+        if (rig.action) {
+          rig.action.reset();
+          rig.action.play();
+        }
+      });
     }
-  }, [gameStarted]);
+  }, [gameStarted, zombieRigs]);
 
   useFrame((state) => {
     const now = Date.now();
     const delta = 0.016;
     const time = state.clock.elapsedTime;
 
-    // 카메라 제어 + 흔들림
+    // Camera + shake
     const yaw = headRotation.current.yaw || 0;
     if (shakeIntensity.current > 0) {
       shakeIntensity.current = THREE.MathUtils.lerp(shakeIntensity.current, 0, 0.1);
@@ -257,8 +385,17 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, se
       gunGroupRef.current.rotation.copy(camera.rotation);
       gunGroupRef.current.position.copy(camera.position);
     }
+    if (playerLightRef.current) {
+      camera.getWorldDirection(tempPlayerLightDir);
+      playerLightRef.current.position.set(
+        camera.position.x + tempPlayerLightDir.x * 1.6,
+        camera.position.y - 0.05 + tempPlayerLightDir.y * 1.6,
+        camera.position.z + tempPlayerLightDir.z * 1.6
+      );
+      playerLightRef.current.intensity = 2.2 + Math.sin(time * 10) * 0.18;
+    }
 
-    // 게임 로직
+    // Main game loop
     if (gameStarted) {
       if (startTime.current === 0) startTime.current = state.clock.elapsedTime;
       const elapsed = state.clock.elapsedTime - startTime.current;
@@ -274,22 +411,21 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, se
         onGameOver(localScore.current);
       }
 
-      // 발사
+      // Auto fire
       if (now - lastFireTime.current > FIRE_RATE) {
         lastFireTime.current = now;
         playSound('shoot');
         const bullet = bulletsData.current.find((b) => !b.active);
         if (bullet) {
           bullet.active = true;
-          const dir = new THREE.Vector3();
-          camera.getWorldDirection(dir);
-          bullet.dir.copy(dir.normalize());
-          bullet.pos.copy(camera.position).add(dir.multiplyScalar(1.5));
+          camera.getWorldDirection(tempLookDir);
+          bullet.dir.copy(tempLookDir.normalize());
+          bullet.pos.copy(camera.position).add(tempLookDir.multiplyScalar(1.5));
           bullet.pos.y -= 0.3;
         }
       }
 
-      // 좀비 스폰
+      // Zombie spawn
       const progress = elapsed / GAME_DURATION;
       const currentSpawnInterval = THREE.MathUtils.lerp(INITIAL_SPAWN_INTERVAL, MIN_SPAWN_INTERVAL, progress);
 
@@ -301,21 +437,11 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, se
           const angle = -Math.PI / 2 + (Math.random() - 0.5) * 2 * SPAWN_HALF_ANGLE_RAD;
           zombie.pos.set(Math.cos(angle) * SPAWN_RADIUS, FLOOR_LEVEL, Math.sin(angle) * SPAWN_RADIUS);
           zombie.speed = ZOMBIE_BASE_SPEED + progress * 15;
-
-          const LOW_SCALE_WEIGHT = 0.75;  // 75% 확률로 1~2 구간
-          const LOW_SCALE_MIN = 1.0;
-          const LOW_SCALE_MAX = 5.0;
-          const HIGH_SCALE_MIN = 5.0;
-          const HIGH_SCALE_MAX = 10.0;
-
-          zombie.scale =
-            Math.random() < LOW_SCALE_WEIGHT
-              ? LOW_SCALE_MIN + Math.random() * (LOW_SCALE_MAX - LOW_SCALE_MIN)
-              : HIGH_SCALE_MIN + Math.random() * (HIGH_SCALE_MAX - HIGH_SCALE_MIN);
+          zombie.scale = ZOMBIE_UNIFORM_SCALE;
         }
       }
 
-      // 총알 물리
+      // Bullet simulation
       for (let i = 0; i < MAX_BULLETS; i++) {
         const b = bulletsData.current[i];
         if (b.active) {
@@ -324,7 +450,7 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, se
         }
       }
 
-      // 파티클 물리
+      // Particle simulation
       for (let i = 0; i < MAX_PARTICLES; i++) {
         const p = particlesData.current[i];
         if (p.active) {
@@ -335,21 +461,21 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, se
         }
       }
 
-      // 좀비 물리 + 충돌
+      // Zombie movement + collisions
       const playerPos = new THREE.Vector2(0, 0);
       const zombiePos = new THREE.Vector2();
 
       for (let i = 0; i < MAX_ZOMBIES; i++) {
         const z = zombiesData.current[i];
         if (z.active) {
-          const dir = new THREE.Vector3(0, FLOOR_LEVEL, 0).sub(z.pos);
-          dir.y = 0;
-          dir.normalize();
-          z.pos.addScaledVector(dir, z.speed * delta);
+          tempZombieTarget.set(0, FLOOR_LEVEL, 0).sub(z.pos);
+          tempZombieTarget.y = 0;
+          tempZombieTarget.normalize();
+          z.pos.addScaledVector(tempZombieTarget, z.speed * delta);
 
-          // 1. Check Collision with Player (Damage)
+          // Player collision
           zombiePos.set(z.pos.x, z.pos.z);
-          if (zombiePos.distanceTo(playerPos) < 5.0) {
+          if (zombiePos.distanceTo(playerPos) < 2.2) {
             z.active = false;
             spawnExplosion(z.pos);
             playSound('damage');
@@ -358,13 +484,16 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, se
             continue;
           }
 
-          // 2. Check Collision with Bullets
+          // Bullet collision
           for (let j = 0; j < MAX_BULLETS; j++) {
             const b = bulletsData.current[j];
             if (!b.active) continue;
 
-            const hitDist = b.pos.distanceTo(new THREE.Vector3(z.pos.x, z.pos.y + 1, z.pos.z));
-            if (hitDist < 2.5) {
+            const distanceScale = getZombieDistanceScale(z.pos.x, z.pos.z);
+            const collisionScale = z.scale * distanceScale;
+            tempZombieBodyTarget.set(z.pos.x, z.pos.y + 1.1 * collisionScale, z.pos.z);
+            const hitDist = b.pos.distanceTo(tempZombieBodyTarget);
+            if (hitDist < 1.35 * collisionScale) {
               b.active = false;
               z.active = false;
               spawnExplosion(z.pos);
@@ -377,13 +506,13 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, se
         }
       }
 
-      // 레이더용: 감지 범위 내 좀비만 각도·거리로 전달 (플레이어 정면 -Z 기준)
+      // Radar data
       const nearby: NearbyZombieRadar[] = [];
       for (let i = 0; i < MAX_ZOMBIES; i++) {
         const z = zombiesData.current[i];
         if (!z.active) continue;
-        const dx = z.pos.x - 0;
-        const dz = z.pos.z - 0;
+        const dx = z.pos.x;
+        const dz = z.pos.z;
         const dist = Math.sqrt(dx * dx + dz * dz);
         if (dist > RADAR_DETECT_RANGE) continue;
         const angle = Math.atan2(dx, -dz);
@@ -394,15 +523,14 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, se
       onNearbyZombies([]);
     }
 
-    // 렌더 행렬 업데이트
+    // Bullet render updates
     if (bulletMeshRef.current) {
       for (let i = 0; i < MAX_BULLETS; i++) {
         const b = bulletsData.current[i];
         if (b.active) {
           dummy.position.copy(b.pos);
           dummy.scale.set(1, 1, 1);
-        }
-        else {
+        } else {
           dummy.position.set(0, -500, 0);
           dummy.scale.set(0, 0, 0);
         }
@@ -413,6 +541,7 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, se
       bulletMeshRef.current.instanceMatrix.needsUpdate = true;
     }
 
+    // Particle render updates
     if (particleMeshRef.current) {
       for (let i = 0; i < MAX_PARTICLES; i++) {
         const p = particlesData.current[i];
@@ -420,8 +549,7 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, se
           dummy.position.copy(p.pos);
           dummy.scale.set(p.scale * p.life, p.scale * p.life, p.scale * p.life);
           dummy.rotation.set(Math.random(), Math.random(), Math.random());
-        }
-        else {
+        } else {
           dummy.position.set(0, -500, 0);
           dummy.scale.set(0, 0, 0);
         }
@@ -431,67 +559,45 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, se
       particleMeshRef.current.instanceMatrix.needsUpdate = true;
     }
 
-    if (zombieBodyRef.current && zombieHeadRef.current && zombieArmsRef.current) {
-      const lookTarget = new THREE.Vector3(camera.position.x, FLOOR_LEVEL, camera.position.z);
+    // Zombie model render updates + embedded animation playback
+    for (let i = 0; i < MAX_ZOMBIES; i++) {
+      const z = zombiesData.current[i];
+      const rig = zombieRigs[i];
 
-      for (let i = 0; i < MAX_ZOMBIES; i++) {
-        const z = zombiesData.current[i];
-        if (z.active) {
-          const runWobble = Math.sin(time * 15 + z.wobbleOffset) * 0.15;
-          const runBob = Math.abs(Math.sin(time * 15 + z.wobbleOffset)) * 0.2;
-
-          dummy.position.copy(z.pos);
-          dummy.lookAt(lookTarget);
-          const baseRotation = dummy.rotation.clone();
-
-          const feetY = 0.4;
-          const bodyY = 0.35;
-          const headY = 1.05;
-          const armsY = 0.7;
-          const zombieScale = z.scale;
-
-          // Body
-          dummy.position.y = z.pos.y + feetY + bodyY * zombieScale + runBob;
-          dummy.rotation.set(baseRotation.x, baseRotation.y, baseRotation.z + runWobble);
-          dummy.rotateX(-0.4);
-          dummy.scale.set(zombieScale, zombieScale, zombieScale);
-          dummy.updateMatrix();
-          zombieBodyRef.current.setMatrixAt(i, dummy.matrix);
-
-          // Head
-          dummy.position.y = z.pos.y + feetY + headY * zombieScale + runBob;
-          dummy.rotation.set(baseRotation.x, baseRotation.y, baseRotation.z + runWobble * 0.5);
-          dummy.rotateX(-0.2);
-          dummy.scale.set(zombieScale, zombieScale, zombieScale);
-          dummy.updateMatrix();
-          zombieHeadRef.current.setMatrixAt(i, dummy.matrix);
-
-          // Arms
-          dummy.position.y = z.pos.y + feetY + armsY * zombieScale + runBob;
-          dummy.rotation.set(baseRotation.x, baseRotation.y, baseRotation.z + runWobble);
-          dummy.rotateX(-0.4);
-          dummy.scale.set(zombieScale, zombieScale, zombieScale);
-          dummy.updateMatrix();
-          zombieArmsRef.current.setMatrixAt(i, dummy.matrix);
-        } else {
-          dummy.position.set(0, -500, 0);
-          dummy.scale.set(0, 0, 0);
-          dummy.updateMatrix();
-          zombieBodyRef.current.setMatrixAt(i, dummy.matrix);
-          zombieHeadRef.current.setMatrixAt(i, dummy.matrix);
-          zombieArmsRef.current.setMatrixAt(i, dummy.matrix);
-        }
+      if (!z.active) {
+        rig.root.visible = false;
+        continue;
       }
-      zombieBodyRef.current.instanceMatrix.needsUpdate = true;
-      zombieHeadRef.current.instanceMatrix.needsUpdate = true;
-      zombieArmsRef.current.instanceMatrix.needsUpdate = true;
+
+      if (!rig.root.visible && rig.action) {
+        rig.action.reset();
+        rig.action.play();
+      }
+      rig.root.visible = true;
+      rig.mixer?.update(delta);
+
+      const distanceScale = getZombieDistanceScale(z.pos.x, z.pos.z);
+      const finalScale = zombieBaseScale * z.scale * distanceScale;
+
+      const yawToPlayer = Math.atan2(-z.pos.x, -z.pos.z);
+
+      rig.root.position.set(
+        z.pos.x,
+        FLOOR_LEVEL - zombieTemplateMinY * finalScale,
+        z.pos.z
+      );
+      rig.root.rotation.set(0, yawToPlayer + ZOMBIE_MODEL_FORWARD_OFFSET_RAD, 0);
+      rig.root.scale.setScalar(finalScale);
     }
   });
 
   return (
     <>
+      {zombieRigs.map((rig, idx) => (
+        <primitive key={idx} object={rig.root} />
+      ))}
+
       <Group ref={gunGroupRef}>
-        {/* Simple Gun Model Visualization */}
         <Mesh position={[0.2, -0.3, -0.2]}>
           <BoxGeometry args={[0.1, 0.1, 0.5]} />
           <MeshStandardMaterial color="#444" />
@@ -502,39 +608,27 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, se
         </Mesh>
       </Group>
 
-      {/* Bullets - Glow Effect */}
       <InstancedMesh ref={bulletMeshRef} args={[undefined, undefined, MAX_BULLETS]} frustumCulled={false}>
         <SphereGeometry args={[0.08, 6, 6]} />
         <MeshBasicMaterial color={COLOR_BULLET} toneMapped={false} />
       </InstancedMesh>
 
-      {/* Particles - Transparent */}
       <InstancedMesh ref={particleMeshRef} args={[undefined, undefined, MAX_PARTICLES]} frustumCulled={false}>
         <BoxGeometry args={[0.1, 0.1, 0.1]} />
         <MeshBasicMaterial color={COLOR_PARTICLE} transparent opacity={0.8} />
       </InstancedMesh>
 
-      {/* Zombie Parts */}
-      <InstancedMesh ref={zombieBodyRef} args={[undefined, undefined, MAX_ZOMBIES]} frustumCulled={false}>
-        <BoxGeometry args={[0.5, 0.7, 0.3]} />
-        <MeshStandardMaterial color={COLOR_ZOMBIE_SHIRT} />
-      </InstancedMesh>
-      <InstancedMesh ref={zombieHeadRef} args={[undefined, undefined, MAX_ZOMBIES]} frustumCulled={false}>
-        <BoxGeometry args={[0.3, 0.3, 0.3]} />
-        <MeshStandardMaterial color={COLOR_ZOMBIE_SKIN} emissive={COLOR_ZOMBIE_SKIN} emissiveIntensity={0.5} />
-      </InstancedMesh>
-      <InstancedMesh ref={zombieArmsRef} args={[undefined, undefined, MAX_ZOMBIES]} frustumCulled={false}>
-        <BoxGeometry args={[0.8, 0.12, 0.12]} />
-        <MeshStandardMaterial color={COLOR_ZOMBIE_SKIN} emissive={COLOR_ZOMBIE_SKIN} emissiveIntensity={0.5} />
-      </InstancedMesh>
-
-      <AmbientLight intensity={0.4} />
-      <DirectionalLight position={[0, 20, 0]} intensity={1.5} />
+      <AmbientLight intensity={0.38} />
+      <HemisphereLight skyColor="#ffffff" groundColor="#3f3f48" intensity={0.75} />
+      <DirectionalLight position={[12, 22, 8]} intensity={2.0} color="#ffffff" />
+      <DirectionalLight position={[-10, 10, -12]} intensity={0.55} color="#fff2dd" />
+      <PointLight position={[0, 5, -15]} intensity={5.4} distance={60} decay={2} color="#ffd7c2" />
+      <PointLight ref={playerLightRef} intensity={2.2} distance={14} decay={2} color="#ffffff" />
     </>
   );
 };
 
-// ---------- Canvas 래퍼 ----------
+// ---------- Canvas wrapper ----------
 export const GameCanvas = (props: GameSceneProps) => {
   return (
     <div className="w-full h-full relative bg-black">
@@ -548,8 +642,10 @@ export const GameCanvas = (props: GameSceneProps) => {
         }}
       >
         <PerspectiveCamera makeDefault position={[0, 0.6, 0]} fov={90} />
-        <RetroBackground />
-        <GameController {...props} />
+        <Suspense fallback={null}>
+          <RetroBackground />
+          <GameController {...props} />
+        </Suspense>
       </Canvas>
     </div>
   );
