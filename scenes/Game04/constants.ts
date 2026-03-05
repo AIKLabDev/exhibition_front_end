@@ -4,7 +4,7 @@
  */
 
 // 게임 설정
-export const GAME_DURATION = 20; // 생존 시간 (초)
+export const GAME_DURATION = 30; // 생존 시간 (초)
 export const PLAYER_HEIGHT = 1.6;
 export const SPAWN_RADIUS = 35;
 export const BULLET_SPEED = 60;
@@ -30,7 +30,7 @@ export const PLAYER_VIEW_ANGLE_DEGREES = 70;
 /** Game04 UI 문자열 — 수정 시 이 객체만 편집 */
 export const GAME04_STRINGS = {
   TITLE: '좀비고속도로',
-  SUBTITLE: '얼굴을 움직여 조준하세요 • 20초 동안 생존',
+  SUBTITLE: '얼굴을 움직여 조준하세요 • 30초 동안 생존',
   CONNECTING: '[ 조준 시스템 초기화 중 ]',
   START_BUTTON: '시작',
   SCORE_LABEL: '점수',

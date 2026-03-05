@@ -123,6 +123,10 @@ const Game04: React.FC<Game04Props> = ({ onGameResult, inputMode: forceInputMode
   const [isDamaged, setIsDamaged] = useState(false);
   const [inputMode, setInputMode] = useState<'head' | 'mouse'>(forceInputMode ?? 'head');
   const [nearbyZombies, setNearbyZombies] = useState<NearbyZombieRadar[]>([]);
+  const [bossActive, setBossActive] = useState(false);
+  const [bossHP, setBossHP] = useState({ hp: 0, maxHP: 1 });
+  const [bossWarning, setBossWarning] = useState(false);
+  const [bossDefeated, setBossDefeated] = useState(false);
   const resultReportedRef = useRef(false);
 
   // 디버그에서 강제 모드가 바뀌면 내부 inputMode 동기화
@@ -192,6 +196,10 @@ const Game04: React.FC<Game04Props> = ({ onGameResult, inputMode: forceInputMode
     setScore(0);
     setHealth(PLAYER_MAX_HEALTH);
     setTimeLeft(GAME_DURATION);
+    setBossActive(false);
+    setBossHP({ hp: 0, maxHP: 1 });
+    setBossWarning(false);
+    setBossDefeated(false);
     // 본게임 시작 시점을 백엔드에 알림 → Exhibition에서 헤드 추적/로봇 본게임 시작
     backendWsService.sendCommand('GAME04_MAINGAME_START', {});
   }, []);
@@ -231,7 +239,22 @@ const Game04: React.FC<Game04Props> = ({ onGameResult, inputMode: forceInputMode
     setTimeout(() => setIsDamaged(false), 300);
   }, [score, handleGameOver]);
 
-  const isVictory = timeLeft <= 0.1 && health > 0;
+  const handleBossSpawn = useCallback(() => {
+    setBossActive(true);
+    setBossWarning(true);
+    setTimeout(() => setBossWarning(false), 3000); // 3초 후 경고 메시지 사라짐
+  }, []);
+
+  const handleBossHPChange = useCallback((hp: number, maxHP: number) => {
+    setBossHP({ hp, maxHP });
+  }, []);
+
+  const handleBossDefeated = useCallback(() => {
+    setBossDefeated(true);
+    setBossActive(false);
+  }, []);
+
+  const isVictory = (timeLeft <= 0.1 && health > 0) || bossDefeated;
 
   // 게임 종료 시 한 번만 백엔드에 전달
   useEffect(() => {
@@ -260,8 +283,38 @@ const Game04: React.FC<Game04Props> = ({ onGameResult, inputMode: forceInputMode
           setScore={setScore}
           setTimeLeft={setTimeLeft}
           onNearbyZombies={setNearbyZombies}
+          onBossSpawn={handleBossSpawn}
+          onBossHPChange={handleBossHPChange}
+          onBossDefeated={handleBossDefeated}
         />
       </div>
+
+      {/* Boss Warning Overlay */}
+      {bossWarning && (
+        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center pointer-events-none">
+          <div className="animate-pulse">
+            <div className="text-red-500 font-bold tracking-widest text-center" style={{ fontSize: Math.round(60 * scaleH), textShadow: '0 0 20px rgba(255,0,0,0.8), 0 0 40px rgba(255,0,0,0.4)' }}>
+              ⚠ WARNING ⚠
+            </div>
+            <div className="text-white font-bold text-center mt-2" style={{ fontSize: Math.round(30 * scaleH), textShadow: '0 0 10px rgba(255,0,0,0.6)' }}>
+              보스 몬스터가 나타났다!
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Boss HP Bar */}
+      {gameStarted && bossActive && (
+        <div className="absolute z-25 flex flex-col items-center" style={{ top: `${80 * scaleH}px`, left: '50%', transform: 'translateX(-50%)' }}>
+          <div className="text-red-400 font-bold tracking-wider mb-1" style={{ fontSize: Math.round(16 * scaleH) }}>BOSS</div>
+          <div className="bg-black/70 border border-red-600 rounded-sm overflow-hidden" style={{ width: `${400 * scaleW}px`, height: `${16 * scaleH}px` }}>
+            <div
+              className="h-full bg-gradient-to-r from-red-700 to-red-500 transition-all duration-200"
+              style={{ width: `${Math.max(0, (bossHP.hp / bossHP.maxHP) * 100)}%` }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* HUD */}
       {gameStarted && (
