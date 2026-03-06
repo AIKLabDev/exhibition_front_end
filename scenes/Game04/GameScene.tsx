@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Game04 (Zombie Defender) 3D scene.
  * Uses a rigged FBX zombie model and plays the embedded animation clip.
  */
@@ -110,6 +110,8 @@ export interface GameSceneProps {
   onGameOver: (score: number) => void;
   onPlayerHit: () => void;
   gameStarted: boolean;
+  /** PAUSE 오버레이 표시 중이면 true. 게임 로직·타이머 정지 */
+  isPaused?: boolean;
   setScore: (cb: (prev: number) => number) => void;
   setTimeLeft: (time: number) => void;
   onNearbyZombies?: (zombies: NearbyZombieRadar[]) => void;
@@ -332,7 +334,7 @@ const PanoramaBackground = () => {
 };
 
 // ---------- Main game logic ----------
-const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, setScore, setTimeLeft, onNearbyZombies, onBossSpawn, onBossHPChange, onBossDefeated }: GameSceneProps) => {
+const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, isPaused = false, setScore, setTimeLeft, onNearbyZombies, onBossSpawn, onBossHPChange, onBossDefeated }: GameSceneProps) => {
   const { camera } = useThree();
   // action.fbx contains all models and animations
   const actionTemplate = useLoader(FBXLoader, actionFbxUrl) as THREE.Group;
@@ -470,6 +472,8 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, se
   const startTime = useRef(0);
   const localScore = useRef(0);
   const lastReportedTime = useRef(GAME_DURATION + 1);
+  const pauseStartRealTime = useRef(0);
+  const wasPausedRef = useRef(false);
 
   // Boss state
   const bossData = useRef({
@@ -778,6 +782,17 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, se
 
     // Main game loop
     if (gameStarted) {
+      if (isPaused) {
+        if (!wasPausedRef.current) {
+          pauseStartRealTime.current = state.clock.elapsedTime;
+          wasPausedRef.current = true;
+        }
+        return;
+      }
+      if (wasPausedRef.current) {
+        startTime.current += state.clock.elapsedTime - pauseStartRealTime.current;
+        wasPausedRef.current = false;
+      }
       if (startTime.current === 0) startTime.current = state.clock.elapsedTime;
       const elapsed = state.clock.elapsedTime - startTime.current;
       const remainingTime = Math.max(0, GAME_DURATION - elapsed);

@@ -19,7 +19,8 @@ import {
 } from '../constants';
 import { generateLocalGameScenario } from '../localScenarioService';
 import { backendWsService } from '../../../services/backendWebSocketService';
-import { BackendMessageName } from '../../../protocol';
+import { getVisionWsService } from '../../../services/visionWebSocketService';
+import { BackendMessageName, UIEventName } from '../../../protocol';
 import {
   useGameStartFromBackend,
   isStartableState,
@@ -52,6 +53,7 @@ export function useGame02(
   } | null>(null);
   const [timeLeft, setTimeLeft] = useState(GAME_TIME_LIMIT);
   const [lastClick, setLastClick] = useState<{ x: number; y: number } | null>(null);
+  const [pauseOverlayVisible, setPauseOverlayVisible] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const resultReportedRef = useRef(false);
   const viewportRef = useRef<HTMLDivElement | null>(null);
@@ -108,6 +110,7 @@ export function useGame02(
     state === Game02State.FAILURE;
 
   const startGame = useCallback(async () => {
+    getVisionWsService().sendGame02MainGameStart();
     setState(Game02State.GENERATING);
     setLastClick(null);
     setViewTopLeft(centerTopLeft);
@@ -160,6 +163,15 @@ export function useGame02(
       y: clamp(prev.y, 0, 1 - viewWindow.h),
     }));
   }, [viewWindow.h, viewWindow.w]);
+
+  // Python Vision WebSocket: GAME02_PAUSE 수신 시 PAUSE 오버레이 표시 + 백엔드에 GAME02_PAUSE 전달
+  useEffect(() => {
+    const unsubscribe = getVisionWsService().onGame02Pause(() => {
+      setPauseOverlayVisible(true);
+      backendWsService.sendCommand(UIEventName.GAME02_PAUSE, {});
+    });
+    return () => { unsubscribe(); };
+  }, []);
 
   useEffect(() => {
     if (state === Game02State.ANNOUNCING) {
@@ -362,6 +374,13 @@ export function useGame02(
     []
   );
 
+  /** PAUSE 터치 해제 시 오버레이 숨기고 백엔드에 GAME02_PAUSE_CANCEL, Python에 본게임 재시작 시그널 → 참여자 다시 fix */
+  const handlePauseCancel = useCallback(() => {
+    setPauseOverlayVisible(false);
+    backendWsService.sendCommand(UIEventName.GAME02_PAUSE_CANCEL, {});
+    getVisionWsService().sendGame02MainGameStart();
+  }, []);
+
   return {
     state,
     scenario,
@@ -382,5 +401,7 @@ export function useGame02(
     onViewportPointerUp,
     onViewportPointerCancel,
     formatTime,
+    pauseOverlayVisible,
+    handlePauseCancel,
   };
 }

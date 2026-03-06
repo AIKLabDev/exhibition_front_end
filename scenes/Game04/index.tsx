@@ -9,7 +9,8 @@ import { Game04Props } from './Game04.types';
 import { PLAYER_MAX_HEALTH, GAME_DURATION, GAME04_STRINGS, RADAR_DETECT_RANGE, RADAR_ANGLE_DEGREES, PLAYER_VIEW_ANGLE_DEGREES } from './constants';
 import { GameCanvas, type NearbyZombieRadar } from './GameScene';
 import { backendWsService } from '../../services/backendWebSocketService';
-import { BackendMessageName } from '../../protocol';
+import { getVisionWsService } from '../../services/visionWebSocketService';
+import { BackendMessageName, UIEventName } from '../../protocol';
 import { useGameStartFromBackend, useResetResultReportRefWhenEnteringRound } from '../../hooks/useGameStartFromBackend';
 import ruleBgImg from '../../images/Game04 Rule.png';
 import './Game04.css';
@@ -127,6 +128,7 @@ const Game04: React.FC<Game04Props> = ({ onGameResult, inputMode: forceInputMode
   const [bossHP, setBossHP] = useState({ hp: 0, maxHP: 1 });
   const [bossWarning, setBossWarning] = useState(false);
   const [bossDefeated, setBossDefeated] = useState(false);
+  const [pauseOverlayVisible, setPauseOverlayVisible] = useState(false);
   const resultReportedRef = useRef(false);
 
   // 디버그에서 강제 모드가 바뀌면 내부 inputMode 동기화
@@ -150,6 +152,15 @@ const Game04: React.FC<Game04Props> = ({ onGameResult, inputMode: forceInputMode
 
   const scaleW = viewportWidth / BASE_WIDTH;
   const scaleH = viewportHeight / BASE_HEIGHT;
+
+  // Python Vision WebSocket: GAME04_PAUSE 수신 시 PAUSE 오버레이 표시 + 백엔드에 GAME04_PAUSE 전달
+  useEffect(() => {
+    const unsubscribe = getVisionWsService().onGame04Pause(() => {
+      setPauseOverlayVisible(true);
+      backendWsService.sendCommand(UIEventName.GAME04_PAUSE, {});
+    });
+    return () => { unsubscribe(); };
+  }, []);
 
   // 백엔드(Exhibition C++) WebSocket으로 GAME04_DIRECTION 수신 (direction, yaw, pitch)
   useEffect(() => {
@@ -201,7 +212,9 @@ const Game04: React.FC<Game04Props> = ({ onGameResult, inputMode: forceInputMode
     setBossWarning(false);
     setBossDefeated(false);
     // 본게임 시작 시점을 백엔드에 알림 → Exhibition에서 헤드 추적/로봇 본게임 시작
-    backendWsService.sendCommand('GAME04_MAINGAME_START', {});
+    backendWsService.sendCommand(UIEventName.GAME04_MAINGAME_START, {});
+    // Python에 본게임 시작 시그널 → 참여자 fix (track_id 고정)
+    getVisionWsService().sendGame04MainGameStart();
   }, []);
 
   // 대기 중 또는 게임오버(재시작) 화면에서 백엔드 GAME_START 시 재시작
@@ -214,7 +227,7 @@ const Game04: React.FC<Game04Props> = ({ onGameResult, inputMode: forceInputMode
   // Game04 씬을 벗어날 때(언마운트) 백엔드에 대기 상태 알림
   useEffect(() => {
     return () => {
-      backendWsService.sendCommand('GAME04_IDLE', {});
+      backendWsService.sendCommand(UIEventName.GAME04_IDLE, {});
     };
   }, []);
 
@@ -223,7 +236,7 @@ const Game04: React.FC<Game04Props> = ({ onGameResult, inputMode: forceInputMode
     setGameOver(true);
     setFinalScore(finalScoreVal);
     // 게임 종료 → 재시작 화면 진입 시 백엔드에 대기 상태 알림
-    backendWsService.sendCommand('GAME04_IDLE', {});
+    backendWsService.sendCommand(UIEventName.GAME04_IDLE, {});
   }, []);
 
   const handlePlayerHit = useCallback(() => {
@@ -256,6 +269,13 @@ const Game04: React.FC<Game04Props> = ({ onGameResult, inputMode: forceInputMode
 
   const isVictory = (timeLeft <= 0.1 && health > 0) || bossDefeated;
 
+  /** PAUSE 터치 해제 시 오버레이 숨기고 백엔드에 GAME04_PAUSE_CANCEL, Python에 본게임 재시작 시그널 → 참여자 다시 fix */
+  const handlePauseCancel = useCallback(() => {
+    setPauseOverlayVisible(false);
+    backendWsService.sendCommand(UIEventName.GAME04_PAUSE_CANCEL, {});
+    getVisionWsService().sendGame04MainGameStart();
+  }, []);
+
   // 게임 종료 시 한 번만 백엔드에 전달
   useEffect(() => {
     if (!gameOver || resultReportedRef.current || !onGameResult) return;
@@ -270,6 +290,24 @@ const Game04: React.FC<Game04Props> = ({ onGameResult, inputMode: forceInputMode
 
   return (
     <div className="relative w-full h-full bg-black overflow-hidden select-none">
+      {/* PAUSE 오버레이: Python에서 GAME04_PAUSE 수신 시 표시, 터치로 해제 */}
+      {pauseOverlayVisible && (
+        <div
+          className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/60 cursor-pointer"
+          onClick={handlePauseCancel}
+          onTouchEnd={(e) => { e.preventDefault(); handlePauseCancel(); }}
+          role="button"
+          tabIndex={0}
+          aria-label="일시정지 해제"
+        >
+          <div className="text-white text-center font-bold whitespace-pre-line select-none" style={{ fontSize: Math.round(48 * scaleH), lineHeight: 1.4, textShadow: '0 2px 8px rgba(0,0,0,0.8)' }}>
+            PAUSE
+            {'\n'}
+            카메라에 얼굴을 맞추고 터치해주세요
+          </div>
+        </div>
+      )}
+
       {/* 데미지 오버레이 */}
       <div className={`absolute inset-0 z-10 bg-red-600 mix-blend-overlay pointer-events-none transition-opacity duration-100 ${isDamaged ? 'opacity-60' : 'opacity-0'}`} />
 
@@ -278,6 +316,7 @@ const Game04: React.FC<Game04Props> = ({ onGameResult, inputMode: forceInputMode
         <GameCanvas
           headRotation={headRotationRef}
           gameStarted={gameStarted}
+          isPaused={pauseOverlayVisible}
           onGameOver={handleGameOver}
           onPlayerHit={handlePlayerHit}
           setScore={setScore}

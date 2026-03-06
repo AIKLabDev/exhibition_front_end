@@ -44,6 +44,8 @@ const Game02: React.FC<Game02Props> = ({
     onViewportPointerUp,
     onViewportPointerCancel,
     formatTime,
+    pauseOverlayVisible,
+    handlePauseCancel,
   } = useGame02(onGameResult, triggerStartFromBackend);
 
   return (
@@ -52,6 +54,24 @@ const Game02: React.FC<Game02Props> = ({
         isGameScreen ? 'flex flex-row' : 'flex flex-col items-center justify-center p-4'
       }`}
     >
+      {/* PAUSE 오버레이: Python에서 GAME02_PAUSE 수신 시 표시, 터치로 해제 */}
+      {pauseOverlayVisible && (
+        <div
+          className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/60 cursor-pointer"
+          onClick={handlePauseCancel}
+          onTouchEnd={(e) => { e.preventDefault(); handlePauseCancel(); }}
+          role="button"
+          tabIndex={0}
+          aria-label="일시정지 해제"
+        >
+          <div className="text-white text-center font-bold whitespace-pre-line select-none" style={{ fontSize: 48, lineHeight: 1.4, textShadow: '0 2px 8px rgba(0,0,0,0.8)' }}>
+            PAUSE
+            {'\n'}
+            카메라에 얼굴을 맞추고 터치해주세요
+          </div>
+        </div>
+      )}
+
       {state === Game02State.INTRO && (
         <Game02Intro
           onStart={onIntroStartClick}

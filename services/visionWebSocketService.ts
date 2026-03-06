@@ -98,6 +98,8 @@ export class VisionWebSocketService {
   private onQRScannedCallback?: (data: VisionQRScannedData) => void;
   private onQRROICallback?: (data: VisionQRROIData) => void;
   private onGame05AttackCallback?: () => void;
+  private onGame02PauseCallback?: () => void;
+  private onGame04PauseCallback?: () => void;
 
   constructor(url: string) {
     this.url = url;
@@ -244,6 +246,40 @@ export class VisionWebSocketService {
   }
 
   /**
+   * Game02 본게임 시작 시점을 Python에 전달. (ANNOUNCING 종료 후 본게임 진입 시 호출)
+   */
+  sendGame02MainGameStart(): void {
+    if (!this.isConnected()) {
+      console.warn('[VisionWS] sendGame02MainGameStart skipped: not connected');
+      return;
+    }
+    try {
+      const msg = buildVisionMessage(VisionMessageName.GAME02_MAINGAME_START, {});
+      this.ws!.send(JSON.stringify(msg));
+      console.log('[VisionWS] Sent GAME02_MAINGAME_START to Python');
+    } catch (err) {
+      console.warn('[VisionWS] sendGame02MainGameStart failed:', err);
+    }
+  }
+
+  /**
+   * Game04 본게임 시작 시점을 Python에 전달. (게임 시작 버튼 클릭 시 호출)
+   */
+  sendGame04MainGameStart(): void {
+    if (!this.isConnected()) {
+      console.warn('[VisionWS] sendGame04MainGameStart skipped: not connected');
+      return;
+    }
+    try {
+      const msg = buildVisionMessage(VisionMessageName.GAME04_MAINGAME_START, {});
+      this.ws!.send(JSON.stringify(msg));
+      console.log('[VisionWS] Sent GAME04_MAINGAME_START to Python');
+    } catch (err) {
+      console.warn('[VisionWS] sendGame04MainGameStart failed:', err);
+    }
+  }
+
+  /**
    * 손동작 감지 요청 (request-response).
    * - 여기서 REQ_HAND_GESTURE 메시지를 Python에 보내고, Promise를 반환.
    * - Python이 처리 후 RES_HAND_GESTURE 메시지로 응답하면, handleMessage에서 수신해
@@ -352,6 +388,12 @@ export class VisionWebSocketService {
         // 이벤트성 메시지. data는 더미. 수신 시 공격 애니메이션 트리거용
         this.onGame05AttackCallback?.();
         console.log('[VisionWS] GAME05_ATTACK received');
+      } else if (name === VisionMessageName.GAME02_PAUSE) {
+        this.onGame02PauseCallback?.();
+        console.log('[VisionWS] GAME02_PAUSE received');
+      } else if (name === VisionMessageName.GAME04_PAUSE) {
+        this.onGame04PauseCallback?.();
+        console.log('[VisionWS] GAME04_PAUSE received');
       } else {
         console.warn('[VisionWS] Unknown message name:', name);
       }
@@ -411,5 +453,17 @@ export class VisionWebSocketService {
   onGame05Attack(cb: () => void): () => void {
     this.onGame05AttackCallback = cb;
     return () => { this.onGame05AttackCallback = undefined; };
+  }
+
+  /** Game02 씬에서 Python이 GAME02_PAUSE 수신 시 구독. PAUSE 오버레이 표시용. */
+  onGame02Pause(cb: () => void): () => void {
+    this.onGame02PauseCallback = cb;
+    return () => { this.onGame02PauseCallback = undefined; };
+  }
+
+  /** Game04 씬에서 Python이 GAME04_PAUSE 수신 시 구독. PAUSE 오버레이 표시용. */
+  onGame04Pause(cb: () => void): () => void {
+    this.onGame04PauseCallback = cb;
+    return () => { this.onGame04PauseCallback = undefined; };
   }
 }

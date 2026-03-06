@@ -82,8 +82,16 @@ export const UIEventName = {
   GAME02_MAINGAME_START: 'GAME02_MAINGAME_START',
   /** Game02: 대기 상태(씬 이탈 또는 목표 찾음/제한시간 실패로 종료). Exhibition에서 추적/로봇 대기 */
   GAME02_IDLE: 'GAME02_IDLE',
+  /** Game02: 일시정지(Python에서 fix 참여자 이탈 시 전달). Exhibition에서 로봇/추적 일시정지 */
+  GAME02_PAUSE: 'GAME02_PAUSE',
+  /** Game02: PAUSE 해제(사용자가 터치로 일시정지 해제). Exhibition에서 로봇/추적 재개 */
+  GAME02_PAUSE_CANCEL: 'GAME02_PAUSE_CANCEL',
   /** Game04: 본게임 시작 시점. Exhibition에서 헤드 추적/로봇 본게임 시작 */
   GAME04_MAINGAME_START: 'GAME04_MAINGAME_START',
+  /** Game04: 일시정지(Python에서 fix 참여자 이탈 시 전달). Exhibition에서 로봇/추적 일시정지 */
+  GAME04_PAUSE: 'GAME04_PAUSE',
+  /** Game04: PAUSE 해제(사용자가 터치로 일시정지 해제). Exhibition에서 로봇/추적 재개 */
+  GAME04_PAUSE_CANCEL: 'GAME04_PAUSE_CANCEL',
   /** Game04: 대기 상태(게임 종료 후 재시작 화면 또는 씬 이탈). Exhibition에서 추적/로봇 대기 */
   GAME04_IDLE: 'GAME04_IDLE',
   /** Vision에서 QR 인식 시(QR 씬) 프론트가 백엔드에 전달. data, bbox 포함 */
@@ -141,6 +149,14 @@ export const VisionMessageName = {
   QR_ROI: 'QR_ROI',
   /** GAME05 씬에서 Python이 공격 이벤트 전송. 수신 시 공격 애니메이션만 실행 (data는 더미) */
   GAME05_ATTACK: 'GAME05_ATTACK',
+  /** 프론트 → Python: Game02 본게임 시작 시그널 (버튼/카운트다운 후). Python은 on_main_game_start() 처리 */
+  GAME02_MAINGAME_START: 'GAME02_MAINGAME_START',
+  /** Python → 프론트: Game02 fix된 참여자 이탈 시 일시정지 안내. 프론트는 PAUSE 오버레이 표시 후 터치로 해제 */
+  GAME02_PAUSE: 'GAME02_PAUSE',
+  /** 프론트 → Python: Game04 본게임 시작 시그널. Python은 on_main_game_start() 처리 */
+  GAME04_MAINGAME_START: 'GAME04_MAINGAME_START',
+  /** Python → 프론트: fix된 참여자 이탈 시 일시정지 안내. 프론트는 PAUSE 오버레이 표시 후 터치로 해제 */
+  GAME04_PAUSE: 'GAME04_PAUSE',
 } as const;
 export type VisionMessageNameType = (typeof VisionMessageName)[keyof typeof VisionMessageName];
 
