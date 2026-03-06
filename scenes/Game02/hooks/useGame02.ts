@@ -183,8 +183,9 @@ export function useGame02(
     }
   }, [state]);
 
+  // PLAYING일 때만 타이머 진행. PAUSE 오버레이 표시 중에는 멈춤 (Game04처럼)
   useEffect(() => {
-    if (state === Game02State.PLAYING) {
+    if (state === Game02State.PLAYING && !pauseOverlayVisible) {
       timerRef.current = setInterval(() => {
         setTimeLeft((prev) => {
           if (prev <= 1) {
@@ -201,7 +202,7 @@ export function useGame02(
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [state]);
+  }, [state, pauseOverlayVisible]);
 
   useEffect(() => {
     if (state === Game02State.SUCCESS && !resultReportedRef.current) {
@@ -258,8 +259,9 @@ export function useGame02(
     return () => { unsub(); };
   }, []);
 
+  // VIEW_POSE(헤드 포즈)로 뷰 이동. PAUSE 오버레이 표시 중에는 뷰도 멈춤
   useEffect(() => {
-    if (state !== Game02State.PLAYING) return;
+    if (state !== Game02State.PLAYING || pauseOverlayVisible) return;
     let raf = 0;
     const tick = () => {
       raf = window.requestAnimationFrame(tick);
@@ -287,7 +289,7 @@ export function useGame02(
     };
     raf = window.requestAnimationFrame(tick);
     return () => window.cancelAnimationFrame(raf);
-  }, [state, viewWindow.h, viewWindow.w, viewPoseStatus.connected]);
+  }, [state, pauseOverlayVisible, viewWindow.h, viewWindow.w, viewPoseStatus.connected]);
 
   const handleViewportClick = useCallback(
     (clientX: number, clientY: number) => {
