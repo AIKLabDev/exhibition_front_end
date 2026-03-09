@@ -15,10 +15,12 @@ export const QR_OVERLAY_FADE_IN_MS = 300;
 export const QR_OVERLAY_SCALE_MS = 400;
 
 /** 오른쪽 패널 안내 문구 (한글) */
-export const QR_SCAN_INSTRUCTION = '화면에 전시회 QR 티켓을 놓아주세요.';
+export const QR_SCAN_INSTRUCTION = '화면에 전시회 바코드 티켓을 놓아주세요.';
 
 /** QR 씬 UI 문자열 (한글·영문) */
 export const QR_STRINGS = {
+  title: 'Barcode',
+
   /** 상태: 인식 중 / 인식 완료 / 중복 참여 */
   statusRecognizing: '인식 중',
   statusScanned: '인식 완료',

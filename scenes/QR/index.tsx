@@ -216,7 +216,7 @@ const QR: React.FC<QRProps> = ({ onCancel, text, onQRScannedComplete, visionOnli
             <span className="text-blue-200 font-mono text-sm tabular-nums">{fps} FPS</span>
           </div>
           <h2 className="text-7xl font-black mb-8 leading-tight tracking-tighter uppercase italic">
-            QR Code<br />
+            {QR_STRINGS.title}<br />
             <span className={
               showDuplicated ? 'text-amber-500' : showScannedSuccess ? 'text-green-500' : 'text-blue-500'
             }>
