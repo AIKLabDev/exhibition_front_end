@@ -46,6 +46,7 @@ const Game02: React.FC<Game02Props> = ({
     formatTime,
     pauseOverlayVisible,
     handlePauseCancel,
+    rockProgress,
   } = useGame02(onGameResult, triggerStartFromBackend);
 
   return (
@@ -98,6 +99,7 @@ const Game02: React.FC<Game02Props> = ({
           reasoning={reasoning}
           viewportRef={viewportRef}
           formatTime={formatTime}
+          rockProgress={rockProgress}
           onViewportPointerDown={onViewportPointerDown}
           onViewportPointerMove={onViewportPointerMove}
           onViewportPointerUp={onViewportPointerUp}

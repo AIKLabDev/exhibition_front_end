@@ -31,6 +31,7 @@ import {
   computeViewWindow,
   normalizeError,
   isClickOnTarget,
+  isViewContainingTarget,
   formatTime,
 } from '../utils';
 
@@ -54,9 +55,15 @@ export function useGame02(
   const [timeLeft, setTimeLeft] = useState(GAME_TIME_LIMIT);
   const [lastClick, setLastClick] = useState<{ x: number; y: number } | null>(null);
   const [pauseOverlayVisible, setPauseOverlayVisible] = useState(false);
+  const [rockProgress, setRockProgress] = useState(0); // 0~100, Python GAME02_PROGRESS_ANSWER
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const resultReportedRef = useRef(false);
   const viewportRef = useRef<HTMLDivElement | null>(null);
+  const prevRockProgressRef = useRef(0);
+  const scenarioRef = useRef(scenario);
+  const viewTopLeftRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const viewWindowRef = useRef<{ w: number; h: number }>({ w: 1, h: 1 });
+  const stateRef = useRef(state);
 
   const [viewportAspect, setViewportAspect] = useState<number>(DEFAULT_SCENE_ASPECT);
   const viewWindow = useMemo(
@@ -71,6 +78,11 @@ export function useGame02(
   const [viewTopLeft, setViewTopLeft] = useState<{ x: number; y: number }>(
     DEFAULT_CENTER_TOP_LEFT
   );
+
+  scenarioRef.current = scenario;
+  viewTopLeftRef.current = viewTopLeft;
+  viewWindowRef.current = viewWindow;
+  stateRef.current = state;
 
   const dragRef = useRef<{
     active: boolean;
@@ -172,6 +184,38 @@ export function useGame02(
     });
     return () => { unsubscribe(); };
   }, []);
+
+  // Python Vision WebSocket: GAME02_PROGRESS_ANSWER(0~100) 수신. 100 도달 시 현재 뷰에 정답 포함 여부로 success/fail
+  useEffect(() => {
+    const unsubscribe = getVisionWsService().onGame02ProgressAnswer((progress: number) => {
+      setRockProgress(progress);
+      if (progress >= 100 && prevRockProgressRef.current < 100 && stateRef.current === Game02State.PLAYING) {
+        const s = scenarioRef.current;
+        const vt = viewTopLeftRef.current;
+        const vw = viewWindowRef.current;
+        if (s && vt && vw) {
+          const hit = isViewContainingTarget(s, vt, vw);
+          if (hit) {
+            setState(Game02State.SUCCESS);
+            confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+          } else {
+            setReasoning('거기가 아닙니다!');
+            setTimeout(() => setReasoning(''), 2000);
+          }
+        }
+      }
+      prevRockProgressRef.current = progress;
+    });
+    return () => { unsubscribe(); };
+  }, []);
+
+  // 씬/라운드 바뀔 때 rock progress 초기화
+  useEffect(() => {
+    if (state !== Game02State.PLAYING) {
+      setRockProgress(0);
+      prevRockProgressRef.current = 0;
+    }
+  }, [state]);
 
   useEffect(() => {
     if (state === Game02State.ANNOUNCING) {
@@ -405,5 +449,6 @@ export function useGame02(
     formatTime,
     pauseOverlayVisible,
     handlePauseCancel,
+    rockProgress,
   };
 }

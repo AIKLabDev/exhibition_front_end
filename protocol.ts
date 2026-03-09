@@ -153,6 +153,8 @@ export const VisionMessageName = {
   GAME02_MAINGAME_START: 'GAME02_MAINGAME_START',
   /** Python → 프론트: Game02 fix된 참여자 이탈 시 일시정지 안내. 프론트는 PAUSE 오버레이 표시 후 터치로 해제 */
   GAME02_PAUSE: 'GAME02_PAUSE',
+  /** Python → 프론트: Game02 본게임 중 rock 인식 시 0~100 진행률 (3초 유지 시 100). data: { progress: number } */
+  GAME02_PROGRESS_ANSWER: 'GAME02_PROGRESS_ANSWER',
   /** 프론트 → Python: Game04 본게임 시작 시그널. Python은 on_main_game_start() 처리 */
   GAME04_MAINGAME_START: 'GAME04_MAINGAME_START',
   /** Python → 프론트: fix된 참여자 이탈 시 일시정지 안내. 프론트는 PAUSE 오버레이 표시 후 터치로 해제 */
