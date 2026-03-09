@@ -59,30 +59,108 @@ const ZOMBIE_DEAD_ANIM_DURATION_MS = 900;
 const ZOMBIE_DEAD_FALL_DROP_FACTOR = 0.5;
 const ZOMBIE_DEAD_FALL_MIN_DROP = 0.65;
 const ZOMBIE_DEAD_FALL_MAX_DROP = 1.45;
+type HitSphereDefinition = {
+  yRatio: number;
+  radiusRatio: number;
+  critical: boolean;
+};
+
+type HitboxTuning = {
+  bodyRadiusScale: number;
+  headRadiusScale: number;
+  headLowerOffsetRatio: number;
+  headUpperOffsetRatio: number;
+};
+
+// Tune these in source to widen/narrow body/head hit detection.
+// Head uses stacked critical spheres so vertical range can grow without only inflating left/right radius.
+const HITBOX_TUNING = {
+  zombie: {
+    bodyRadiusScale: 2.0,
+    headRadiusScale: 2.0,
+    headLowerOffsetRatio: 0.08,
+    headUpperOffsetRatio: 0.08,
+  },
+  boss: {
+    bodyRadiusScale: 2.0,
+    headRadiusScale: 2.0,
+    headLowerOffsetRatio: 0.08,
+    headUpperOffsetRatio: 0.08,
+  },
+} as const;
+
+function buildHitSpheres(
+  baseSpheres: readonly HitSphereDefinition[],
+  tuning: HitboxTuning
+): HitSphereDefinition[] {
+  const expanded = baseSpheres.flatMap((sphere) => {
+    const radiusScale = sphere.critical ? tuning.headRadiusScale : tuning.bodyRadiusScale;
+
+    if (!sphere.critical) {
+      return [{
+        ...sphere,
+        radiusRatio: sphere.radiusRatio * radiusScale,
+      }];
+    }
+
+    return [
+      -tuning.headLowerOffsetRatio,
+      0,
+      tuning.headUpperOffsetRatio,
+    ].map((yOffset) => ({
+      ...sphere,
+      yRatio: THREE.MathUtils.clamp(sphere.yRatio + yOffset, 0, 1.12),
+      radiusRatio: sphere.radiusRatio * radiusScale,
+    }));
+  });
+
+  // Check head hit zones first so enlarged body spheres do not swallow headshots.
+  expanded.sort((left, right) => Number(right.critical) - Number(left.critical));
+  return expanded;
+}
+
+const ZOMBIE_HIT_SPHERES_BASE = [
+  { yRatio: 0.34, radiusRatio: 0.15, critical: false },
+  { yRatio: 0.6, radiusRatio: 0.19, critical: false },
+  { yRatio: 0.84, radiusRatio: 0.18, critical: true },
+] as const;
+const ZOMBIE_HIT_SPHERES = buildHitSpheres(ZOMBIE_HIT_SPHERES_BASE, HITBOX_TUNING.zombie);
 
 // Boss settings
 const BOSS_SPAWN_TIME_LEFT = 20; // seconds
 const BOSS_MAX_HP = 30;
-const BOSS_SPEED = 5.0; // slower than zombies
+const BOSS_SPEED = 2.5; // slower than zombies
 const BOSS_SPAWN_DISTANCE = 30; // spawn further away
 const BOSS_TARGET_HEIGHT = 5.0; // taller than normal zombies
 const BOSS_SHADOW_MIN_SCALE = 2.0;
+const BOSS_HIT_SPHERES_BASE = [
+  { yRatio: 0.2, radiusRatio: 0.14, critical: false },
+  { yRatio: 0.42, radiusRatio: 0.18, critical: false },
+  { yRatio: 0.62, radiusRatio: 0.2, critical: false },
+  { yRatio: 0.82, radiusRatio: 0.2, critical: true },
+] as const;
+const BOSS_HIT_SPHERES = buildHitSpheres(BOSS_HIT_SPHERES_BASE, HITBOX_TUNING.boss);
 
 // Weapon sprite tuning (centered in view)
 const WEAPON_SPRITE_OFFSET_X = 0.2;
-const WEAPON_SPRITE_OFFSET_Y = -0.00;
+const WEAPON_SPRITE_OFFSET_Y = 0.0;
 const WEAPON_SPRITE_OFFSET_Z = -0.66;
 const WEAPON_SPRITE_SCALE = 2;
 const WEAPON_ANIMATION_FRAME_MS = 28;
+const WEAPON_FRAME_Y_LIFT = [0, 0.018, 0.036, 0.052] as const;
 // Bullet spawn from muzzle (right-bottom weapon position), then converge to center aim
 const BULLET_MUZZLE_RIGHT_OFFSET = 0.54;
-const BULLET_MUZZLE_UP_OFFSET = -0.22;
+const BULLET_MUZZLE_UP_OFFSET = -0.20;
 const BULLET_MUZZLE_FORWARD_OFFSET = 0.45;
 const BULLET_AIM_DISTANCE = 20;
+const BULLET_MUZZLE_JITTER = 0.018;
+const BULLET_AIM_JITTER = 0.01;
+const CAMERA_BREATH_PITCH_AMPLITUDE = 0.01;
+const CAMERA_BREATH_PITCH_SPEED = 0.60;
 
-const COLOR_BULLET = '#fff9a5'; // 연한 노란색
-const COLOR_PARTICLE = '#ff0000'; // Green particles for blood effect
-const COLOR_BULLET_TRAIL = '#fffacd'; // 연한 노란색 (크림색)
+const COLOR_BULLET = '#fff9a5';
+const COLOR_PARTICLE = '#ff0000';
+const COLOR_BULLET_TRAIL = '#fffacd';
 
 // R3F JSX workaround (TS intrinsic element)
 const Group = 'group' as any;
@@ -110,6 +188,7 @@ export interface GameSceneProps {
   onGameOver: (score: number) => void;
   onPlayerHit: () => void;
   gameStarted: boolean;
+  debugMouseControl?: boolean;
   /** PAUSE 오버레이 표시 중이면 true. 게임 로직·타이머 정지 */
   isPaused?: boolean;
   setScore: (cb: (prev: number) => number) => void;
@@ -118,6 +197,10 @@ export interface GameSceneProps {
   onBossSpawn?: () => void;
   onBossHPChange?: (hp: number, maxHP: number) => void;
   onBossDefeated?: () => void;
+  onHeadshot?: (xPercent: number, yPercent: number, target: 'zombie' | 'boss') => void;
+  onZombieSpawnSound?: () => void;
+  onShootSound?: () => void;
+  onZombieHitSound?: () => void;
 }
 
 interface ZombieRenderRig {
@@ -300,6 +383,36 @@ const getZombieDistanceScale = (x: number, z: number) => {
   return THREE.MathUtils.lerp(ZOMBIE_SCALE_FAR, ZOMBIE_SCALE_NEAR, proximity);
 };
 
+const pointToSegmentDistanceSq = (
+  point: THREE.Vector3,
+  segmentStart: THREE.Vector3,
+  segmentEnd: THREE.Vector3,
+  tempSegment: THREE.Vector3,
+  tempToPoint: THREE.Vector3
+) => {
+  tempSegment.subVectors(segmentEnd, segmentStart);
+  const lengthSq = tempSegment.lengthSq();
+  if (lengthSq <= 1e-6) {
+    return point.distanceToSquared(segmentStart);
+  }
+
+  tempToPoint.subVectors(point, segmentStart);
+  const t = THREE.MathUtils.clamp(tempToPoint.dot(tempSegment) / lengthSq, 0, 1);
+  tempSegment.multiplyScalar(t).add(segmentStart);
+  return point.distanceToSquared(tempSegment);
+};
+
+const worldToScreenPercent = (point: THREE.Vector3, camera: THREE.Camera) => {
+  const projected = point.clone().project(camera);
+  const x = (projected.x * 0.5 + 0.5) * 100;
+  const y = (-projected.y * 0.5 + 0.5) * 100;
+  return {
+    x,
+    y,
+    visible: projected.z >= -1 && projected.z <= 1 && x >= 0 && x <= 100 && y >= 0 && y <= 100,
+  };
+};
+
 // ---------- Static 360 background ----------
 const PanoramaBackground = () => {
   const { scene } = useThree();
@@ -334,7 +447,7 @@ const PanoramaBackground = () => {
 };
 
 // ---------- Main game logic ----------
-const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, isPaused = false, setScore, setTimeLeft, onNearbyZombies, onBossSpawn, onBossHPChange, onBossDefeated }: GameSceneProps) => {
+const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, debugMouseControl = false, isPaused = false, setScore, setTimeLeft, onNearbyZombies, onBossSpawn, onBossHPChange, onBossDefeated, onHeadshot, onZombieSpawnSound, onShootSound, onZombieHitSound }: GameSceneProps) => {
   const { camera } = useThree();
   // action.fbx contains all models and animations
   const actionTemplate = useLoader(FBXLoader, actionFbxUrl) as THREE.Group;
@@ -362,6 +475,8 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, is
       speed: 0,
       id: i,
       scale: 1,
+      hp: 1,
+      maxHP: 1,
       variant: 'normal' as 'normal' | 'runner',
       mode: 'walk' as 'walk' | 'altPose' | 'dead',
       willAltPose: false,
@@ -388,6 +503,7 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, is
   const bulletTrailMeshRef = useRef<THREE.InstancedMesh>(null);
   const particleMeshRef = useRef<THREE.InstancedMesh>(null);
   const zombieShadowMeshRef = useRef<THREE.InstancedMesh>(null);
+  const weaponSpriteMeshRef = useRef<THREE.Mesh>(null);
   const weaponSpriteMaterialRef = useRef<THREE.MeshBasicMaterial>(null);
 
   const weaponSpriteGroupRef = useRef<THREE.Group>(null);
@@ -465,6 +581,8 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, is
   const bossRig = useMemo(() => createZombieRig(bossTemplate, bossWalkClip, null, bossDeadClip), [bossTemplate, bossWalkClip, bossDeadClip]);
 
   const shakeIntensity = useRef(0);
+  const shootRecoilOffset = useRef(0);
+  const shootRecoilVelocity = useRef(0);
   const gameEndedTriggered = useRef(false);
 
   const lastFireTime = useRef(0);
@@ -486,8 +604,6 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, is
     deathEndAtMs: -Infinity,
   });
   const bossSpawnTriggered = useRef(false);
-
-  const audioCtxRef = useRef<AudioContext | null>(null);
   const playerLightRef = useRef<THREE.PointLight>(null);
   const weaponAnimStartTimeRef = useRef(-Infinity);
   const weaponCurrentFrameRef = useRef(0);
@@ -504,6 +620,27 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, is
   const tempBulletQuat = useMemo(() => new THREE.Quaternion(), []);
   const tempTrailVec = useMemo(() => new THREE.Vector3(), []);
   const tempTrailMid = useMemo(() => new THREE.Vector3(), []);
+  const tempHitSphereCenter = useMemo(() => new THREE.Vector3(), []);
+  const tempHitSegmentClosest = useMemo(() => new THREE.Vector3(), []);
+  const tempHitSegmentToPoint = useMemo(() => new THREE.Vector3(), []);
+  // WASD ?대룞 湲곕뒫 鍮꾪솢?깊솕 (3D ?붾뱶留듭씠 ?꾨땲?댁꽌 二쇱꽍泥섎━)
+  // const debugMoveOffset = useRef(new THREE.Vector3(0, 0, 0));
+  // const keyState = useRef({ KeyW: false, KeyA: false, KeyS: false, KeyD: false });
+
+  // useEffect(() => {
+  //   const onKeyDown = (e: KeyboardEvent) => {
+  //     if (e.code in keyState.current) (keyState.current as any)[e.code] = true;
+  //   };
+  //   const onKeyUp = (e: KeyboardEvent) => {
+  //     if (e.code in keyState.current) (keyState.current as any)[e.code] = false;
+  //   };
+  //   window.addEventListener('keydown', onKeyDown);
+  //   window.addEventListener('keyup', onKeyUp);
+  //   return () => {
+  //     window.removeEventListener('keydown', onKeyDown);
+  //     window.removeEventListener('keyup', onKeyUp);
+  //   };
+  // }, []);
   const weaponTextures = useMemo(
     () => [weaponIdleTexture, weaponFireTexture, weaponFire2Texture, weaponFire3Texture],
     [weaponIdleTexture, weaponFireTexture, weaponFire2Texture, weaponFire3Texture]
@@ -514,45 +651,7 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, is
     return img.height / img.width;
   }, [weaponTextures]);
 
-  const playSound = (type: 'shoot' | 'hit' | 'damage') => {
-    if (!audioCtxRef.current) {
-      audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-    }
 
-    const ctx = audioCtxRef.current;
-    if (ctx.state === 'suspended') ctx.resume();
-
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-
-    if (type === 'shoot') {
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(600, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.1);
-      gain.gain.setValueAtTime(0.05, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.1);
-    } else if (type === 'hit') {
-      osc.type = 'square';
-      osc.frequency.setValueAtTime(200, ctx.currentTime);
-      osc.frequency.linearRampToValueAtTime(50, ctx.currentTime + 0.1);
-      gain.gain.setValueAtTime(0.05, ctx.currentTime);
-      gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.1);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.1);
-    } else if (type === 'damage') {
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(100, ctx.currentTime);
-      osc.frequency.linearRampToValueAtTime(20, ctx.currentTime + 0.3);
-      gain.gain.setValueAtTime(0.2, ctx.currentTime);
-      gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.3);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.3);
-    }
-  };
 
   const spawnExplosion = (position: THREE.Vector3, intensity = 1.0) => {
     const particleCount = Math.floor(8 * intensity);
@@ -589,8 +688,8 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, is
         p.active = true;
         p.pos.copy(position);
         p.pos.y += (Math.random() - 0.5) * 0.3;
-        p.life = 0.38; // 짧지만 살짝 더 보이게
-        const speed = 24 + Math.random() * 28; // 빠른 속도
+        p.life = 0.38;
+        const speed = 24 + Math.random() * 28;
         const angle = Math.random() * Math.PI * 2;
         const vertical = (Math.random() - 0.5) * 0.8;
         p.velocity.set(
@@ -598,7 +697,7 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, is
           vertical * speed,
           Math.sin(angle) * speed
         );
-        p.scale = Math.random() * 0.12 + 0.08; // 작고 얇은 파편 느낌
+        p.scale = Math.random() * 0.12 + 0.08;
         spawned++;
         if (spawned >= particleCount) break;
       }
@@ -636,13 +735,7 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, is
     }
   };
 
-  useEffect(() => {
-    return () => {
-      if (audioCtxRef.current) {
-        audioCtxRef.current.close().catch(() => undefined);
-      }
-    };
-  }, []);
+
 
   useEffect(() => {
     weaponTextures.forEach((texture) => {
@@ -668,6 +761,8 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, is
       localScore.current = 0;
       lastReportedTime.current = GAME_DURATION + 1;
       shakeIntensity.current = 0;
+      shootRecoilOffset.current = 0;
+      shootRecoilVelocity.current = 0;
       gameEndedTriggered.current = false;
 
       bulletsData.current.forEach((b) => {
@@ -678,6 +773,8 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, is
       zombiesData.current.forEach((z) => {
         z.active = false;
         z.pos.set(0, -500, 0);
+        z.hp = 1;
+        z.maxHP = 1;
         z.variant = 'normal';
         z.mode = 'walk';
         z.willAltPose = false;
@@ -740,16 +837,59 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, is
 
     // Camera + shake
     const yaw = headRotation.current.yaw || 0;
+    const pitch = headRotation.current.pitch || 0;
+    let camX = 0;
+    let camY = 0.6;
+    let camZ = 0;
     if (shakeIntensity.current > 0) {
       shakeIntensity.current = THREE.MathUtils.lerp(shakeIntensity.current, 0, 0.1);
       const sx = (Math.random() - 0.5) * shakeIntensity.current;
       const sy = (Math.random() - 0.5) * shakeIntensity.current;
-      camera.position.set(sx, 0.6 + sy, shakeIntensity.current * 0.5);
-    } else {
-      camera.position.set(0, 0.6, 0);
+      camX += sx;
+      camY += sy;
+      camZ += shakeIntensity.current * 0.5;
     }
 
+    // Spring recoil (per-shot up-kick + recovery)
+    shootRecoilVelocity.current += (-shootRecoilOffset.current * 120 - shootRecoilVelocity.current * 24) * delta;
+    shootRecoilOffset.current += shootRecoilVelocity.current * delta;
+    shootRecoilOffset.current = THREE.MathUtils.clamp(shootRecoilOffset.current, -0.12, 0.12);
+
+    // WASD ?대룞 湲곕뒫 鍮꾪솢?깊솕 (3D ?붾뱶留듭씠 ?꾨땲?댁꽌 二쇱꽍泥섎━)
+    // Debug mouse mode only: WASD free move
+    // if (debugMouseControl) {
+    //   const moveSpeed = 5.0 * delta;
+    //   const forwardX = -Math.sin(yaw);
+    //   const forwardZ = -Math.cos(yaw);
+    //   const rightX = Math.cos(yaw);
+    //   const rightZ = -Math.sin(yaw);
+    //   if (keyState.current.KeyW) {
+    //     debugMoveOffset.current.x += forwardX * moveSpeed;
+    //     debugMoveOffset.current.z += forwardZ * moveSpeed;
+    //   }
+    //   if (keyState.current.KeyS) {
+    //     debugMoveOffset.current.x -= forwardX * moveSpeed;
+    //     debugMoveOffset.current.z -= forwardZ * moveSpeed;
+    //   }
+    //   if (keyState.current.KeyA) {
+    //     debugMoveOffset.current.x -= rightX * moveSpeed;
+    //     debugMoveOffset.current.z -= rightZ * moveSpeed;
+    //   }
+    //   if (keyState.current.KeyD) {
+    //     debugMoveOffset.current.x += rightX * moveSpeed;
+    //     debugMoveOffset.current.z += rightZ * moveSpeed;
+    //   }
+    // } else {
+    //   debugMoveOffset.current.set(0, 0, 0);
+    // }
+
+    camera.position.set(camX, camY, camZ);
+    const playerWorldX = 0; // ?뚮젅?댁뼱 ?꾩튂????긽 ?먯젏
+    const playerWorldZ = 0; // ?뚮젅?댁뼱 ?꾩튂????긽 ?먯젏
     camera.rotation.y = THREE.MathUtils.lerp(camera.rotation.y, -yaw, 0.2);
+    const breathPitch = Math.sin(time * CAMERA_BREATH_PITCH_SPEED * Math.PI * 2) * CAMERA_BREATH_PITCH_AMPLITUDE;
+    const targetPitch = pitch + breathPitch - shootRecoilOffset.current * 0.35;
+    camera.rotation.x = THREE.MathUtils.lerp(camera.rotation.x, targetPitch, 0.18);
 
     if (weaponSpriteGroupRef.current) {
       weaponSpriteGroupRef.current.rotation.copy(camera.rotation);
@@ -769,6 +909,16 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, is
       weaponCurrentFrameRef.current = nextWeaponFrame;
       weaponSpriteMaterialRef.current.map = weaponTextures[nextWeaponFrame];
       weaponSpriteMaterialRef.current.needsUpdate = true;
+    }
+    if (weaponSpriteMeshRef.current) {
+      const frameLift = WEAPON_FRAME_Y_LIFT[nextWeaponFrame] ?? 0;
+      weaponSpriteMeshRef.current.position.set(
+        WEAPON_SPRITE_OFFSET_X,
+        WEAPON_SPRITE_OFFSET_Y + frameLift,
+        WEAPON_SPRITE_OFFSET_Z
+      );
+      // slight pitch on firing frames
+      weaponSpriteMeshRef.current.rotation.set(-frameLift * 2.0, 0, 0);
     }
     if (playerLightRef.current) {
       camera.getWorldDirection(tempPlayerLightDir);
@@ -808,7 +958,7 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, is
         bossData.current.active = true;
         bossData.current.spawned = true;
         bossData.current.hp = BOSS_MAX_HP;
-        bossData.current.pos.set(0, FLOOR_LEVEL, -BOSS_SPAWN_DISTANCE);
+        bossData.current.pos.set(playerWorldX, FLOOR_LEVEL, playerWorldZ - BOSS_SPAWN_DISTANCE);
         bossRig.root.visible = true;
         bossRig.walkAction?.reset().play();
         bossRig.activeMode = 'walk';
@@ -819,6 +969,7 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, is
       if (remainingTime <= 0 && !gameEndedTriggered.current) {
         gameEndedTriggered.current = true;
         onGameOver(localScore.current);
+        return;
       }
 
       // Stop game logic when boss is dying (wait for death animation to finish)
@@ -828,7 +979,10 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, is
       if (!bossIsDying && now - lastFireTime.current > FIRE_RATE) {
         lastFireTime.current = now;
         weaponAnimStartTimeRef.current = now;
-        playSound('shoot');
+        onShootSound?.();
+        // Fire recoil kick: instant upward impulse, then spring-down recovery
+        shootRecoilVelocity.current += 1.05;
+        shootRecoilOffset.current = THREE.MathUtils.clamp(shootRecoilOffset.current, -0.09, 0.09);
         const bullet = bulletsData.current.find((b) => !b.active);
         if (bullet) {
           bullet.active = true;
@@ -846,8 +1000,16 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, is
             .addScaledVector(tempCameraUp, BULLET_MUZZLE_UP_OFFSET)
             .addScaledVector(tempLookDir, BULLET_MUZZLE_FORWARD_OFFSET);
 
+          // Per-shot tiny muzzle variation
+          tempMuzzlePos
+            .addScaledVector(tempCameraRight, (Math.random() - 0.5) * BULLET_MUZZLE_JITTER)
+            .addScaledVector(tempCameraUp, (Math.random() - 0.5) * BULLET_MUZZLE_JITTER);
+
           // Aim to center crosshair line so shot travels from muzzle toward center
           tempAimPoint.copy(camera.position).addScaledVector(tempLookDir, BULLET_AIM_DISTANCE);
+          tempAimPoint
+            .addScaledVector(tempCameraRight, (Math.random() - 0.5) * BULLET_AIM_JITTER)
+            .addScaledVector(tempCameraUp, (Math.random() - 0.5) * BULLET_AIM_JITTER);
           bullet.dir.copy(tempAimPoint.sub(tempMuzzlePos).normalize());
           bullet.pos.copy(tempMuzzlePos);
 
@@ -870,11 +1032,14 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, is
             const runnerRig = zombieRunnerRigs[zombieIndex];
             const isRunner = zombieRunAnimationClip != null && Math.random() < ZOMBIE_RUNNER_SPAWN_CHANCE;
             zombie.active = true;
+            onZombieSpawnSound?.();
             const angle = -Math.PI / 2 + (Math.random() - 0.5) * 2 * SPAWN_HALF_ANGLE_RAD;
-            zombie.pos.set(Math.cos(angle) * SPAWN_RADIUS, FLOOR_LEVEL, Math.sin(angle) * SPAWN_RADIUS);
+            zombie.pos.set(playerWorldX + Math.cos(angle) * SPAWN_RADIUS, FLOOR_LEVEL, playerWorldZ + Math.sin(angle) * SPAWN_RADIUS);
             const baseSpeed = ZOMBIE_BASE_SPEED + progress * 15;
             zombie.speed = isRunner ? baseSpeed * ZOMBIE_RUNNER_SPEED_MULTIPLIER : baseSpeed;
             zombie.scale = ZOMBIE_UNIFORM_SCALE;
+            zombie.maxHP = 1;
+            zombie.hp = zombie.maxHP;
             zombie.variant = isRunner ? 'runner' : 'normal';
             zombie.deathStartAtMs = -Infinity;
             zombie.deathEndAtMs = -Infinity;
@@ -905,9 +1070,9 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, is
       for (let i = 0; i < MAX_BULLETS; i++) {
         const b = bulletsData.current[i];
         if (b.active) {
-          b.prevPos.copy(b.pos); // 이전 위치 저장 (궤적용)
+          b.prevPos.copy(b.pos); // ?댁쟾 ?꾩튂 ???(沅ㅼ쟻??
           b.pos.addScaledVector(b.dir, BULLET_SPEED * delta);
-          if (b.pos.length() > SPAWN_RADIUS * 2) b.active = false;
+          if (b.pos.distanceToSquared(camera.position) > (SPAWN_RADIUS * 2) * (SPAWN_RADIUS * 2)) b.active = false;
         }
       }
 
@@ -923,7 +1088,7 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, is
       }
 
       // Zombie movement + collisions
-      const playerPos = new THREE.Vector2(0, 0);
+      const playerPos = new THREE.Vector2(playerWorldX, playerWorldZ);
       const zombiePos = new THREE.Vector2();
 
       for (let i = 0; i < MAX_ZOMBIES; i++) {
@@ -944,12 +1109,12 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, is
           }
 
           if (z.mode === 'walk') {
-            tempZombieTarget.set(0, FLOOR_LEVEL, 0).sub(z.pos);
+            tempZombieTarget.set(playerWorldX, FLOOR_LEVEL, playerWorldZ).sub(z.pos);
             tempZombieTarget.y = 0;
             tempZombieTarget.normalize();
             z.pos.addScaledVector(tempZombieTarget, z.speed * delta);
 
-            const distToPlayer = Math.hypot(z.pos.x, z.pos.z);
+            const distToPlayer = Math.hypot(z.pos.x - playerWorldX, z.pos.z - playerWorldZ);
             if (z.variant === 'normal' && z.willAltPose && !z.altPoseTriggered && distToPlayer <= z.altPoseTriggerDistance) {
               z.altPoseTriggered = true;
               z.mode = 'altPose';
@@ -968,7 +1133,6 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, is
           if (zombiePos.distanceTo(playerPos) < 2.2) {
             z.active = false;
             spawnExplosion(z.pos);
-            playSound('damage');
             shakeIntensity.current = 1.0;
             onPlayerHit();
             continue;
@@ -979,26 +1143,64 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, is
             const b = bulletsData.current[j];
             if (!b.active) continue;
 
-            const distanceScale = getZombieDistanceScale(z.pos.x, z.pos.z);
-            const collisionScale = z.scale * distanceScale;
-            tempZombieBodyTarget.set(z.pos.x, z.pos.y + 1.1 * collisionScale, z.pos.z);
-            const hitDist = b.pos.distanceTo(tempZombieBodyTarget);
-            if (hitDist < 1.35 * collisionScale) {
+            const distanceScale = getZombieDistanceScale(z.pos.x - playerWorldX, z.pos.z - playerWorldZ);
+            const visualScale = z.scale * distanceScale;
+            const zombieHeight = ZOMBIE_TARGET_HEIGHT * visualScale;
+            let hitZombie = false;
+
+            for (const hitSphere of ZOMBIE_HIT_SPHERES) {
+              tempHitSphereCenter.set(
+                z.pos.x,
+                z.pos.y + zombieHeight * hitSphere.yRatio,
+                z.pos.z
+              );
+
+              const hitRadius = Math.max(0.18, zombieHeight * hitSphere.radiusRatio);
+              const hitDistSq = pointToSegmentDistanceSq(
+                tempHitSphereCenter,
+                b.prevPos,
+                b.pos,
+                tempHitSegmentClosest,
+                tempHitSegmentToPoint
+              );
+
+              if (hitDistSq > hitRadius * hitRadius) continue;
+
               b.active = false;
-              z.mode = 'dead';
-              z.deathStartAtMs = now;
-              const deadClipDurationMs = rig.deadAction?.getClip().duration
-                ? (rig.deadAction.getClip().duration * 1000) / ZOMBIE_DEAD_ANIM_SPEED
-                : ZOMBIE_DEAD_ANIM_DURATION_MS;
-              z.deathEndAtMs = now + Math.max(250, deadClipDurationMs);
-              const drop = ZOMBIE_TARGET_HEIGHT * collisionScale * ZOMBIE_DEAD_FALL_DROP_FACTOR;
-              z.deathDropAmount = THREE.MathUtils.clamp(drop, ZOMBIE_DEAD_FALL_MIN_DROP, ZOMBIE_DEAD_FALL_MAX_DROP);
-              setZombieRigMode(rig, 'dead');
-              spawnFlash(tempZombieBodyTarget); // 섬광 효과
-              spawnExplosion(z.pos, 2.5); // Stronger explosion on death
-              localScore.current += 10;
-              setScore((s) => s + 10);
-              playSound('hit');
+              const isHeadshot = hitSphere.critical;
+              const damage = 1;
+              z.hp = Math.max(0, z.hp - damage);
+              tempZombieBodyTarget.copy(tempHitSegmentClosest);
+              spawnFlash(tempZombieBodyTarget);
+              spawnExplosion(tempZombieBodyTarget, z.hp <= 0 ? 2.2 : 1.3);
+              onZombieHitSound?.();
+
+              if (isHeadshot && onHeadshot) {
+                const screen = worldToScreenPercent(tempHitSphereCenter, camera);
+                if (screen.visible) {
+                  onHeadshot(screen.x, screen.y, 'zombie');
+                }
+              }
+
+              if (z.hp <= 0) {
+                z.mode = 'dead';
+                z.deathStartAtMs = now;
+                const deadClipDurationMs = rig.deadAction?.getClip().duration
+                  ? (rig.deadAction.getClip().duration * 1000) / ZOMBIE_DEAD_ANIM_SPEED
+                  : ZOMBIE_DEAD_ANIM_DURATION_MS;
+                z.deathEndAtMs = now + Math.max(250, deadClipDurationMs);
+                const drop = zombieHeight * ZOMBIE_DEAD_FALL_DROP_FACTOR;
+                z.deathDropAmount = THREE.MathUtils.clamp(drop, ZOMBIE_DEAD_FALL_MIN_DROP, ZOMBIE_DEAD_FALL_MAX_DROP);
+                setZombieRigMode(rig, 'dead');
+                localScore.current += 10;
+                setScore((s) => s + 10);
+              }
+
+              hitZombie = true;
+              break;
+            }
+
+            if (hitZombie) {
               break;
             }
           }
@@ -1010,8 +1212,8 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, is
       for (let i = 0; i < MAX_ZOMBIES; i++) {
         const z = zombiesData.current[i];
         if (!z.active) continue;
-        const dx = z.pos.x;
-        const dz = z.pos.z;
+        const dx = z.pos.x - playerWorldX;
+        const dz = z.pos.z - playerWorldZ;
         const dist = Math.sqrt(dx * dx + dz * dz);
         if (dist > RADAR_DETECT_RANGE) continue;
         const angle = Math.atan2(dx, -dz);
@@ -1022,15 +1224,16 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, is
       // Boss movement and collision
       if (boss.active && boss.hp > 0 && !bossIsDying) {
         // Move boss towards player
-        tempZombieTarget.set(0, FLOOR_LEVEL, 0).sub(boss.pos);
+        tempZombieTarget.set(playerWorldX, FLOOR_LEVEL, playerWorldZ).sub(boss.pos);
         tempZombieTarget.y = 0;
         tempZombieTarget.normalize();
         boss.pos.addScaledVector(tempZombieTarget, boss.speed * delta);
 
         // Player collision - game over
         const bossPos2D = new THREE.Vector2(boss.pos.x, boss.pos.z);
-        const playerPos2D = new THREE.Vector2(0, 0);
+        const playerPos2D = new THREE.Vector2(playerWorldX, playerWorldZ);
         if (bossPos2D.distanceTo(playerPos2D) < 2.5) {
+          gameEndedTriggered.current = true;
           onPlayerHit();
           onGameOver(localScore.current);
           return;
@@ -1041,17 +1244,43 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, is
           const b = bulletsData.current[j];
           if (!b.active) continue;
 
-          const bossBodyTarget = new THREE.Vector3(boss.pos.x, boss.pos.y + BOSS_TARGET_HEIGHT * 0.5, boss.pos.z);
-          const hitDist = b.pos.distanceTo(bossBodyTarget);
-          if (hitDist < 1.8) {
+          let hitBoss = false;
+          for (const hitSphere of BOSS_HIT_SPHERES) {
+            tempHitSphereCenter.set(
+              boss.pos.x,
+              boss.pos.y + BOSS_TARGET_HEIGHT * hitSphere.yRatio,
+              boss.pos.z
+            );
+
+            const hitRadius = BOSS_TARGET_HEIGHT * hitSphere.radiusRatio;
+            const hitDistSq = pointToSegmentDistanceSq(
+              tempHitSphereCenter,
+              b.prevPos,
+              b.pos,
+              tempHitSegmentClosest,
+              tempHitSegmentToPoint
+            );
+
+            if (hitDistSq > hitRadius * hitRadius) continue;
+
             b.active = false;
-            boss.hp -= 1;
+            const isHeadshot = hitSphere.critical;
+            const damage = isHeadshot ? 2 : 1;
+            boss.hp = Math.max(0, boss.hp - damage);
             if (onBossHPChange) onBossHPChange(boss.hp, BOSS_MAX_HP);
-            // Blood explosion at boss body height
-            const bossHitPos = new THREE.Vector3(boss.pos.x, boss.pos.y + BOSS_TARGET_HEIGHT * 0.4, boss.pos.z);
-            spawnFlash(bossHitPos);
-            spawnExplosion(bossHitPos, 2.0);
-            playSound('hit');
+            tempZombieBodyTarget.copy(tempHitSegmentClosest);
+            spawnFlash(tempZombieBodyTarget);
+            spawnExplosion(tempZombieBodyTarget, 2.0);
+            onZombieHitSound?.();
+
+            if (isHeadshot && onHeadshot) {
+              const screen = worldToScreenPercent(tempHitSphereCenter, camera);
+              if (screen.visible) {
+                onHeadshot(screen.x, screen.y, 'boss');
+              }
+            }
+
+            hitBoss = true;
 
             if (boss.hp <= 0 && boss.deathStartAtMs === -Infinity) {
               // Boss defeated - kill all zombies and play boss death animation
@@ -1080,6 +1309,10 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, is
             }
             break;
           }
+
+          if (hitBoss) {
+            break;
+          }
         }
       }
 
@@ -1087,6 +1320,7 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, is
       if (boss.deathStartAtMs !== -Infinity && now >= boss.deathEndAtMs && !gameEndedTriggered.current) {
         gameEndedTriggered.current = true;
         onGameOver(localScore.current);
+        return;
       }
     } else if (onNearbyZombies) {
       onNearbyZombies([]);
@@ -1174,7 +1408,7 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, is
       for (let i = 0; i < MAX_ZOMBIES; i++) {
         const z = zombiesData.current[i];
         if (z.active) {
-          const distanceScale = getZombieDistanceScale(z.pos.x, z.pos.z);
+          const distanceScale = getZombieDistanceScale(z.pos.x - playerWorldX, z.pos.z - playerWorldZ);
           const baseScale = z.variant === 'runner' ? zombieRunnerBaseScale : zombieBaseScale;
           const finalScale = baseScale * z.scale * distanceScale;
           const shadowScale = Math.max(SHADOW_MIN_SCALE, finalScale * SHADOW_BASE_SCALE);
@@ -1236,12 +1470,12 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, is
       rig.mixer?.update(delta);
 
 
-      const distanceScale = getZombieDistanceScale(z.pos.x, z.pos.z);
+      const distanceScale = getZombieDistanceScale(z.pos.x - playerWorldX, z.pos.z - playerWorldZ);
       const baseScale = z.variant === 'runner' ? zombieRunnerBaseScale : zombieBaseScale;
       const meshMinY = z.variant === 'runner' ? zombieRunTemplateMinY : zombieTemplateMinY;
       const finalScale = baseScale * z.scale * distanceScale;
 
-      const yawToPlayer = Math.atan2(-z.pos.x, -z.pos.z);
+      const yawToPlayer = Math.atan2(playerWorldX - z.pos.x, playerWorldZ - z.pos.z);
 
       rig.root.position.set(
         z.pos.x,
@@ -1256,7 +1490,7 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, is
     if (boss.active || (boss.deathStartAtMs !== -Infinity && now < boss.deathEndAtMs)) {
       bossRig.mixer?.update(delta);
 
-      const yawToPlayer = Math.atan2(-boss.pos.x, -boss.pos.z);
+      const yawToPlayer = Math.atan2(playerWorldX - boss.pos.x, playerWorldZ - boss.pos.z);
       // Ensure boss feet touch the floor
       // When dead, lower by 0.3
       const isDead = boss.deathStartAtMs !== -Infinity && now < boss.deathEndAtMs;
@@ -1289,6 +1523,7 @@ const GameController = ({ headRotation, onGameOver, onPlayerHit, gameStarted, is
 
       <Group ref={weaponSpriteGroupRef}>
         <Mesh
+          ref={weaponSpriteMeshRef}
           position={[WEAPON_SPRITE_OFFSET_X, WEAPON_SPRITE_OFFSET_Y, WEAPON_SPRITE_OFFSET_Z]}
           scale={[WEAPON_SPRITE_SCALE, WEAPON_SPRITE_SCALE * weaponSpriteAspect, 1]}
           renderOrder={2500}
@@ -1371,3 +1606,10 @@ export const GameCanvas = (props: GameSceneProps) => {
     </div>
   );
 };
+
+
+
+
+
+
+
