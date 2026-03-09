@@ -99,6 +99,7 @@ export class VisionWebSocketService {
   private onQRROICallback?: (data: VisionQRROIData) => void;
   private onGame05AttackCallback?: () => void;
   private onGame02PauseCallback?: () => void;
+  private onGame02ProgressAnswerCallback?: (progress: number) => void;
   private onGame04PauseCallback?: () => void;
 
   constructor(url: string) {
@@ -391,6 +392,11 @@ export class VisionWebSocketService {
       } else if (name === VisionMessageName.GAME02_PAUSE) {
         this.onGame02PauseCallback?.();
         console.log('[VisionWS] GAME02_PAUSE received');
+      } else if (name === VisionMessageName.GAME02_PROGRESS_ANSWER) {
+        const data = payload as { progress?: number };
+        if (data && typeof data.progress === 'number') {
+          this.onGame02ProgressAnswerCallback?.(Math.min(100, Math.max(0, data.progress)));
+        }
       } else if (name === VisionMessageName.GAME04_PAUSE) {
         this.onGame04PauseCallback?.();
         console.log('[VisionWS] GAME04_PAUSE received');
@@ -459,6 +465,12 @@ export class VisionWebSocketService {
   onGame02Pause(cb: () => void): () => void {
     this.onGame02PauseCallback = cb;
     return () => { this.onGame02PauseCallback = undefined; };
+  }
+
+  /** Game02 씬에서 Python이 GAME02_PROGRESS_ANSWER(0~100) 수신 시 구독. rock 3초 유지 진행률. */
+  onGame02ProgressAnswer(cb: (progress: number) => void): () => void {
+    this.onGame02ProgressAnswerCallback = cb;
+    return () => { this.onGame02ProgressAnswerCallback = undefined; };
   }
 
   /** Game04 씬에서 Python이 GAME04_PAUSE 수신 시 구독. PAUSE 오버레이 표시용. */

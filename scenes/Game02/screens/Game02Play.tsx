@@ -22,6 +22,7 @@ export interface Game02PlayProps {
   };
   lastClick: { x: number; y: number } | null;
   reasoning: string;
+  rockProgress: number; // 0~100, Python GAME02_PROGRESS_ANSWER (rock 3초 유지)
   viewportRef: React.RefObject<HTMLDivElement | null>;
   formatTime: (seconds: number) => string;
   onViewportPointerDown: (e: React.PointerEvent<HTMLDivElement>) => void;
@@ -43,6 +44,7 @@ const Game02Play: React.FC<Game02PlayProps> = ({
   viewPoseStatus,
   lastClick,
   reasoning,
+  rockProgress,
   viewportRef,
   formatTime,
   onViewportPointerDown,
@@ -159,6 +161,32 @@ const Game02Play: React.FC<Game02PlayProps> = ({
                 willChange: 'transform',
               }}
             />
+
+            {/* Rock 3초 유지 진행률: 흰색 원형 progress bar (게임 이미지 뷰 위) */}
+            {state === Game02State.PLAYING && rockProgress > 0 && (
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+                <svg className="w-[min(80vw,80vh)] h-[min(80vw,80vh)] -rotate-90" viewBox="0 0 100 100" aria-hidden>
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="48"
+                    fill="none"
+                    stroke="rgba(255,255,255,0.2)"
+                    strokeWidth="4"
+                  />
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="48"
+                    fill="none"
+                    stroke="white"
+                    strokeWidth="4"
+                    strokeLinecap="round"
+                    strokeDasharray={`${(rockProgress / 100) * 2 * Math.PI * 48} ${2 * Math.PI * 48}`}
+                  />
+                </svg>
+              </div>
+            )}
 
             {lastClick && (
               <div

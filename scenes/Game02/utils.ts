@@ -92,6 +92,24 @@ export function isClickOnTarget(
   return x >= pxmin && x <= pxmax && y >= pymin && y <= pymax;
 }
 
+/** 현재 뷰 영역(viewTopLeft, viewWindow, 0~1)이 타겟 박스를 포함하는지(겹치는지) */
+export function isViewContainingTarget(
+  scenario: GameScenario,
+  viewTopLeft: { x: number; y: number },
+  viewWindow: { w: number; h: number }
+): boolean {
+  const [ymin, xmin, ymax, xmax] = scenario.targetBox;
+  const viewLeft = viewTopLeft.x;
+  const viewRight = viewTopLeft.x + viewWindow.w;
+  const viewTop = viewTopLeft.y;
+  const viewBottom = viewTopLeft.y + viewWindow.h;
+  const tLeft = xmin / 1000;
+  const tRight = xmax / 1000;
+  const tTop = ymin / 1000;
+  const tBottom = ymax / 1000;
+  return viewLeft < tRight && viewRight > tLeft && viewTop < tBottom && viewBottom > tTop;
+}
+
 /** base64 장면 이미지에서 targetBox 영역 크롭 → data URL */
 export function cropTargetImage(
   base64: string,
