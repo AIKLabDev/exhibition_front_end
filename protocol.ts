@@ -101,6 +101,27 @@ export const UIEventName = {
 export type UIEventNameType = (typeof UIEventName)[keyof typeof UIEventName];
 export type UIEventName = UIEventNameType;
 
+// =============================================================================
+// Frontend → Backend2 (두 번째 백엔드)
+// =============================================================================
+
+/** Frontend → Backend2: header.name */
+export const Backend2MessageName = {
+  /** LaserStyle 씬에서 사용자가 이미지를 선택했을 때 전송. data: Backend2StyleSelectedData */
+  STYLE_SELECTED: 'STYLE_SELECTED',
+} as const;
+export type Backend2MessageNameType = (typeof Backend2MessageName)[keyof typeof Backend2MessageName];
+
+/** STYLE_SELECTED 메시지의 data (Frontend → Backend2). 선택된 스타일 + Base64 이미지 */
+export interface Backend2StyleSelectedData {
+  /** 스타일 ID (REAL, ANIME, DISNEY, CHIBI) */
+  style: string;
+  /** 선택 번호 (1~4) */
+  number: number;
+  /** 선택된 스타일의 Base64 이미지 (JPEG) */
+  image: string;
+}
+
 export interface CameraFrameData {
   format: 'jpeg' | 'png' | 'webp' | 'raw';
   width?: number;

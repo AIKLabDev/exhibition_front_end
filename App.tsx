@@ -1,7 +1,9 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { SceneDefine, WSMessageV2, ConnectionStatus, UIEventName, SceneData, ProgressData } from './types';
+import { SceneDefine, WSMessageV2, ConnectionStatus, UIEventName, Backend2MessageName, SceneData, ProgressData } from './types';
+import type { Backend2StyleSelectedData } from './types';
 import { backendWsService } from './services/backendWebSocketService';
+import { backend2WsService } from './services/backend2WebSocketService';
 import { getVisionWsService } from './services/visionWebSocketService';
 import logoUrl from './resources/AIK_logo_white.png';
 
@@ -41,6 +43,8 @@ const App: React.FC = () => {
   const [showWelcomeGreeting, setShowWelcomeGreeting] = useState(false);
   /** 디버그: GAME_RESULT 메시지 전송 여부. 끄면 시퀀스(결과 씬 전환 등)가 진행되지 않음 */
   const [sendGameResultMessage, setSendGameResultMessage] = useState(true);
+  /** Backend2 WebSocket 연결 상태 - 디버그 UI 표시용 */
+  const [backend2Status, setBackend2Status] = useState<ConnectionStatus>(ConnectionStatus.DISCONNECTED);
   /** SKETCH_RESULT로 받은 4가지 스타일 이미지(Base64). LASER_STYLE 씬에 전달 */
   const [sketchImages, setSketchImages] = useState<string[]>([]);
 
@@ -58,6 +62,11 @@ const App: React.FC = () => {
     setPythonConnected(vision.isConnected());
     vision.onConnect(() => setPythonConnected(true));
     vision.onDisconnect(() => setPythonConnected(false));
+  }, []);
+
+  // Backend2 WebSocket 연결 상태 구독
+  useEffect(() => {
+    backend2WsService.setStatusCallback((newStatus) => setBackend2Status(newStatus as ConnectionStatus));
   }, []);
 
   useEffect(() => {
@@ -217,7 +226,14 @@ const App: React.FC = () => {
       case SceneDefine.LASER_STYLE:
         return (
           <LaserStyle
-            onSelect={(style, number) => handleUIEvent('STYLE_SELECTED', { style, number })}
+            onSelect={(style, number) => {
+              handleUIEvent('STYLE_SELECTED', { style, number });
+
+              // Backend2에 선택된 스타일 + 해당 이미지(Base64)를 전송
+              const selectedImage = sketchImages[number - 1] ?? '';
+              const payload: Backend2StyleSelectedData = { style, number, image: selectedImage };
+              backend2WsService.sendCommand(Backend2MessageName.STYLE_SELECTED, payload);
+            }}
             images={sketchImages}
           />
         );
@@ -257,10 +273,10 @@ const App: React.FC = () => {
 
       {/* Debug Panel */}
       {isDebugOpen && (
-        <div className="absolute top-24 left-16 z-[100] bg-slate-900/95 border border-white/10 rounded-3xl p-8 shadow-2xl backdrop-blur-xl w-[450px]">
+        <div className="absolute top-24 left-16 z-[100] bg-slate-900/95 border border-white/10 rounded-3xl p-7 shadow-2xl backdrop-blur-xl w-[450px] max-h-[calc(100vh-6rem)] overflow-y-auto">
           {/* Connection Status(좌) + GAME_RESULT 전송 토글(우) - 한 줄에 배치해 UI 밀림 방지 */}
-          <div className="mb-6 pb-4 border-b border-white/10 flex flex-row gap-4 items-start">
-            <div className="flex flex-col gap-2 min-w-0 flex-1">
+          <div className="mb-3 pb-3 border-b border-white/10 flex flex-row gap-3 items-start">
+            <div className="flex flex-col gap-1.5 min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider w-12 shrink-0">cpp</span>
                 <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm flex-1 min-w-0 ${status === ConnectionStatus.CONNECTED ? 'border-green-500/50 bg-green-500/10' : 'border-red-500/50 bg-red-500/10'}`}>
@@ -309,6 +325,13 @@ const App: React.FC = () => {
                 <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm flex-1 min-w-0 ${pythonConnected ? 'border-green-500/50 bg-green-500/10' : 'border-red-500/50 bg-red-500/10'}`}>
                   <div className={`w-2 h-2 rounded-full shrink-0 ${pythonConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
                   <span className="font-bold tracking-wider uppercase opacity-80 truncate">{pythonConnected ? 'CONNECTED' : 'DISCONNECTED'}</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider w-12 shrink-0">cpp2</span>
+                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm flex-1 min-w-0 ${backend2Status === ConnectionStatus.CONNECTED ? 'border-green-500/50 bg-green-500/10' : 'border-red-500/50 bg-red-500/10'}`}>
+                  <div className={`w-2 h-2 rounded-full shrink-0 ${backend2Status === ConnectionStatus.CONNECTED ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+                  <span className="font-bold tracking-wider uppercase opacity-80 truncate">{backend2Status}</span>
                 </div>
               </div>
             </div>
