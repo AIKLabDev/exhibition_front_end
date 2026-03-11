@@ -47,6 +47,7 @@ export enum SceneDefine {
   PICK_GIFT = 'PICK_GIFT',
   LASER_STYLE = 'LASER_STYLE',
   LASER_PROCESS = 'LASER_PROCESS',
+  CAPTURE = 'CAPTURE',
 }
 
 /** Backend → Frontend: header.name (C++와 맞출 것) */
@@ -159,6 +160,10 @@ export const VisionMessageName = {
   GAME04_MAINGAME_START: 'GAME04_MAINGAME_START',
   /** Python → 프론트: fix된 참여자 이탈 시 일시정지 안내. 프론트는 PAUSE 오버레이 표시 후 터치로 해제 */
   GAME04_PAUSE: 'GAME04_PAUSE',
+  /** 프론트 → Python: Capture 씬 카운트다운 완료 시 캡처 신호. Python은 현재 프레임으로 스케치 생성 */
+  SKETCH_CAPTURE: 'SKETCH_CAPTURE',
+  /** Python → 프론트: SKETCH_CAPTURE 처리 완료. 4가지 스타일 이미지(Base64)를 포함. CAPTURE→LASER_STYLE 전환 트리거 */
+  SKETCH_RESULT: 'SKETCH_RESULT',
 } as const;
 export type VisionMessageNameType = (typeof VisionMessageName)[keyof typeof VisionMessageName];
 
@@ -210,6 +215,16 @@ export interface VisionQRROIData {
   top: number;
   width: number;
   height: number;
+}
+
+/** SKETCH_RESULT 메시지의 data (Python → 프론트). 4가지 스타일 이미지(Base64 문자열). */
+export interface VisionSketchResultData {
+  success: boolean;
+  error_message?: string;
+  /** Base64 문자열 4개 (순서: REAL, ANIME, DISNEY, CHIBI) */
+  images: string[];
+  /** 이미지 MIME 포맷 */
+  format: 'jpeg';
 }
 
 /** @deprecated VisionMessageType 대신 VisionMessageName 사용 */

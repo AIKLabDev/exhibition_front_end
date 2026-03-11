@@ -17,6 +17,7 @@ import type {
   VisionHumanDetectedData,
   VisionQRScannedData,
   VisionQRROIData,
+  VisionSketchResultData,
 } from '../protocol';
 import {
   Sender,
@@ -101,6 +102,7 @@ export class VisionWebSocketService {
   private onGame02PauseCallback?: () => void;
   private onGame02ProgressAnswerCallback?: (progress: number) => void;
   private onGame04PauseCallback?: () => void;
+  private onSketchResultCallback?: (data: VisionSketchResultData) => void;
 
   constructor(url: string) {
     this.url = url;
@@ -281,6 +283,24 @@ export class VisionWebSocketService {
   }
 
   /**
+   * Capture 씬 카운트다운 완료 시 호출. Python에 SKETCH_CAPTURE 신호 전송.
+   * Python은 현재 카메라 프레임에서 스케치(라인아트)를 생성한다.
+   */
+  sendSketchCapture(): void {
+    if (!this.isConnected()) {
+      console.warn('[VisionWS] sendSketchCapture skipped: not connected');
+      return;
+    }
+    try {
+      const msg = buildVisionMessage(VisionMessageName.SKETCH_CAPTURE, {});
+      this.ws!.send(JSON.stringify(msg));
+      console.log('[VisionWS] Sent SKETCH_CAPTURE to Python');
+    } catch (err) {
+      console.warn('[VisionWS] sendSketchCapture failed:', err);
+    }
+  }
+
+  /**
    * 손동작 감지 요청 (request-response).
    * - 여기서 REQ_HAND_GESTURE 메시지를 Python에 보내고, Promise를 반환.
    * - Python이 처리 후 RES_HAND_GESTURE 메시지로 응답하면, handleMessage에서 수신해
@@ -400,6 +420,14 @@ export class VisionWebSocketService {
       } else if (name === VisionMessageName.GAME04_PAUSE) {
         this.onGame04PauseCallback?.();
         console.log('[VisionWS] GAME04_PAUSE received');
+      } else if (name === VisionMessageName.SKETCH_RESULT) {
+        const resultData = payload as VisionSketchResultData;
+        if (resultData?.success && resultData.images?.length >= 4) {
+          this.onSketchResultCallback?.(resultData);
+          console.log('[VisionWS] SKETCH_RESULT received, images:', resultData.images.length);
+        } else {
+          console.warn('[VisionWS] SKETCH_RESULT failed or insufficient images:', resultData?.error_message);
+        }
       } else {
         console.warn('[VisionWS] Unknown message name:', name);
       }
@@ -477,5 +505,11 @@ export class VisionWebSocketService {
   onGame04Pause(cb: () => void): () => void {
     this.onGame04PauseCallback = cb;
     return () => { this.onGame04PauseCallback = undefined; };
+  }
+
+  /** SKETCH_RESULT 수신 구독. Capture 완료 후 4가지 스타일 이미지가 도착하면 호출. */
+  onSketchResult(cb: (data: VisionSketchResultData) => void): () => void {
+    this.onSketchResultCallback = cb;
+    return () => { this.onSketchResultCallback = undefined; };
   }
 }

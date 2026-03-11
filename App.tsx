@@ -18,6 +18,7 @@ import GameResult from './scenes/GameResult';
 import PickGift from './scenes/PickGift';
 import LaserStyle from './scenes/LaserStyle';
 import LaserProcess from './scenes/LaserProcess';
+import Capture from './scenes/Capture';
 
 const App: React.FC = () => {
   const [currentScene, setCurrentScene] = useState<SceneDefine>(SceneDefine.WELCOME);
@@ -40,6 +41,8 @@ const App: React.FC = () => {
   const [showWelcomeGreeting, setShowWelcomeGreeting] = useState(false);
   /** 디버그: GAME_RESULT 메시지 전송 여부. 끄면 시퀀스(결과 씬 전환 등)가 진행되지 않음 */
   const [sendGameResultMessage, setSendGameResultMessage] = useState(true);
+  /** SKETCH_RESULT로 받은 4가지 스타일 이미지(Base64). LASER_STYLE 씬에 전달 */
+  const [sketchImages, setSketchImages] = useState<string[]>([]);
 
   const currentSceneRef = useRef(currentScene);
   currentSceneRef.current = currentScene;
@@ -122,6 +125,17 @@ const App: React.FC = () => {
     return () => { unsubscribe(); };
   }, []);
 
+  // Python SKETCH_RESULT 수신: Capture 씬에서 스케치 생성 완료 → LASER_STYLE로 전환
+  useEffect(() => {
+    const vision = getVisionWsService();
+    const unsubscribe = vision.onSketchResult((data) => {
+      setSketchImages(data.images.slice(0, 4));
+      setCurrentScene(SceneDefine.LASER_STYLE);
+      console.log('[App] SKETCH_RESULT 수신 → LASER_STYLE 전환, images:', data.images.length);
+    });
+    return () => { unsubscribe(); };
+  }, []);
+
   const handleUIEvent = useCallback((name: UIEventName, data?: any) => {
     backendWsService.sendCommand(name, data);
   }, []);
@@ -201,9 +215,16 @@ const App: React.FC = () => {
       case SceneDefine.PICK_GIFT:
         return <PickGift progress={progress.value} label={progress.label} />;
       case SceneDefine.LASER_STYLE:
-        return <LaserStyle onSelect={(style) => handleUIEvent('STYLE_SELECTED', { style })} />;
+        return (
+          <LaserStyle
+            onSelect={(style, number) => handleUIEvent('STYLE_SELECTED', { style, number })}
+            images={sketchImages}
+          />
+        );
       case SceneDefine.LASER_PROCESS:
         return <LaserProcess progress={progress.value} label={progress.label} />;
+      case SceneDefine.CAPTURE:
+        return <Capture />;
       default:
         return <div className="text-4xl p-20">Scene Offline: {currentScene}</div>;
     }
@@ -236,7 +257,7 @@ const App: React.FC = () => {
 
       {/* Debug Panel */}
       {isDebugOpen && (
-        <div className="absolute bottom-24 left-16 z-[100] bg-slate-900/95 border border-white/10 rounded-3xl p-8 shadow-2xl backdrop-blur-xl w-[450px]">
+        <div className="absolute top-24 left-16 z-[100] bg-slate-900/95 border border-white/10 rounded-3xl p-8 shadow-2xl backdrop-blur-xl w-[450px]">
           {/* Connection Status(좌) + GAME_RESULT 전송 토글(우) - 한 줄에 배치해 UI 밀림 방지 */}
           <div className="mb-6 pb-4 border-b border-white/10 flex flex-row gap-4 items-start">
             <div className="flex flex-col gap-2 min-w-0 flex-1">
