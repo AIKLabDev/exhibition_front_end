@@ -31,7 +31,7 @@ interface WSMessageV2 {
 | `GAME_START` | 게임 시작 신호 (예: 로봇 준비 완료) | `{}` — 프론트가 Game01 시작 트리거 + Python에 game_start 전달 |
 | `GAME_STOP` | 게임 종료 신호 | `{}` — 프론트가 Python에 game_stop 전달 |
 
-- `SceneDefine`: `WELCOME` \| `QR` \| `SELECT_MINIGAME` \| `GAME01` \| `GAME_RESULT` \| `PICK_GIFT` \| `LASER_STYLE` \| `LASER_PROCESS`
+- `SceneDefine`: `WELCOME` \| `QR` \| `SELECT_MINIGAME` \| `GAME01`~`GAME05` \| `GAME_RESULT` \| `PICK_GIFT` \| `REFILL_GIFT` \| `CAPTURE` \| `LASER_STYLE` \| `LASER_PROCESS`
 
 ---
 

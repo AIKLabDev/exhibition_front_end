@@ -21,6 +21,7 @@ import PickGift from './scenes/PickGift';
 import LaserStyle from './scenes/LaserStyle';
 import LaserProcess from './scenes/LaserProcess';
 import Capture from './scenes/Capture';
+import RefillGift from './scenes/RefillGift';
 
 const App: React.FC = () => {
   const [currentScene, setCurrentScene] = useState<SceneDefine>(SceneDefine.WELCOME);
@@ -223,6 +224,8 @@ const App: React.FC = () => {
         return <GameResult result={gameResult} text={sceneText} />;
       case SceneDefine.PICK_GIFT:
         return <PickGift progress={progress.value} label={progress.label} />;
+      case SceneDefine.REFILL_GIFT:
+        return <RefillGift text={sceneText} />;
       case SceneDefine.LASER_STYLE:
         return (
           <LaserStyle
