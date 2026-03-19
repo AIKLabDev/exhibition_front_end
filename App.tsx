@@ -146,6 +146,17 @@ const App: React.FC = () => {
     return () => { unsubscribe(); };
   }, []);
 
+  // Exhibition_Drawing(Vision WS) MACHINING_COMPLETE 수신 → 백엔드(Exhibition)에 success 포함해 전달
+  useEffect(() => {
+    const vision = getVisionWsService();
+    const unsubscribe = vision.onMachiningComplete((data) => {
+      const success = data?.success !== undefined ? data.success : 1;
+      backendWsService.sendCommand('MACHINING_COMPLETE', { success });
+      console.log('[App] MACHINING_COMPLETE 수신 → 백엔드 전달, success:', success);
+    });
+    return () => { unsubscribe(); };
+  }, []);
+
   const handleUIEvent = useCallback((name: UIEventName, data?: any) => {
     backendWsService.sendCommand(name, data);
   }, []);

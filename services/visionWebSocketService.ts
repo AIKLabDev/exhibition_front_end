@@ -18,6 +18,7 @@ import type {
   VisionQRScannedData,
   VisionQRROIData,
   VisionSketchResultData,
+  VisionMachiningCompleteData,
 } from '../protocol';
 import {
   Sender,
@@ -103,6 +104,7 @@ export class VisionWebSocketService {
   private onGame02ProgressAnswerCallback?: (progress: number) => void;
   private onGame04PauseCallback?: () => void;
   private onSketchResultCallback?: (data: VisionSketchResultData) => void;
+  private onMachiningCompleteCallback?: (data: VisionMachiningCompleteData) => void;
 
   constructor(url: string) {
     this.url = url;
@@ -428,6 +430,10 @@ export class VisionWebSocketService {
         } else {
           console.warn('[VisionWS] SKETCH_RESULT failed or insufficient images:', resultData?.error_message);
         }
+      } else if (name === VisionMessageName.MACHINING_COMPLETE) {
+        const data = (payload ?? {}) as VisionMachiningCompleteData;
+        this.onMachiningCompleteCallback?.(data);
+        console.log('[VisionWS] MACHINING_COMPLETE received, success:', data?.success);
       } else {
         console.warn('[VisionWS] Unknown message name:', name);
       }
@@ -511,5 +517,11 @@ export class VisionWebSocketService {
   onSketchResult(cb: (data: VisionSketchResultData) => void): () => void {
     this.onSketchResultCallback = cb;
     return () => { this.onSketchResultCallback = undefined; };
+  }
+
+  /** MACHINING_COMPLETE 수신 구독. Python에서 레이저 가공 완료 시 호출. */
+  onMachiningComplete(cb: (data: VisionMachiningCompleteData) => void): () => void {
+    this.onMachiningCompleteCallback = cb;
+    return () => { this.onMachiningCompleteCallback = undefined; };
   }
 }

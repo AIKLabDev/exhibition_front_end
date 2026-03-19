@@ -98,6 +98,8 @@ export const UIEventName = {
   GAME04_IDLE: 'GAME04_IDLE',
   /** Vision에서 QR 인식 시(QR 씬) 프론트가 백엔드에 전달. data, bbox 포함 */
   QR_SCANNED: 'QR_SCANNED',
+  /** Exhibition_Drawing에서 레이저 가공 완료 수신 시 프론트가 백엔드(Exhibition)에 전달. data: { success: number } (1/0) */
+  MACHINING_COMPLETE: 'MACHINING_COMPLETE',
 } as const;
 export type UIEventNameType = (typeof UIEventName)[keyof typeof UIEventName];
 export type UIEventName = UIEventNameType;
@@ -186,6 +188,8 @@ export const VisionMessageName = {
   SKETCH_CAPTURE: 'SKETCH_CAPTURE',
   /** Python → 프론트: SKETCH_CAPTURE 처리 완료. 4가지 스타일 이미지(Base64)를 포함. CAPTURE→LASER_STYLE 전환 트리거 */
   SKETCH_RESULT: 'SKETCH_RESULT',
+  /** Python → 프론트: 레이저 가공 완료 알림. 수신 시 프론트/백엔드 시퀀스 진행용 */
+  MACHINING_COMPLETE: 'MACHINING_COMPLETE',
 } as const;
 export type VisionMessageNameType = (typeof VisionMessageName)[keyof typeof VisionMessageName];
 
@@ -247,6 +251,11 @@ export interface VisionSketchResultData {
   images: string[];
   /** 이미지 MIME 포맷 */
   format: 'jpeg';
+}
+
+/** MACHINING_COMPLETE 메시지의 data (Exhibition_Drawing ProtocolBridge → 프론트). 레이저 가공 완료 시 1(성공)/0(실패). */
+export interface VisionMachiningCompleteData {
+  success?: number;
 }
 
 /** @deprecated VisionMessageType 대신 VisionMessageName 사용 */
