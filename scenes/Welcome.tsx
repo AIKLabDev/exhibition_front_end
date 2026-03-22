@@ -1,4 +1,5 @@
 import React from 'react';
+import './Welcome.css';
 
 interface WelcomeProps {
   onStart: () => void;
@@ -6,10 +7,16 @@ interface WelcomeProps {
   showGreeting?: boolean;
 }
 
-const TITLE = 'AIKOREA';
+/** 쇼츠 스타일 순차 등장용 문구 조각 (띄어쓰기는 chunk 끝에 포함) */
+const SUBTITLE_CHUNKS: { text: string; accent?: boolean }[] = [
+  { text: 'Game에 ' },
+  { text: '참가하시면 ' },
+  { text: '소정의 상품', accent: true },
+  { text: '을 드립니다.' },
+];
 
-const Welcome: React.FC<WelcomeProps> = ({ onStart, text, showGreeting = false }) => {
-  const displayTitle = (text && text.trim()) ? text : TITLE;
+const Welcome: React.FC<WelcomeProps> = ({ onStart, text: _sceneText, showGreeting = false }) => {
+  void _sceneText; // 백엔드 SET_SCENE text 유지용 (표시 안 함)
 
   return (
     <div
@@ -42,35 +49,27 @@ const Welcome: React.FC<WelcomeProps> = ({ onStart, text, showGreeting = false }
         </div>
       )}
 
-      <h1
-        className="welcome-title font-black mb-8 tracking-tight text-center uppercase"
-        style={{
-          fontSize: 'clamp(3rem, 8vw, 10rem)',
-          letterSpacing: '0.02em',
-        }}
-      >
-        {displayTitle.split('').map((char, i) => (
-          <span key={i} className="welcome-letter">
-            {char}
+      {/* 가운데 큰 눈 2개 — 깜빡임: Welcome.css */}
+      <div className="welcome-eyes welcome-eyes--hero" aria-hidden>
+        <div className="welcome-eye welcome-eye--left" />
+        <div className="welcome-eye welcome-eye--right" />
+      </div>
+
+      {/* 유튜브 쇼츠 스타일: 구간마다 stagger delay로 촤라락 등장 후 루프 */}
+      <p className="welcome-shorts-caption">
+        {SUBTITLE_CHUNKS.map((chunk, i) => (
+          <span
+            key={i}
+            className={`welcome-shorts-chunk${chunk.accent ? ' welcome-shorts-chunk--accent' : ''}`}
+            style={
+              {
+                '--welcome-chunk-delay': `${i * 0.16}s`,
+              } as React.CSSProperties
+            }
+          >
+            {chunk.text}
           </span>
         ))}
-      </h1>
-
-      <p
-        className="text-center font-medium tracking-wide max-w-[90%]"
-        style={{
-          fontSize: 'clamp(1.5rem, 3.5vw, 4.5rem)',
-          color: 'var(--welcome-subtitle)',
-          textShadow: '0 2px 20px rgba(0,0,0,0.5)',
-          lineHeight: 1.4,
-          marginBottom: '3rem',
-        }}
-      >
-        Game에 참가하시면{' '}
-        <span style={{ color: 'var(--welcome-accent)', fontWeight: 700 }}>
-          소정의 상품
-        </span>
-        을 드립니다.
       </p>
     </div>
   );
