@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { SceneDefine, WSMessageV2, ConnectionStatus, UIEventName, Backend2MessageName, SceneData, ProgressData } from './types';
+import { SceneDefine, WSMessageV2, ConnectionStatus, UIEventName, BackendMessageName, Backend2MessageName, SceneData, ProgressData } from './types';
 import type { Backend2StyleSelectedData } from './types';
 import { backendWsService } from './services/backendWebSocketService';
 import { backend2WsService } from './services/backend2WebSocketService';
@@ -101,6 +101,10 @@ const App: React.FC = () => {
         case 'GAME_STOP':
           getVisionWsService().sendGameStop();
           setGameStopTrigger((t) => t + 1);
+          break;
+        case BackendMessageName.LASER_WORK_STANDBY:
+          backend2WsService.sendCommand(Backend2MessageName.LASER_WORK_STANDBY, data ?? {});
+          console.log('[App] LASER_WORK_STANDBY from Exhibition → forwarded to Backend2 (laser)');
           break;
       }
     });

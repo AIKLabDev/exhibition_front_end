@@ -65,6 +65,8 @@ export const BackendMessageName = {
   GAME04_DIRECTION: 'GAME04_DIRECTION',
   /** QR 씬: 중복 참여자(이미 참여한 티켓). 인식 완료 연출이 끝난 뒤에만 연출 표시 */
   QR_DUPLICATED: 'QR_DUPLICATED',
+  /** 레이저 작업 대기(스탠바이) Frontend에서 Backend2(레이저)로 전달 */
+  LASER_WORK_STANDBY: 'LASER_WORK_STANDBY',
 } as const;
 export type BackendMessageNameType = (typeof BackendMessageName)[keyof typeof BackendMessageName];
 
@@ -112,6 +114,8 @@ export type UIEventName = UIEventNameType;
 export const Backend2MessageName = {
   /** LaserStyle 씬에서 사용자가 이미지를 선택했을 때 전송. data: Backend2StyleSelectedData */
   STYLE_SELECTED: 'STYLE_SELECTED',
+  /** Exhibition(C++)가 보낸 LASER_WORK_STANDBY를 프론트가 그대로 레이저 백엔드(8081 등)로 전달 */
+  LASER_WORK_STANDBY: 'LASER_WORK_STANDBY',
 } as const;
 export type Backend2MessageNameType = (typeof Backend2MessageName)[keyof typeof Backend2MessageName];
 
