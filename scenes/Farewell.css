@@ -1,71 +1,69 @@
 /**
- * Farewell 씬: 전체 화면 순차 문구 (등장 → 유지 → 퇴장 루프)
+ * Farewell 씬: 1줄·2줄로 나누어 각 줄은 왼쪽→오른쪽 순 등장 후 유지
  */
 
-.farewell-phrase-stage {
-  position: relative;
-  flex: 1;
+.farewell-lines {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 100%;
-  min-height: 0;
-  padding: clamp(1rem, 4vw, 3rem);
+  gap: clamp(1rem, 3vh, 2.5rem);
+  max-width: 98vw;
+  padding: clamp(0.5rem, 2vw, 1.5rem);
   box-sizing: border-box;
 }
 
-.farewell-phrase-line {
+.farewell-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(0.75rem, 2.5vw, 2.25rem);
+  box-sizing: border-box;
+}
+
+.farewell-chip {
+  display: inline-block;
   margin: 0;
-  text-align: center;
   font-weight: 900;
   letter-spacing: -0.02em;
-  line-height: 1.05;
+  line-height: 1.1;
   color: var(--welcome-text);
-  max-width: 95vw;
   text-shadow:
-    0 0 40px var(--welcome-glow-soft),
-    0 4px 32px rgba(0, 0, 0, 0.55);
-  font-size: clamp(4.5rem, 14vw, 16rem);
-  animation: farewell-phrase-pop 0.65s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    0 0 36px var(--welcome-glow-soft),
+    0 4px 28px rgba(0, 0, 0, 0.55);
+  font-size: clamp(2.25rem, 5.5vw, 6.5rem);
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateX(-1.25em) scale(0.92);
+  filter: blur(10px);
+  animation: farewell-chip-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   will-change: transform, opacity, filter;
 }
 
-.farewell-phrase-line--accent {
+.farewell-chip--accent {
   color: var(--welcome-accent);
   text-shadow:
-    0 0 48px var(--welcome-glow-soft),
-    0 0 96px rgba(56, 189, 248, 0.45),
-    0 4px 32px rgba(0, 0, 0, 0.55);
+    0 0 44px var(--welcome-glow-soft),
+    0 0 80px rgba(56, 189, 248, 0.4),
+    0 4px 28px rgba(0, 0, 0, 0.55);
 }
 
-@keyframes farewell-phrase-pop {
+@keyframes farewell-chip-in {
   0% {
     opacity: 0;
-    transform: scale(0.82) translateY(0.12em);
-    filter: blur(12px);
+    transform: translateX(-1.25em) scale(0.92);
+    filter: blur(10px);
   }
-
-  14% {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-    filter: blur(0);
-  }
-
-  68% {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-    filter: blur(0);
-  }
-
   100% {
-    opacity: 0;
-    transform: scale(1.08) translateY(-0.06em);
-    filter: blur(8px);
+    opacity: 1;
+    transform: translateX(0) scale(1);
+    filter: blur(0);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .farewell-phrase-line {
+  .farewell-chip {
     animation: none;
     opacity: 1;
     transform: none;
