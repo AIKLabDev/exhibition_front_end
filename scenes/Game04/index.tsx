@@ -120,6 +120,7 @@ const Game04: React.FC<Game04Props> = ({
   onGameResult,
   inputMode: forceInputMode,
   triggerStartFromBackend = 0,
+  hideResultRestart = false,
 }) => {
   const [gameStarted, setGameStarted] = useState(false);
   const [gameOver, setGameOver] = useState(false);
@@ -578,13 +579,15 @@ const Game04: React.FC<Game04Props> = ({
                 {GAME04_STRINGS.SCORE_PREFIX}
                 {finalScore}
               </div>
-              <button
-                onClick={startGame}
-                className={`bg-white font-black hover:bg-gray-200 transition-colors z-10 uppercase tracking-widest ${isVictory ? 'text-green-900' : 'text-red-900'}`}
-                style={{ fontSize: `${buttonFontSize}px`, padding: `${16 * scaleH}px ${40 * scaleW}px` }}
-              >
-                {isVictory ? GAME04_STRINGS.RETRY_WIN : GAME04_STRINGS.RETRY_LOSE}
-              </button>
+              {!hideResultRestart && (
+                <button
+                  onClick={startGame}
+                  className={`bg-white font-black hover:bg-gray-200 transition-colors z-10 uppercase tracking-widest ${isVictory ? 'text-green-900' : 'text-red-900'}`}
+                  style={{ fontSize: `${buttonFontSize}px`, padding: `${16 * scaleH}px ${40 * scaleW}px` }}
+                >
+                  {isVictory ? GAME04_STRINGS.RETRY_WIN : GAME04_STRINGS.RETRY_LOSE}
+                </button>
+              )}
             </div>
           </div>
         </div>

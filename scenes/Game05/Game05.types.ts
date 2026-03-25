@@ -12,6 +12,8 @@ export interface Game05Props {
   triggerStartFromBackend?: number;
   /** 디버그 UI에서 지정 시 강제 입력 모드. mouse=클릭/키보드, vision=Python GAME05_ATTACK 수신 시 공격 */
   inputMode?: Game05InputMode;
+  /** 체인 모드 등: 결과 화면에서 "다시 시작" 숨김(자동 다음 씬만 사용) */
+  hideResultRestart?: boolean;
 }
 
 // ── 게임 상태 타입 ──

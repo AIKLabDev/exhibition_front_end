@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { SceneDefine, WSMessageV2, ConnectionStatus, UIEventName, BackendMessageName, Backend2MessageName, SceneData, ProgressData } from './types';
+import type { BackendGameStartData } from './types';
 import type { Backend2StyleSelectedData } from './types';
 import { backendWsService } from './services/backendWebSocketService';
 import { backend2WsService } from './services/backend2WebSocketService';
@@ -22,6 +23,12 @@ import LaserStyle from './scenes/LaserStyle';
 import LaserProcess from './scenes/LaserProcess';
 import Capture from './scenes/Capture';
 import RefillGift from './scenes/RefillGift';
+
+/** Exhibition 체인 모드에서만 순서대로 진행하는 미니게임 */
+const MINIGAME_CHAIN_SCENES = [SceneDefine.GAME02, SceneDefine.GAME04, SceneDefine.GAME05] as const;
+
+/** 체인 모드: 게임 종료 직후 다음 미니게임으로 넘기기 전, 현재 게임의 결과 화면을 보여줄 시간(ms) */
+const MINIGAME_CHAIN_RESULT_HOLD_MS = 3000;
 
 const App: React.FC = () => {
   const [currentScene, setCurrentScene] = useState<SceneDefine>(SceneDefine.WELCOME);
@@ -48,9 +55,27 @@ const App: React.FC = () => {
   const [backend2Status, setBackend2Status] = useState<ConnectionStatus>(ConnectionStatus.DISCONNECTED);
   /** SKETCH_RESULT로 받은 4가지 스타일 이미지(Base64). LASER_STYLE 씬에 전달 */
   const [sketchImages, setSketchImages] = useState<string[]>([]);
+  /** 체인 모드 UI(ref와 동기): 결과 화면에서 재시작 버튼 숨김 등에 사용 */
+  const [minigameChainUi, setMinigameChainUi] = useState(false);
+  /** 체인 세션 시작 시 GAME_START의 totalRounds(미지정·비정상 시 1로 간주) */
+  const [chainSessionTotalRounds, setChainSessionTotalRounds] = useState(1);
 
   const currentSceneRef = useRef(currentScene);
   currentSceneRef.current = currentScene;
+
+  /** Exhibition GAME_START mode=chain 시 true. GAME02→GAME04→GAME05 끝나면 GAME_COMPLETE 전송 */
+  const minigameChainActiveRef = useRef(false);
+  const minigameChainAdvanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** true면 이미 결과 유지 타이머가 잡혀 있음(중복 onGameResult 방지) */
+  const minigameChainAdvancePendingRef = useRef(false);
+
+  const clearMinigameChainAdvanceTimer = () => {
+    if (minigameChainAdvanceTimerRef.current != null) {
+      clearTimeout(minigameChainAdvanceTimerRef.current);
+      minigameChainAdvanceTimerRef.current = null;
+    }
+    minigameChainAdvancePendingRef.current = false;
+  };
 
   // Vision WS는 앱 시작 시 바로 연결 시도 (재연결 포함). 그래야 백엔드 SET_SCENE 수신 시 sendScene 가능
   useEffect(() => {
@@ -79,10 +104,15 @@ const App: React.FC = () => {
 
       switch (name) {
         case 'SET_SCENE': {
+          clearMinigameChainAdvanceTimer();
           const sceneData = data as SceneData;
           setCurrentScene(sceneData.scene);
           setSceneText(sceneData.text || '');
           if (sceneData.result) setGameResult(sceneData.result);
+          if (!MINIGAME_CHAIN_SCENES.includes(sceneData.scene as (typeof MINIGAME_CHAIN_SCENES)[number])) {
+            minigameChainActiveRef.current = false;
+            setMinigameChainUi(false);
+          }
           // Python 공통 모듈에 현재 씬 전달 (프론트가 중간다리)
           getVisionWsService().sendScene(sceneData);
           break;
@@ -94,10 +124,25 @@ const App: React.FC = () => {
         case 'SYSTEM_ERROR':
           alert(`System Error: ${(data as { message?: string }).message ?? 'Unknown'}`);
           break;
-        case 'GAME_START':
+        case 'GAME_START': {
+          clearMinigameChainAdvanceTimer();
+          const gd = data as BackendGameStartData;
+          if (gd?.mode === 'chain') {
+            minigameChainActiveRef.current = true;
+            setMinigameChainUi(true);
+            const raw = gd.totalRounds;
+            const tr =
+              typeof raw === 'number' && Number.isFinite(raw) && raw >= 1 ? Math.floor(raw) : 1;
+            setChainSessionTotalRounds(tr);
+            console.log('[App] GAME_START chain mode', gd.games ?? MINIGAME_CHAIN_SCENES, 'totalRounds→UI', tr);
+          } else {
+            minigameChainActiveRef.current = false;
+            setMinigameChainUi(false);
+          }
           getVisionWsService().sendGameStart();
           setGameStartTrigger((t) => t + 1);
           break;
+        }
         case 'GAME_STOP':
           getVisionWsService().sendGameStop();
           setGameStopTrigger((t) => t + 1);
@@ -110,7 +155,13 @@ const App: React.FC = () => {
     });
 
     // Ensure the cleanup function returns void as expected by useEffect.
-    return () => { unsubscribe(); };
+    return () => {
+      unsubscribe();
+      if (minigameChainAdvanceTimerRef.current != null) {
+        clearTimeout(minigameChainAdvanceTimerRef.current);
+        minigameChainAdvanceTimerRef.current = null;
+      }
+    };
   }, []);
 
   // Welcome 씬에서 Python이 human 감지 시 → "환영합니다" 연출 후 백엔드에 HUMAN_DETECTED 전달
@@ -165,6 +216,50 @@ const App: React.FC = () => {
     backendWsService.sendCommand(name, data);
   }, []);
 
+  /** 체인 모드에서 한 게임 종료 시 다음 씬으로 또는 마지막이면 GAME_COMPLETE. true면 GAME_RESULT 생략 */
+  const tryAdvanceMinigameChain = useCallback((): boolean => {
+    if (!minigameChainActiveRef.current) return false;
+    if (minigameChainAdvancePendingRef.current) return true;
+
+    const cur = currentSceneRef.current;
+    const idx = MINIGAME_CHAIN_SCENES.indexOf(cur as (typeof MINIGAME_CHAIN_SCENES)[number]);
+    if (idx === -1) return false;
+
+    minigameChainAdvancePendingRef.current = true;
+    const sceneWhenScheduled = cur;
+
+    const runAdvance = () => {
+      minigameChainAdvanceTimerRef.current = null;
+      minigameChainAdvancePendingRef.current = false;
+
+      if (!minigameChainActiveRef.current) return;
+      if (currentSceneRef.current !== sceneWhenScheduled) return;
+
+      const i = MINIGAME_CHAIN_SCENES.indexOf(
+        currentSceneRef.current as (typeof MINIGAME_CHAIN_SCENES)[number]
+      );
+      if (i === -1) return;
+
+      if (i < MINIGAME_CHAIN_SCENES.length - 1) {
+        const next = MINIGAME_CHAIN_SCENES[i + 1];
+        setCurrentScene(next);
+        getVisionWsService().sendScene({ scene: next });
+        getVisionWsService().sendGameStart();
+        setGameStartTrigger((t) => t + 1);
+        console.log('[App] Minigame chain advance →', next);
+      } else {
+        minigameChainActiveRef.current = false;
+        setMinigameChainUi(false);
+        backendWsService.sendCommand('GAME_COMPLETE' as UIEventName, {});
+        console.log('[App] Minigame chain finished → GAME_COMPLETE');
+      }
+    };
+
+    minigameChainAdvanceTimerRef.current = setTimeout(runAdvance, MINIGAME_CHAIN_RESULT_HOLD_MS);
+    console.log('[App] Minigame chain: hold result', MINIGAME_CHAIN_RESULT_HOLD_MS, 'ms then advance/complete');
+    return true;
+  }, []);
+
   /** 게임 결과 전송. 디버그에서 끄면 백엔드로 보내지 않아 시퀀스가 진행되지 않음 */
   const sendGameResult = useCallback(
     (data: any) => {
@@ -172,6 +267,9 @@ const App: React.FC = () => {
     },
     [sendGameResultMessage, handleUIEvent]
   );
+
+  /** 체인 + 세션 라운드 1판: 다음 씬 자동 전환만 쓰므로 결과의 "다시 시작" 숨김 */
+  const hideChainResultRestart = minigameChainUi && chainSessionTotalRounds <= 1;
 
   const renderScene = () => {
     switch (currentScene) {
@@ -200,6 +298,7 @@ const App: React.FC = () => {
         return (
           <Game01
             onGameResult={(result, userChoice, aiChoice) => {
+              if (tryAdvanceMinigameChain()) return;
               sendGameResult({ result, userChoice, aiChoice });
             }}
             triggerStartFromBackend={gameStartTrigger}
@@ -208,14 +307,20 @@ const App: React.FC = () => {
       case SceneDefine.GAME02:
         return (
           <Game02
-            onGameResult={(result) => sendGameResult({ result })}
+            onGameResult={(result) => {
+              if (tryAdvanceMinigameChain()) return;
+              sendGameResult({ result });
+            }}
             triggerStartFromBackend={gameStartTrigger}
           />
         );
       case SceneDefine.GAME03:
         return (
           <Game03
-            onGameResult={(result) => sendGameResult({ result })}
+            onGameResult={(result) => {
+              if (tryAdvanceMinigameChain()) return;
+              sendGameResult({ result });
+            }}
             triggerStartFromBackend={gameStartTrigger}
           />
         );
@@ -223,16 +328,24 @@ const App: React.FC = () => {
         return (
           <Game04
             inputMode={game04InputMode}
-            onGameResult={(result) => sendGameResult({ result })}
+            onGameResult={(result) => {
+              if (tryAdvanceMinigameChain()) return;
+              sendGameResult({ result });
+            }}
             triggerStartFromBackend={gameStartTrigger}
+            hideResultRestart={hideChainResultRestart}
           />
         );
       case SceneDefine.GAME05:
         return (
           <Game05
             inputMode={game05InputMode}
-            onGameResult={(result) => sendGameResult({ result })}
+            onGameResult={(result) => {
+              if (tryAdvanceMinigameChain()) return;
+              sendGameResult({ result });
+            }}
             triggerStartFromBackend={gameStartTrigger}
+            hideResultRestart={hideChainResultRestart}
           />
         );
       case SceneDefine.GAME_RESULT:

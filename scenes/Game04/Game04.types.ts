@@ -11,4 +11,6 @@ export interface Game04Props {
   inputMode?: Game04InputMode;
   /** 백엔드 GAME_START 수신 시 App이 증가시켜 전달. 0 → N 되면 버튼 없이 게임 시작 */
   triggerStartFromBackend?: number;
+  /** 체인 모드 등: 결과 화면에서 "다시 시작" 숨김(자동 다음 씬만 사용) */
+  hideResultRestart?: boolean;
 }

@@ -46,7 +46,12 @@ function createInitialState(): GameState {
   };
 }
 
-const Game05: React.FC<Game05Props> = ({ onGameResult, triggerStartFromBackend = 0, inputMode: forceInputMode = 'mouse' }) => {
+const Game05: React.FC<Game05Props> = ({
+  onGameResult,
+  triggerStartFromBackend = 0,
+  inputMode: forceInputMode = 'mouse',
+  hideResultRestart = false,
+}) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const assetsRef = useRef<GameAssets | null>(null);
   const soundsRef = useRef<GameSounds | null>(null);
@@ -339,7 +344,7 @@ const Game05: React.FC<Game05Props> = ({ onGameResult, triggerStartFromBackend =
           </span>
         </div>
       )}
-      {gameStateUI === 'result' && (
+      {gameStateUI === 'result' && !hideResultRestart && (
         <div className="absolute inset-0 z-20 flex items-end justify-center pb-8 pointer-events-none">
           <div className="pointer-events-auto">
             <button

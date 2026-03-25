@@ -9,6 +9,7 @@ export type {
   CameraFrameData,
   SceneData,
   ProgressData,
+  BackendGameStartData,
   UIEventNameType,
   UIEventName,
   BackendMessageNameType,

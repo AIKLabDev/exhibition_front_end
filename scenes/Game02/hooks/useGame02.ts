@@ -274,8 +274,8 @@ export function useGame02(
     };
   }, []);
 
+  // INTRO는 제외: 백엔드 GAME_START(체인 진입 등)가 와도 튜토리얼에서 "게임 시작" 누르기 전엔 본게임으로 가지 않음
   const game02StartableStates: readonly Game02State[] = [
-    Game02State.INTRO,
     Game02State.SUCCESS,
     Game02State.FAILURE,
   ];
