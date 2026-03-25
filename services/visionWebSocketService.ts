@@ -15,6 +15,7 @@ import type {
   VisionReqHandGesture,
   VisionResultHandGesture,
   VisionHumanDetectedData,
+  VisionHumanOutData,
   VisionQRScannedData,
   VisionQRROIData,
   VisionSketchResultData,
@@ -26,7 +27,13 @@ import {
 } from '../protocol';
 
 // Re-export for consumers
-export type { SceneData, VisionReqHandGesture, VisionResultHandGesture, VisionHumanDetectedData } from '../protocol';
+export type {
+  SceneData,
+  VisionReqHandGesture,
+  VisionResultHandGesture,
+  VisionHumanDetectedData,
+  VisionHumanOutData,
+} from '../protocol';
 
 
 /** 프론트 → Python 전송 시 sender는 FRONTEND */
@@ -97,6 +104,7 @@ export class VisionWebSocketService {
   private onGameStartCallback?: () => void;
   private onGameStopCallback?: () => void;
   private onHumanDetectedCallback?: (data: VisionHumanDetectedData) => void;
+  private onHumanOutCallback?: (data: VisionHumanOutData) => void;
   private onQRScannedCallback?: (data: VisionQRScannedData) => void;
   private onQRROICallback?: (data: VisionQRROIData) => void;
   private onGame05AttackCallback?: () => void;
@@ -383,6 +391,10 @@ export class VisionWebSocketService {
           this.onHumanDetectedCallback?.(humanData);
           console.log('[VisionWS] HUMAN_DETECTED (forward to backend for SET_SCENE QR)');
         }
+      } else if (name === VisionMessageName.HUMAN_OUT) {
+        const outData = (payload ?? {}) as VisionHumanOutData;
+        this.onHumanOutCallback?.(outData);
+        console.log('[VisionWS] HUMAN_OUT received (forward to backend)');
       } else if (name === VisionMessageName.ERROR) {
         console.error('[VisionWS] Server error:', payload);
       } else if (name === VisionMessageName.ACK) {
@@ -475,6 +487,12 @@ export class VisionWebSocketService {
   onHumanDetected(cb: (data: VisionHumanDetectedData) => void): () => void {
     this.onHumanDetectedCallback = cb;
     return () => { this.onHumanDetectedCallback = undefined; };
+  }
+
+  /** Python이 보낸 HUMAN_OUT(참여자 이탈) 구독. 프론트는 백엔드에 HUMAN_OUT 전달. */
+  onHumanOut(cb: (data: VisionHumanOutData) => void): () => void {
+    this.onHumanOutCallback = cb;
+    return () => { this.onHumanOutCallback = undefined; };
   }
 
   /** QR 씬에서 Python이 QR 인식 시 구독. 프론트는 백엔드에 QR_SCANNED(data, bbox) 전달. */

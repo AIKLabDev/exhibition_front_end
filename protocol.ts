@@ -36,6 +36,7 @@ export interface WSMessageV2 {
 
 export enum SceneDefine {
   WELCOME = 'WELCOME',
+  FAREWELL = 'FAREWELL',
   QR = 'QR',
   SELECT_MINIGAME = 'SELECT_MINIGAME',
   GAME01 = 'GAME01',
@@ -185,6 +186,8 @@ export const VisionMessageName = {
   ACK: 'ACK',
   /** Welcome 씬에서 human 감지 시 Python → 프론트. 프론트는 백엔드에 HUMAN_DETECTED 전달 → 백엔드가 SET_SCENE QR */
   HUMAN_DETECTED: 'HUMAN_DETECTED',
+  /** Python → 프론트: 참여자 이탈 감지. 프론트는 백엔드에 HUMAN_OUT 전달 → 백엔드가 후속 시퀀스 진행 */
+  HUMAN_OUT: 'HUMAN_OUT',
   /** QR 씬에서 Python이 QR 인식 시 → 프론트는 백엔드에 QR_SCANNED 전달 */
   QR_SCANNED: 'QR_SCANNED',
   /** QR 씬에서 스캔 영역(ROI) 전달. left/top/width/height 비율(0~1). 프론트는 파란 상자 위치·크기에 반영 */
@@ -237,6 +240,11 @@ export interface VisionErrorData {
 /** HUMAN_DETECTED 메시지의 data (Python → 프론트, Welcome 씬에서 human 감지 시) */
 export interface VisionHumanDetectedData {
   detected: boolean;
+}
+
+/** HUMAN_OUT 메시지의 data (Python → 프론트). 이벤트성이라 payload는 optional. */
+export interface VisionHumanOutData {
+  out?: boolean;
 }
 
 export interface VisionGame04DirectionData {

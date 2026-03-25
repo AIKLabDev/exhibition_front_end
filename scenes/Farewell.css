@@ -1,0 +1,74 @@
+/**
+ * Farewell 씬: 전체 화면 순차 문구 (등장 → 유지 → 퇴장 루프)
+ */
+
+.farewell-phrase-stage {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 0;
+  padding: clamp(1rem, 4vw, 3rem);
+  box-sizing: border-box;
+}
+
+.farewell-phrase-line {
+  margin: 0;
+  text-align: center;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  color: var(--welcome-text);
+  max-width: 95vw;
+  text-shadow:
+    0 0 40px var(--welcome-glow-soft),
+    0 4px 32px rgba(0, 0, 0, 0.55);
+  font-size: clamp(4.5rem, 14vw, 16rem);
+  animation: farewell-phrase-pop 0.65s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  will-change: transform, opacity, filter;
+}
+
+.farewell-phrase-line--accent {
+  color: var(--welcome-accent);
+  text-shadow:
+    0 0 48px var(--welcome-glow-soft),
+    0 0 96px rgba(56, 189, 248, 0.45),
+    0 4px 32px rgba(0, 0, 0, 0.55);
+}
+
+@keyframes farewell-phrase-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.82) translateY(0.12em);
+    filter: blur(12px);
+  }
+
+  14% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0);
+  }
+
+  68% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.08) translateY(-0.06em);
+    filter: blur(8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .farewell-phrase-line {
+    animation: none;
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}

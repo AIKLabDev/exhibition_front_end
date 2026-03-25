@@ -10,6 +10,7 @@ import logoUrl from './resources/AIK_logo_white.png';
 
 // Scenes
 import Welcome from './scenes/Welcome';
+import Farewell from './scenes/Farewell';
 import QR from './scenes/QR';
 import SelectMinigame from './scenes/SelectMinigame';
 import Game01 from './scenes/Game01';
@@ -191,6 +192,16 @@ const App: React.FC = () => {
     return () => { unsubscribe(); };
   }, []);
 
+  // Python(Vision) HUMAN_OUT 수신 → 백엔드(Exhibition)에 전달 (HumanOutCheck → KeyholderDetectCheck 트리거)
+  useEffect(() => {
+    const vision = getVisionWsService();
+    const unsubscribe = vision.onHumanOut((data) => {
+      backendWsService.sendCommand('HUMAN_OUT' as UIEventName, data ?? {});
+      console.log('[App] HUMAN_OUT 수신 → 백엔드 전달');
+    });
+    return () => { unsubscribe(); };
+  }, []);
+
   // Python SKETCH_RESULT 수신: Capture 씬에서 스케치 생성 완료 → LASER_STYLE로 전환
   useEffect(() => {
     const vision = getVisionWsService();
@@ -276,6 +287,8 @@ const App: React.FC = () => {
     switch (currentScene) {
       case SceneDefine.WELCOME:
         return <Welcome onStart={() => handleUIEvent('START')} text={sceneText} showGreeting={showWelcomeGreeting} />;
+      case SceneDefine.FAREWELL:
+        return <Farewell />;
       case SceneDefine.QR:
         return (
           <QR
