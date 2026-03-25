@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import './Welcome.css';
 
 interface WelcomeProps {
@@ -7,36 +7,47 @@ interface WelcomeProps {
   showGreeting?: boolean;
 }
 
-/** 쇼츠 스타일 순차 등장용 문구 조각 (띄어쓰기는 chunk 끝에 포함) */
-const SUBTITLE_CHUNKS: { text: string; accent?: boolean }[] = [
-  { text: 'Game에 ' },
-  { text: '참가하시면 ' },
-  { text: '소정의 상품', accent: true },
-  { text: '을 드립니다.' },
+/** 순서대로 한 줄씩 표시 후 다음으로 (띄어쓰기 없이 구만 구분) */
+const PHRASES: { text: string; accent?: boolean }[] = [
+  { text: '게임에' },
+  { text: '참여하시고' },
+  { text: '선물을', accent: true },
+  { text: '받아가세요' },
 ];
 
+/** 한 구절당 표시 시간(ms). CSS welcome-phrase-pop 길이(2.15s)와 맞춤 */
+const PHRASE_INTERVAL_MS = 1200;
+
 const Welcome: React.FC<WelcomeProps> = ({ onStart, text: _sceneText, showGreeting = false }) => {
-  void _sceneText; // 백엔드 SET_SCENE text 유지용 (표시 안 함)
+  void _sceneText;
+  void onStart;
+
+  const [phraseIndex, setPhraseIndex] = useState(0);
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setPhraseIndex((i) => (i + 1) % PHRASES.length);
+    }, PHRASE_INTERVAL_MS);
+    return () => clearInterval(id);
+  }, []);
+
+  const current = PHRASES[phraseIndex];
 
   return (
     <div
-      className="welcome-root h-full flex flex-col items-center justify-center relative overflow-hidden"
+      className="welcome-root h-full flex flex-col items-stretch justify-center relative overflow-hidden"
       style={{
         boxShadow: 'inset 0 0 0 1px rgba(6, 182, 212, 0.15)',
       }}
     >
-      {/* Subtle horizontal lines for depth */}
       <div className="absolute inset-0 pointer-events-none opacity-[0.06]">
         <div className="absolute top-1/4 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[var(--welcome-glow)] to-transparent" />
         <div className="absolute top-1/2 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[var(--welcome-glow)] to-transparent" />
         <div className="absolute top-3/4 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[var(--welcome-glow)] to-transparent" />
       </div>
 
-      {/* 사람 감지 시 환영 메시지 오버레이 */}
       {showGreeting && (
-        <div
-          className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 animate-fade-in"
-        >
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 animate-fade-in">
           <h2
             className="text-white font-black tracking-wider animate-scale-in"
             style={{
@@ -49,28 +60,14 @@ const Welcome: React.FC<WelcomeProps> = ({ onStart, text: _sceneText, showGreeti
         </div>
       )}
 
-      {/* 가운데 큰 눈 2개 — 깜빡임: Welcome.css */}
-      <div className="welcome-eyes welcome-eyes--hero" aria-hidden>
-        <div className="welcome-eye welcome-eye--left" />
-        <div className="welcome-eye welcome-eye--right" />
+      <div className="welcome-phrase-stage" aria-live="polite">
+        <p
+          key={phraseIndex}
+          className={`welcome-phrase-line${current.accent ? ' welcome-phrase-line--accent' : ''}`}
+        >
+          {current.text}
+        </p>
       </div>
-
-      {/* 유튜브 쇼츠 스타일: 구간마다 stagger delay로 촤라락 등장 후 루프 */}
-      <p className="welcome-shorts-caption">
-        {SUBTITLE_CHUNKS.map((chunk, i) => (
-          <span
-            key={i}
-            className={`welcome-shorts-chunk${chunk.accent ? ' welcome-shorts-chunk--accent' : ''}`}
-            style={
-              {
-                '--welcome-chunk-delay': `${i * 0.16}s`,
-              } as React.CSSProperties
-            }
-          >
-            {chunk.text}
-          </span>
-        ))}
-      </p>
     </div>
   );
 };
