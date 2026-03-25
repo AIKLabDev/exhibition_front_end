@@ -16,7 +16,7 @@ const PHRASES: { text: string; accent?: boolean }[] = [
 ];
 
 /** 한 구절당 표시 시간(ms). CSS welcome-phrase-pop 길이(2.15s)와 맞춤 */
-const PHRASE_INTERVAL_MS = 1200;
+const PHRASE_INTERVAL_MS = 800;
 
 const Welcome: React.FC<WelcomeProps> = ({ onStart, text: _sceneText, showGreeting = false }) => {
   void _sceneText;

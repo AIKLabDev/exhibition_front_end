@@ -31,7 +31,7 @@
     0 4px 32px rgba(0, 0, 0, 0.55);
   /* 울트라와이드·키오스크: 화면을 꽉 채우는 크기 */
   font-size: clamp(4.5rem, 14vw, 16rem);
-  animation: welcome-phrase-pop 1.05s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: welcome-phrase-pop 0.65s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   will-change: transform, opacity, filter;
 }
 
