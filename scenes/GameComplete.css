@@ -1,0 +1,323 @@
+/**
+ * GAME_COMPLETE 씬: 오로라 배경 + 그라데이션 타이틀 + 순차 팝업
+ */
+
+.game-complete-root {
+  --gc-cyan: #22d3ee;
+  --gc-violet: #a78bfa;
+  --gc-fuchsia: #e879f9;
+  --gc-amber: #fcd34d;
+  --gc-emerald: #34d399;
+}
+
+/* 배경·데코만 잘라내고, 텍스트는 descender·drop-shadow가 바깥으로 나와도 잘리지 않게 */
+.game-complete-bg-layer {
+  z-index: 0;
+}
+
+/* ---------- 배경: 움직이는 그라데이션 ---------- */
+.game-complete-bg {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 100% 70% at 20% 20%, rgba(34, 211, 238, 0.22) 0%, transparent 50%),
+    radial-gradient(ellipse 80% 60% at 85% 30%, rgba(167, 139, 250, 0.2) 0%, transparent 45%),
+    radial-gradient(ellipse 70% 50% at 50% 100%, rgba(232, 121, 249, 0.12) 0%, transparent 50%),
+    linear-gradient(160deg, #030712 0%, #0c1222 35%, #1e1b4b 55%, #0f172a 80%, #020617 100%);
+  background-size: 100% 100%, 100% 100%, 100% 100%, 200% 200%;
+  animation: game-complete-bg-drift 18s ease-in-out infinite;
+}
+
+@keyframes game-complete-bg-drift {
+
+  0%,
+  100% {
+    background-position:
+      0% 0%,
+      100% 0%,
+      50% 100%,
+      0% 50%;
+  }
+
+  50% {
+    background-position:
+      10% 15%,
+      90% 20%,
+      45% 90%,
+      100% 50%;
+  }
+}
+
+/* ---------- 부유 오로라 블롭 ---------- */
+.game-complete-aurora {
+  position: absolute;
+  inset: -20%;
+  pointer-events: none;
+  opacity: 0.55;
+  filter: blur(80px);
+}
+
+.game-complete-aurora__blob {
+  position: absolute;
+  border-radius: 50%;
+  animation: game-complete-float 14s ease-in-out infinite;
+}
+
+.game-complete-aurora__blob--a {
+  width: 45vmin;
+  height: 45vmin;
+  left: 5%;
+  top: 15%;
+  background: radial-gradient(circle, rgba(34, 211, 238, 0.5) 0%, transparent 70%);
+  animation-delay: 0s;
+}
+
+.game-complete-aurora__blob--b {
+  width: 55vmin;
+  height: 55vmin;
+  right: 0%;
+  top: 25%;
+  background: radial-gradient(circle, rgba(167, 139, 250, 0.45) 0%, transparent 68%);
+  animation-delay: -4s;
+}
+
+.game-complete-aurora__blob--c {
+  width: 40vmin;
+  height: 40vmin;
+  left: 35%;
+  bottom: 5%;
+  background: radial-gradient(circle, rgba(52, 211, 153, 0.25) 0%, transparent 65%);
+  animation-delay: -7s;
+}
+
+@keyframes game-complete-float {
+
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+
+  33% {
+    transform: translate(3%, -4%) scale(1.05);
+  }
+
+  66% {
+    transform: translate(-4%, 2%) scale(0.96);
+  }
+}
+
+/* ---------- 은은한 그리드 + 비네트 ---------- */
+.game-complete-grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.14;
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.2) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.15) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(ellipse 85% 75% at 50% 45%, black 20%, transparent 75%);
+}
+
+.game-complete-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  box-shadow: inset 0 0 min(180px, 22vmin) rgba(0, 0, 0, 0.55);
+}
+
+/* ---------- 상단 라이트 스캔 ---------- */
+.game-complete-shine {
+  position: absolute;
+  top: -40%;
+  left: -30%;
+  width: 80%;
+  height: 90%;
+  pointer-events: none;
+  background: linear-gradient(115deg,
+      transparent 35%,
+      rgba(255, 255, 255, 0.04) 48%,
+      rgba(255, 255, 255, 0.09) 50%,
+      rgba(255, 255, 255, 0.04) 52%,
+      transparent 65%);
+  animation: game-complete-shine-sweep 10s ease-in-out infinite;
+}
+
+@keyframes game-complete-shine-sweep {
+
+  0%,
+  100% {
+    transform: translateX(-5%) rotate(0deg);
+    opacity: 0.35;
+  }
+
+  50% {
+    transform: translateX(25%) rotate(0deg);
+    opacity: 0.65;
+  }
+}
+
+/* ---------- 팝업 본문 ---------- */
+@keyframes game-complete-pop {
+  0% {
+    transform: scale(0.72);
+    opacity: 0;
+    filter: blur(14px);
+  }
+
+  55% {
+    transform: scale(1.04);
+    opacity: 1;
+    filter: blur(0);
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+@keyframes game-complete-shimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  100% {
+    background-position: 200% 50%;
+  }
+}
+
+.game-complete-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(1rem, 3vh, 2.5rem);
+  /* 상하: descender(g,y,p)·큰 글꼴 여유. 루트 overflow-hidden과 맞물려 잘리지 않게 */
+  padding: clamp(1.25rem, 5vh, 4rem) clamp(1rem, 4vw, 3rem) clamp(2rem, 6vh, 5rem);
+  text-align: center;
+  overflow: visible;
+}
+
+.game-complete-line {
+  margin: 0;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  /* 1.06은 큰 폰트에서 descender 잘림 → background-clip:text와 함께 특히 위험 */
+  line-height: 1.2;
+  max-width: 96vw;
+  opacity: 0;
+  will-change: transform, opacity, filter;
+}
+
+/* 메인: 무지개 그라데이션 글자 + 글로우 */
+.game-complete-line--primary {
+  font-size: clamp(3rem, 10vw, 11rem);
+  background: linear-gradient(100deg,
+      #e0f2fe 0%,
+      var(--gc-cyan) 18%,
+      var(--gc-violet) 40%,
+      var(--gc-fuchsia) 58%,
+      var(--gc-amber) 78%,
+      #fef9c3 100%);
+  background-size: 220% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation:
+    game-complete-pop 1.35s cubic-bezier(0.22, 1, 0.36, 1) forwards,
+    game-complete-shimmer 7s ease-in-out 1.4s infinite;
+  filter: drop-shadow(0 0 28px rgba(34, 211, 238, 0.55)) drop-shadow(0 0 56px rgba(167, 139, 250, 0.35)) drop-shadow(0 12px 32px rgba(0, 0, 0, 0.5));
+}
+
+/* 서브: 부드러운 그라데이션 + 얇은 글로우 */
+.game-complete-line--secondary {
+  font-size: clamp(2rem, 5.5vw, 7rem);
+  line-height: 1.28;
+  padding-bottom: 0.12em;
+  background: linear-gradient(95deg, #cbd5e1 0%, #e9d5ff 35%, #fde68a 70%, #a5f3fc 100%);
+  background-size: 180% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation:
+    game-complete-pop 1.35s cubic-bezier(0.22, 1, 0.36, 1) 1.05s forwards,
+    game-complete-shimmer 9s ease-in-out 2s infinite reverse;
+  filter: drop-shadow(0 0 20px rgba(196, 181, 253, 0.4)) drop-shadow(0 4px 24px rgba(0, 0, 0, 0.45));
+}
+
+/* 장식 링 */
+.game-complete-rings {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.game-complete-rings::before,
+.game-complete-rings::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  translate: -50% -50%;
+  border-radius: 50%;
+  border: 1px solid rgba(34, 211, 238, 0.12);
+  animation: game-complete-ring-pulse 5s ease-in-out infinite;
+}
+
+.game-complete-rings::before {
+  width: min(85vw, 140vh);
+  height: min(85vw, 140vh);
+  animation-delay: 0s;
+}
+
+.game-complete-rings::after {
+  width: min(72vw, 118vh);
+  height: min(72vw, 118vh);
+  border-color: rgba(167, 139, 250, 0.15);
+  animation-delay: -2.5s;
+}
+
+@keyframes game-complete-ring-pulse {
+
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: translate(-50%, -50%) scale(1);
+  }
+
+  50% {
+    opacity: 0.85;
+    transform: translate(-50%, -50%) scale(1.02);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .game-complete-bg,
+  .game-complete-aurora__blob,
+  .game-complete-shine,
+  .game-complete-line--primary,
+  .game-complete-line--secondary,
+  .game-complete-rings::before,
+  .game-complete-rings::after {
+    animation: none !important;
+  }
+
+  .game-complete-line--primary,
+  .game-complete-line--secondary {
+    animation: game-complete-pop 1.35s cubic-bezier(0.22, 1, 0.36, 1) forwards !important;
+  }
+
+  .game-complete-line--secondary {
+    animation-delay: 1.05s !important;
+  }
+
+  .game-complete-bg {
+    background: linear-gradient(160deg, #030712 0%, #1e1b4b 50%, #020617 100%);
+  }
+}

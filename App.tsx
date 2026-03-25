@@ -18,6 +18,7 @@ import Game03 from './scenes/Game03';
 import Game04 from './scenes/Game04';
 import Game05 from './scenes/Game05';
 import GameResult from './scenes/GameResult';
+import GameComplete from './scenes/GameComplete';
 import PickGift from './scenes/PickGift';
 import LaserStyle from './scenes/LaserStyle';
 import LaserProcess from './scenes/LaserProcess';
@@ -350,6 +351,8 @@ const App: React.FC = () => {
         );
       case SceneDefine.GAME_RESULT:
         return <GameResult result={gameResult} text={sceneText} />;
+      case SceneDefine.GAME_COMPLETE:
+        return <GameComplete />;
       case SceneDefine.PICK_GIFT:
         return <PickGift progress={progress.value} label={progress.label} />;
       case SceneDefine.REFILL_GIFT:

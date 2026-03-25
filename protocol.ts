@@ -44,6 +44,8 @@ export enum SceneDefine {
   GAME04 = 'GAME04',
   GAME05 = 'GAME05',
   GAME_RESULT = 'GAME_RESULT',
+  /** 미니게임(체인 등) 모두 종료 후 축하 문구 (SET_SCENE). 프론트→백엔드 커맨드 GAME_COMPLETE 와 동일 문자열이지만 용도 다름 */
+  GAME_COMPLETE = 'GAME_COMPLETE',
   PICK_GIFT = 'PICK_GIFT',
   REFILL_GIFT = 'REFILL_GIFT',
   LASER_STYLE = 'LASER_STYLE',
@@ -79,7 +81,7 @@ export const UIEventName = {
   STYLE_SELECTED: 'STYLE_SELECTED',
   GAME_ACTION: 'GAME_ACTION',
   GAME_RESULT: 'GAME_RESULT',
-  /** 미니게임 체인(GAME02→04→05) 모두 종료 후 Exhibition이 PICK_GIFT로 진행 */
+  /** 미니게임 체인(GAME02→04→05) 모두 종료 후 전송 → 백엔드가 SET_SCENE `GAME_COMPLETE` 축하 씬 후 시퀀스 계속 */
   GAME_COMPLETE: 'GAME_COMPLETE',
   ANIMATION_COMPLETE: 'ANIMATION_COMPLETE',
   /** Vision에서 human 감지 시(Welcome 씬) 프론트가 백엔드에 알림 → 백엔드가 SET_SCENE QR 전송 */
