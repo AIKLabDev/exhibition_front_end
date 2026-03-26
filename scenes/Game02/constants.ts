@@ -26,6 +26,12 @@ export const VIEW_MM_DEADZONE = 5;            // 이 거리(mm) 이하는 무시
 export const VIEW_POSE_SMOOTH_ALPHA = 0.18;   // EMA 스무딩 계수
 export const VIEW_POSE_STALE_MS = 800;        // 오래된 값 무시 시간 (ms)
 
+// Game02 뷰 이동 모드
+// - track: 기존 헤드 포즈(mm) 기반 연속 추적
+// - fix: PosX/PosY(-1~1) 고정 좌표를 즉시 반영
+export type Game02ViewMode = 'track' | 'fix';
+export const GAME02_VIEW_MODE: Game02ViewMode = 'fix';
+
 // Settings for image generation mode
 export const SETTINGS = {
   // true: Use Gemini API to generate new images

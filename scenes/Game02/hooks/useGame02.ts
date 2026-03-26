@@ -11,6 +11,7 @@ import {
   DEFAULT_SCENE_ASPECT,
   GAME_TIME_LIMIT,
   ANNOUNCING_DURATION,
+  GAME02_VIEW_MODE,
   VIEW_MM_RANGE_X,
   VIEW_MM_RANGE_Y,
   VIEW_MM_DEADZONE,
@@ -287,8 +288,8 @@ export function useGame02(
     const unsub = backendWsService.addMessageListener((msg) => {
       const name = msg.header?.name;
       if (name === BackendMessageName.VIEW_POSE) {
-        const data = msg.data as { X?: number; Y?: number };
-        if (data != null && Number.isFinite(data.X) && Number.isFinite(data.Y)) {
+        const data = msg.data as { X?: number; Y?: number; PosX?: number; PosY?: number };
+        if (GAME02_VIEW_MODE === 'track' && data != null && Number.isFinite(data.X) && Number.isFinite(data.Y)) {
           const now = Date.now();
           viewPoseRef.current = { X: data.X!, Y: data.Y!, atMs: now };
           setViewPoseStatus({
@@ -297,6 +298,24 @@ export function useGame02(
             X: data.X!,
             Y: data.Y!,
           });
+        } else if (GAME02_VIEW_MODE === 'fix' && data != null && Number.isFinite(data.PosX) && Number.isFinite(data.PosY)) {
+          const now = Date.now();
+          const maxX = 1 - viewWindowRef.current.w;
+          const maxY = 1 - viewWindowRef.current.h;
+          // fix 모드: 송신측 PosX/PosY(-1~1)를 즉시 뷰포트 위치로 반영
+          const targetX = ((data.PosX! + 1) / 2) * maxX;
+          const targetY = ((data.PosY! + 1) / 2) * maxY;
+
+          setViewPoseStatus({
+            connected: true,
+            lastUpdate: now,
+            X: null,
+            Y: null,
+          });
+
+          if (stateRef.current === Game02State.PLAYING && !dragRef.current.active) {
+            setViewTopLeft({ x: targetX, y: targetY });
+          }
         }
       }
     });
@@ -305,6 +324,7 @@ export function useGame02(
 
   // VIEW_POSE(헤드 포즈)로 뷰 이동. PAUSE 오버레이 표시 중에는 뷰도 멈춤
   useEffect(() => {
+    if (GAME02_VIEW_MODE !== 'track') return;
     if (state !== Game02State.PLAYING || pauseOverlayVisible) return;
     let raf = 0;
     const tick = () => {
