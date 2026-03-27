@@ -3,6 +3,7 @@
  */
 
 import React from 'react';
+import { DEBUG_MODE } from '../../../appConstants';
 import { Game02State, GameScenario } from '../Game02.types';
 import { SETTINGS } from '../constants';
 import ResultOverlay from '../ResultOverlay';
@@ -101,7 +102,7 @@ const Game02Play: React.FC<Game02PlayProps> = ({
           </div>
         </div>
 
-        {SETTINGS.DEBUG_MODE && (
+        {DEBUG_MODE && (
           <div className="rounded-[2rem] bg-zinc-900/60 border border-white/10 p-5">
             <p className="text-sm font-black text-zinc-500 mb-2 italic">헤드 포즈</p>
             <div className="flex items-center gap-2 mb-2">
@@ -126,7 +127,7 @@ const Game02Play: React.FC<Game02PlayProps> = ({
             )}
           </div>
         )}
-        {!SETTINGS.DEBUG_MODE && <div className="flex-1" />}
+        {!DEBUG_MODE && <div className="flex-1" />}
       </aside>
 
       <main className="flex-1 min-w-0 h-full relative overflow-hidden bg-black">

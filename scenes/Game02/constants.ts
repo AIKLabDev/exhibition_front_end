@@ -37,6 +37,4 @@ export const SETTINGS = {
   // true: Use Gemini API to generate new images
   // false: Use local image sets from data/ImageSets/
   USE_API_MAKE_IMAGE: false,
-  // true: 헤드 포즈 디버그 정보 표시
-  DEBUG_MODE: true,
 } as const;

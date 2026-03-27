@@ -7,6 +7,7 @@ import { backendWsService } from './services/backendWebSocketService';
 import { backend2WsService } from './services/backend2WebSocketService';
 import { getVisionWsService } from './services/visionWebSocketService';
 import logoUrl from './resources/AIK_logo_white.png';
+import { DEBUG_MODE } from './appConstants';
 
 // Scenes
 import Welcome from './scenes/Welcome';
@@ -39,6 +40,10 @@ const App: React.FC = () => {
   const [sceneText, setSceneText] = useState<string>('');
   const [gameResult, setGameResult] = useState<'WIN' | 'LOSE'>('WIN');
   const [isDebugOpen, setIsDebugOpen] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!DEBUG_MODE) setIsDebugOpen(false);
+  }, []);
   /** Python(Vision) WebSocket 연결 여부 - 디버그 UI 표시용 */
   const [pythonConnected, setPythonConnected] = useState(false);
   /** 백엔드 GAME_START 수신 시 증가 → Game01에 전달해 버튼 없이 시작 */
@@ -405,12 +410,15 @@ const App: React.FC = () => {
       {/* Logo Overlay - 투명 배경으로 레이어 위에 표시 */}
       <div className="absolute top-6 left-16 z-[60] flex items-center gap-4">
         <img src={logoUrl} alt="AIKOREA" className="h-12 w-auto object-contain object-left drop-shadow-lg" />
-        <button
-          onClick={() => setIsDebugOpen(!isDebugOpen)}
-          className={`px-4 py-1 rounded-md text-xs font-bold border transition-colors ${isDebugOpen ? 'bg-blue-600 border-blue-400' : 'bg-white/5 border-white/10 opacity-30'}`}
-        >
-          DEBUG
-        </button>
+        {DEBUG_MODE && (
+          <button
+            type="button"
+            onClick={() => setIsDebugOpen(!isDebugOpen)}
+            className={`px-4 py-1 rounded-md text-xs font-bold border transition-colors ${isDebugOpen ? 'bg-blue-600 border-blue-400' : 'bg-white/5 border-white/10 opacity-30'}`}
+          >
+            DEBUG
+          </button>
+        )}
       </div>
 
       {/* Main Content - 전체 화면 사용 */}
@@ -419,7 +427,7 @@ const App: React.FC = () => {
       </main>
 
       {/* Debug Panel */}
-      {isDebugOpen && (
+      {DEBUG_MODE && isDebugOpen && (
         <div className="absolute top-24 left-16 z-[100] bg-slate-900/95 border border-white/10 rounded-3xl p-7 shadow-2xl backdrop-blur-xl w-[450px] max-h-[calc(100vh-6rem)] overflow-y-auto">
           {/* Connection Status(좌) + GAME_RESULT 전송 토글(우) - 한 줄에 배치해 UI 밀림 방지 */}
           <div className="mb-3 pb-3 border-b border-white/10 flex flex-row gap-3 items-start">
