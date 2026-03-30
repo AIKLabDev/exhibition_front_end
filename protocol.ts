@@ -91,6 +91,8 @@ export const UIEventName = {
   GAME02_MAINGAME_START: 'GAME02_MAINGAME_START',
   /** Game02: 대기 상태(씬 이탈 또는 목표 찾음/제한시간 실패로 종료). Exhibition에서 추적/로봇 대기 */
   GAME02_IDLE: 'GAME02_IDLE',
+  /** Game02: 미니게임 체인 중 한 판 종료 직후(GAME02_IDLE 다음). Exhibition에서 ref(start) MovJ */
+  GAME02_CHAIN_ROUND_END: 'GAME02_CHAIN_ROUND_END',
   /** Game02: 일시정지(Python에서 fix 참여자 이탈 시 전달). Exhibition에서 로봇/추적 일시정지 */
   GAME02_PAUSE: 'GAME02_PAUSE',
   /** Game02: PAUSE 해제(사용자가 터치로 일시정지 해제). Exhibition에서 로봇/추적 재개 */
@@ -103,6 +105,8 @@ export const UIEventName = {
   GAME04_PAUSE_CANCEL: 'GAME04_PAUSE_CANCEL',
   /** Game04: 대기 상태(게임 종료 후 재시작 화면 또는 씬 이탈). Exhibition에서 추적/로봇 대기 */
   GAME04_IDLE: 'GAME04_IDLE',
+  /** Game04: 미니게임 체인 중 한 판 종료 직후(GAME04_IDLE 다음). Exhibition에서 ref(start) MovJ */
+  GAME04_CHAIN_ROUND_END: 'GAME04_CHAIN_ROUND_END',
   /** Vision에서 QR 인식 시(QR 씬) 프론트가 백엔드에 전달. data, bbox 포함 */
   QR_SCANNED: 'QR_SCANNED',
   /** Exhibition_Drawing에서 레이저 가공 완료 수신 시 프론트가 백엔드(Exhibition)에 전달. data: { success: number } (1/0) */

@@ -121,6 +121,7 @@ const Game04: React.FC<Game04Props> = ({
   inputMode: forceInputMode,
   triggerStartFromBackend = 0,
   hideResultRestart = false,
+  notifyChainRoundEndIfNeeded,
 }) => {
   const [gameStarted, setGameStarted] = useState(false);
   const [gameOver, setGameOver] = useState(false);
@@ -297,7 +298,8 @@ const Game04: React.FC<Game04Props> = ({
     setBossWarning(false);
     // 게임 종료 → 재시작 화면 진입 시 백엔드에 대기 상태 알림
     backendWsService.sendCommand(UIEventName.GAME04_IDLE, {});
-  }, [clearBossWarningTimer]);
+    notifyChainRoundEndIfNeeded?.();
+  }, [clearBossWarningTimer, notifyChainRoundEndIfNeeded]);
 
   const handlePlayerHit = useCallback(() => {
     if (!roundActiveRef.current) return;

@@ -233,6 +233,20 @@ const App: React.FC = () => {
     backendWsService.sendCommand(name, data);
   }, []);
 
+  /** 체인 세션일 때만 백엔드에 GAME02_CHAIN_ROUND_END (로봇 ref 이동용) */
+  const notifyGame02ChainRoundEndIfNeeded = useCallback(() => {
+    if (minigameChainActiveRef.current) {
+      backendWsService.sendCommand('GAME02_CHAIN_ROUND_END' as UIEventName, {});
+    }
+  }, []);
+
+  /** 체인 세션일 때만 백엔드에 GAME04_CHAIN_ROUND_END */
+  const notifyGame04ChainRoundEndIfNeeded = useCallback(() => {
+    if (minigameChainActiveRef.current) {
+      backendWsService.sendCommand('GAME04_CHAIN_ROUND_END' as UIEventName, {});
+    }
+  }, []);
+
   /** 체인 모드에서 한 게임 종료 시 다음 씬으로 또는 마지막이면 GAME_COMPLETE. true면 GAME_RESULT 생략 */
   const tryAdvanceMinigameChain = useCallback((): boolean => {
     if (!minigameChainActiveRef.current) return false;
@@ -331,6 +345,7 @@ const App: React.FC = () => {
               sendGameResult({ result });
             }}
             triggerStartFromBackend={gameStartTrigger}
+            notifyChainRoundEndIfNeeded={notifyGame02ChainRoundEndIfNeeded}
           />
         );
       case SceneDefine.GAME03:
@@ -353,6 +368,7 @@ const App: React.FC = () => {
             }}
             triggerStartFromBackend={gameStartTrigger}
             hideResultRestart={hideChainResultRestart}
+            notifyChainRoundEndIfNeeded={notifyGame04ChainRoundEndIfNeeded}
           />
         );
       case SceneDefine.GAME05:
