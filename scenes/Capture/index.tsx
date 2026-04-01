@@ -5,12 +5,14 @@
  *           우측에 안내+카운트다운 패널을 absolute 오버레이.
  * 카메라는 object-contain으로 잘림 없이 전체가 보인다.
  *
- * 흐름: countdown(5→1) → flash(0.35s) + SKETCH_CAPTURE 전송 → done(로딩 오버레이)
+ * 흐름: countdown(10→1) → flash(0.35s) + SKETCH_CAPTURE(Python) + FACE_CAPTURE_COMPLETED(C++ 백엔드) → done(로딩 오버레이)
  */
 
 import React, { useEffect, useState, useRef } from 'react';
 import { useCameraFrameCanvas } from '../../hooks/useCameraFrameCanvas';
 import { getVisionWsService } from '../../services/visionWebSocketService';
+import { backendWsService } from '../../services/backendWebSocketService';
+import { UIEventName } from '../../protocol';
 import './Capture.css';
 
 type CapturePhase = 'countdown' | 'flash' | 'done';
@@ -51,7 +53,8 @@ const Capture: React.FC = () => {
     if (phase !== 'flash') return;
 
     getVisionWsService().sendSketchCapture();
-    console.log('[Capture] SKETCH_CAPTURE 전송 완료');
+    backendWsService.sendCommand(UIEventName.FACE_CAPTURE_COMPLETED, {});
+    console.log('[Capture] SKETCH_CAPTURE + FACE_CAPTURE_COMPLETED 전송 완료');
 
     const t = setTimeout(() => {
       setPhase('done');

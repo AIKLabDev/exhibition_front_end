@@ -107,10 +107,16 @@ export const UIEventName = {
   GAME04_IDLE: 'GAME04_IDLE',
   /** Game04: 미니게임 체인 중 한 판 종료 직후(GAME04_IDLE 다음). Exhibition에서 ref(start) MovJ */
   GAME04_CHAIN_ROUND_END: 'GAME04_CHAIN_ROUND_END',
+  /** 체인: GAME02→GAME04 전환 직후(Python sendScene과 동시). Exhibition SET_SCENE GAME04 */
+  GAME04_CHAIN_ROUND_START: 'GAME04_CHAIN_ROUND_START',
+  /** 체인: GAME04→GAME05 전환 직후(Python sendScene과 동시). Exhibition SET_SCENE GAME05 */
+  GAME05_CHAIN_ROUND_START: 'GAME05_CHAIN_ROUND_START',
   /** Vision에서 QR 인식 시(QR 씬) 프론트가 백엔드에 전달. data, bbox 포함 */
   QR_SCANNED: 'QR_SCANNED',
   /** Exhibition_Drawing에서 레이저 가공 완료 수신 시 프론트가 백엔드(Exhibition)에 전달. data: { success: number } (1/0) */
   MACHINING_COMPLETE: 'MACHINING_COMPLETE',
+  /** CAPTURE 씬: 카운트다운 종료 후 Python에 SKETCH_CAPTURE와 동시에 전송. Exhibition에서 선물 픽 프리컴퓨트(SAM3 등) 시작 */
+  FACE_CAPTURE_COMPLETED: 'FACE_CAPTURE_COMPLETED',
 } as const;
 export type UIEventNameType = (typeof UIEventName)[keyof typeof UIEventName];
 export type UIEventName = UIEventNameType;
@@ -163,7 +169,7 @@ export interface ProgressData {
 export interface BackendGameStartData {
   gameId?: string;
   totalRounds?: number;
-  /** chain 이면 미니게임 02→04→05 순차 (프론트가 씬·Vision 전환) */
+  /** chain 이면 미니게임 02→04→05 순차 (씬은 백엔드 SET_SCENE, 전환 신호는 GAME0X_CHAIN_ROUND_START) */
   mode?: string;
   games?: string[];
 }

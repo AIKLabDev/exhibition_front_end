@@ -47,6 +47,7 @@ interface WSMessageV2 {
 | `GAME_ACTION` | 게임 내 액션 | `{ action: string }` |
 | `ANIMATION_COMPLETE` | 애니메이션 완료 알림 | `{}` |
 | `HUMAN_DETECTED` | Welcome 씬에서 Vision이 human 감지 시 프론트가 전달. **백엔드는 수신 후 `SET_SCENE`으로 QR 씬 전환** | `{ detected: true }` |
+| `FACE_CAPTURE_COMPLETED` | CAPTURE 씬에서 카운트다운 종료·플래시 시점에 Python `SKETCH_CAPTURE`와 **동시에** 전달. Exhibition(C++)에서 게임 중 부하를 피하려고 선물 픽 프리컴퓨트 시작 | `{}` |
 
 ---
 

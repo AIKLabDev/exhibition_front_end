@@ -27,7 +27,7 @@ import LaserProcess from './scenes/LaserProcess';
 import Capture from './scenes/Capture';
 import RefillGift from './scenes/RefillGift';
 
-/** Exhibition 체인 모드에서만 순서대로 진행하는 미니게임 */
+/** Exhibition 체인 모드에서만 순서대로 진행하는 미니게임 (씬 전환은 백엔드 SET_SCENE이 단일 소스) */
 const MINIGAME_CHAIN_SCENES = [SceneDefine.GAME02, SceneDefine.GAME04, SceneDefine.GAME05] as const;
 
 /** 체인 모드: 게임 종료 직후 다음 미니게임으로 넘기기 전, 현재 게임의 결과 화면을 보여줄 시간(ms) */
@@ -70,7 +70,7 @@ const App: React.FC = () => {
   const currentSceneRef = useRef(currentScene);
   currentSceneRef.current = currentScene;
 
-  /** Exhibition GAME_START mode=chain 시 true. GAME02→GAME04→GAME05 끝나면 GAME_COMPLETE 전송 */
+  /** Exhibition GAME_START mode=chain 시 true. 다음 게임은 백엔드 SET_SCENE, 끝나면 GAME_COMPLETE 전송 */
   const minigameChainActiveRef = useRef(false);
   const minigameChainAdvanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** true면 이미 결과 유지 타이머가 잡혀 있음(중복 onGameResult 방지) */
@@ -120,8 +120,16 @@ const App: React.FC = () => {
             minigameChainActiveRef.current = false;
             setMinigameChainUi(false);
           }
-          // Python 공통 모듈에 현재 씬 전달 (프론트가 중간다리)
+          // Python 공통 모듈에 현재 씬 전달 (백엔드 SET_SCENE → 프론트가 중간다리, 체인 중 직접 sendScene 안 함)
           getVisionWsService().sendScene(sceneData);
+          // 체인: GAME02는 보통 직후 GAME_START로 시작. GAME04/05는 체인 전환 시 백엔드 SET_SCENE만 오므로 Python game_start 동기화
+          if (
+            minigameChainActiveRef.current &&
+            (sceneData.scene === SceneDefine.GAME04 || sceneData.scene === SceneDefine.GAME05)
+          ) {
+            getVisionWsService().sendGameStart();
+            setGameStartTrigger((t) => t + 1);
+          }
           break;
         }
         case 'PROGRESS_UPDATE':
@@ -273,11 +281,12 @@ const App: React.FC = () => {
 
       if (i < MINIGAME_CHAIN_SCENES.length - 1) {
         const next = MINIGAME_CHAIN_SCENES[i + 1];
-        setCurrentScene(next);
-        getVisionWsService().sendScene({ scene: next });
-        getVisionWsService().sendGameStart();
-        setGameStartTrigger((t) => t + 1);
-        console.log('[App] Minigame chain advance →', next);
+        if (next === SceneDefine.GAME04) {
+          backendWsService.sendCommand('GAME04_CHAIN_ROUND_START' as UIEventName, {});
+        } else if (next === SceneDefine.GAME05) {
+          backendWsService.sendCommand('GAME05_CHAIN_ROUND_START' as UIEventName, {});
+        }
+        console.log('[App] Minigame chain: backend request SET_SCENE →', next);
       } else {
         minigameChainActiveRef.current = false;
         setMinigameChainUi(false);
