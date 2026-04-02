@@ -111,7 +111,9 @@ export class VisionWebSocketService {
   private onGame02PauseCallback?: () => void;
   private onGame02ProgressAnswerCallback?: (progress: number) => void;
   private onGame04PauseCallback?: () => void;
-  private onSketchResultCallback?: (data: VisionSketchResultData) => void;
+  /** 성공 SKETCH_RESULT: 여러 구독자 — 역순 호출(나중 등록 = 보통 Capture)이 먼저 실행되어 FACE_CAPTURE_COMPLETED 등 선행 처리 가능 */
+  private onSketchResultCallbacks = new Set<(data: VisionSketchResultData) => void>();
+  private onSketchCaptureFailureCallback?: (data: VisionSketchResultData) => void;
   private onMachiningCompleteCallback?: (data: VisionMachiningCompleteData) => void;
 
   constructor(url: string) {
@@ -436,11 +438,17 @@ export class VisionWebSocketService {
         console.log('[VisionWS] GAME04_PAUSE received');
       } else if (name === VisionMessageName.SKETCH_RESULT) {
         const resultData = payload as VisionSketchResultData;
-        if (resultData?.success && resultData.images?.length >= 4) {
-          this.onSketchResultCallback?.(resultData);
-          console.log('[VisionWS] SKETCH_RESULT received, images:', resultData.images.length);
+        const imageCount = resultData?.images?.length ?? 0;
+        if (resultData?.success && imageCount >= 4) {
+          const list = [...this.onSketchResultCallbacks];
+          for (let i = list.length - 1; i >= 0; i--) {
+            list[i](resultData);
+          }
+          console.log('[VisionWS] SKETCH_RESULT success, images:', imageCount);
         } else {
-          console.warn('[VisionWS] SKETCH_RESULT failed or insufficient images:', resultData?.error_message);
+          const errText = resultData?.error ?? resultData?.error_message;
+          console.warn('[VisionWS] SKETCH_RESULT failed:', errText);
+          this.onSketchCaptureFailureCallback?.(resultData);
         }
       } else if (name === VisionMessageName.MACHINING_COMPLETE) {
         const data = (payload ?? {}) as VisionMachiningCompleteData;
@@ -531,10 +539,19 @@ export class VisionWebSocketService {
     return () => { this.onGame04PauseCallback = undefined; };
   }
 
-  /** SKETCH_RESULT 수신 구독. Capture 완료 후 4가지 스타일 이미지가 도착하면 호출. */
+  /** SKETCH_RESULT 성공 시 구독. 여러 컴포넌트 등록 가능(역순 호출). */
   onSketchResult(cb: (data: VisionSketchResultData) => void): () => void {
-    this.onSketchResultCallback = cb;
-    return () => { this.onSketchResultCallback = undefined; };
+    this.onSketchResultCallbacks.add(cb);
+    return () => { this.onSketchResultCallbacks.delete(cb); };
+  }
+
+  /**
+   * SKETCH_RESULT 실패 시 구독 (success false, 이미지 부족 등).
+   * Capture 씬에서 NO_LOCKED_FACE 시 카운트다운 재시작 등에 사용.
+   */
+  onSketchCaptureFailure(cb: (data: VisionSketchResultData) => void): () => void {
+    this.onSketchCaptureFailureCallback = cb;
+    return () => { this.onSketchCaptureFailureCallback = undefined; };
   }
 
   /** MACHINING_COMPLETE 수신 구독. (레이저 완료는 Exhibition_Drawing 8081 → App에서 backend2 리스너로 처리) */

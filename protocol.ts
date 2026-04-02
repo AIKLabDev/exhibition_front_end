@@ -278,14 +278,19 @@ export interface VisionQRROIData {
   height: number;
 }
 
+/** Python SKETCH_RESULT 실패 시 잠금된 얼굴 없음 (Capture 씬에서 카운트다운 재시작 트리거) */
+export const VISION_SKETCH_ERROR_NO_LOCKED_FACE = 'NO_LOCKED_FACE' as const;
+
 /** SKETCH_RESULT 메시지의 data (Python → 프론트). 4가지 스타일 이미지(Base64 문자열). */
 export interface VisionSketchResultData {
   success: boolean;
   error_message?: string;
-  /** Base64 문자열 4개 (순서: REAL, ANIME, DISNEY, CHIBI) */
-  images: string[];
-  /** 이미지 MIME 포맷 */
-  format: 'jpeg';
+  /** Python 쪽 필드명 (예: NO_LOCKED_FACE, Capture 실패 코드) */
+  error?: string;
+  /** 성공 시 4개. 실패 페이로드에서는 생략될 수 있음 */
+  images?: string[];
+  /** 이미지 MIME 포맷 (성공 시) */
+  format?: 'jpeg';
 }
 
 /** MACHINING_COMPLETE 메시지의 data (Exhibition_Drawing ProtocolBridge → 프론트). 레이저 가공 완료 시 1(성공)/0(실패). */
