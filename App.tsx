@@ -226,13 +226,14 @@ const App: React.FC = () => {
     return () => { unsubscribe(); };
   }, []);
 
-  // Exhibition_Drawing(Vision WS) MACHINING_COMPLETE 수신 → 백엔드(Exhibition)에 success 포함해 전달
+  // Exhibition_Drawing(8081, Backend2 WS) MACHINING_COMPLETE 수신 → 백엔드(Exhibition 8080)에 success 전달
   useEffect(() => {
-    const vision = getVisionWsService();
-    const unsubscribe = vision.onMachiningComplete((data) => {
-      const success = data?.success !== undefined ? data.success : 1;
+    const unsubscribe = backend2WsService.addMessageListener((msg) => {
+      if (msg.header?.name !== 'MACHINING_COMPLETE') return;
+      const payload = msg.data as { success?: number } | undefined;
+      const success = payload?.success !== undefined ? payload.success : 1;
       backendWsService.sendCommand('MACHINING_COMPLETE', { success });
-      console.log('[App] MACHINING_COMPLETE 수신 → 백엔드 전달, success:', success);
+      console.log('[App] MACHINING_COMPLETE from Backend2(8081) → Exhibition, success:', success);
     });
     return () => { unsubscribe(); };
   }, []);

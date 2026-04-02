@@ -537,7 +537,7 @@ export class VisionWebSocketService {
     return () => { this.onSketchResultCallback = undefined; };
   }
 
-  /** MACHINING_COMPLETE 수신 구독. Python에서 레이저 가공 완료 시 호출. */
+  /** MACHINING_COMPLETE 수신 구독. (레이저 완료는 Exhibition_Drawing 8081 → App에서 backend2 리스너로 처리) */
   onMachiningComplete(cb: (data: VisionMachiningCompleteData) => void): () => void {
     this.onMachiningCompleteCallback = cb;
     return () => { this.onMachiningCompleteCallback = undefined; };
