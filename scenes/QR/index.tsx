@@ -147,7 +147,7 @@ const QR: React.FC<QRProps> = ({ onCancel, text, onQRScannedComplete, visionOnli
           <div className="w-full h-full relative">
             <canvas
               ref={canvasRef}
-              className="w-full h-full object-cover opacity-90 transition-opacity duration-300"
+              className="w-full h-full object-cover opacity-90 transition-opacity duration-300 scale-x-[-1]"
               style={{ display: 'block', width: '100%', height: '100%', objectFit: 'cover' }}
             />
 
