@@ -526,11 +526,17 @@ const Game04: React.FC<Game04Props> = ({
 
           <Radar zombies={nearbyZombies} scaleW={scaleW} scaleH={scaleH} />
 
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 border border-white/80 rounded-full flex items-center justify-center z-30">
-            <div className="absolute w-full h-[2px] bg-white/40" />
-            <div className="absolute h-full w-[2px] bg-white/40" />
-            <div className="w-2 h-2 bg-red-500 rounded-full shadow-[0_0_10px_red]" />
-          </div>
+          {/* 조준점: 총알이 수렴하는 화면 중앙 (GameScene BULLET_AIM 기준) */}
+          <div
+            className="game04-aim-crosshair"
+            style={
+              {
+                '--game04-aim-arm': `${Math.round(18 * scaleH)}px`,
+                '--game04-aim-thick': `${Math.max(1, Math.round(1.5 * scaleH))}px`,
+              } as React.CSSProperties
+            }
+            aria-hidden
+          />
 
           <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-transparent to-black/90 pointer-events-none" />
         </div>

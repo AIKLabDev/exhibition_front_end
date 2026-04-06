@@ -125,3 +125,42 @@
   animation: game04-headshot-pop 0.85s ease-out forwards;
   will-change: transform, opacity;
 }
+
+/* 총 조준 십자선 (화면 중앙, 밝은 배경에서도 보이도록 어두운 글로우) */
+.game04-aim-crosshair {
+  --game04-aim-arm: 18px;
+  --game04-aim-thick: 1.5px;
+
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: 30;
+}
+
+.game04-aim-crosshair::before,
+.game04-aim-crosshair::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  background: #ffffff;
+  border-radius: 1px;
+  box-shadow:
+    0 0 10px rgba(0, 0, 0, 0.95),
+    0 0 2px rgba(255, 255, 255, 0.9);
+}
+
+.game04-aim-crosshair::before {
+  width: calc(var(--game04-aim-arm) * 2);
+  height: var(--game04-aim-thick);
+}
+
+.game04-aim-crosshair::after {
+  width: var(--game04-aim-thick);
+  height: calc(var(--game04-aim-arm) * 2);
+}
