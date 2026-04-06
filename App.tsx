@@ -53,7 +53,7 @@ const App: React.FC = () => {
   /** GAME04 디버그용: 조준 입력 모드 (mouse | head) */
   const [game04InputMode, setGame04InputMode] = useState<'mouse' | 'head'>('head');
   /** GAME05 디버그용: 입력 모드 (mouse | vision). vision 시 Python GAME05_ATTACK 수신 시 공격 */
-  const [game05InputMode, setGame05InputMode] = useState<'mouse' | 'vision'>('vision');
+  const [game05InputMode, setGame05InputMode] = useState<'mouse' | 'vision'>('mouse');
   /** Welcome 씬에서 human detect 시 "환영합니다" 메시지 표시 여부 */
   const [showWelcomeGreeting, setShowWelcomeGreeting] = useState(false);
   /** 디버그: GAME_RESULT 메시지 전송 여부. 끄면 시퀀스(결과 씬 전환 등)가 진행되지 않음 */
