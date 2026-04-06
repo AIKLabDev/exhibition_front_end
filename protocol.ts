@@ -174,10 +174,12 @@ export interface BackendGameStartData {
   games?: string[];
 }
 
-/** VIEW_POSE 메시지의 data (Backend → Frontend, Game02 뷰 제어). X/Y는 도 단위 */
+/** VIEW_POSE 메시지의 data (Backend → Frontend, Game02 뷰 제어). X/Y는 mm(Track: 카메라 기준 이동, Fix: 그리드 뷰 오프셋). Fix 시 viewRangeHalf*는 로봇 Y/Z 평면 반폭(mm) */
 export interface ViewPoseData {
   X: number;
   Y: number;
+  viewRangeHalfX?: number;
+  viewRangeHalfY?: number;
 }
 
 // =============================================================================

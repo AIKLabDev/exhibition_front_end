@@ -72,10 +72,14 @@ export function useGame02(
   const stateRef = useRef(state);
 
   const [viewportAspect, setViewportAspect] = useState<number>(DEFAULT_SCENE_ASPECT);
-  const viewWindow = useMemo(
-    () => computeViewWindow(viewportAspect, DEFAULT_SCENE_ASPECT),
-    [viewportAspect]
-  );
+  /** Fix: 씬 3×3 그리드와 맞추기 위해 정규화 영역을 1/VIEW_ZOOM × 1/VIEW_ZOOM 고정. Track: 기존 화면비 맞춤 computeViewWindow */
+  const viewWindow = useMemo(() => {
+    if (GAME02_VIEW_MODE === 'fix') {
+      const s = 1 / VIEW_ZOOM;
+      return { w: s, h: s };
+    }
+    return computeViewWindow(viewportAspect, DEFAULT_SCENE_ASPECT);
+  }, [viewportAspect]);
   const centerTopLeft = useMemo(
     () => ({ x: (1 - viewWindow.w) / 2, y: (1 - viewWindow.h) / 2 }),
     [viewWindow.w, viewWindow.h]
@@ -108,7 +112,14 @@ export function useGame02(
     moved: false,
   });
 
-  const viewPoseRef = useRef<{ X: number; Y: number; atMs: number } | null>(null);
+  const viewPoseRef = useRef<{
+    X: number;
+    Y: number;
+    atMs: number;
+    /** 백엔드 Fix 그리드: 로봇 Y/Z 평면 반폭(mm). 없으면 Track 기본 VIEW_MM_RANGE_* */
+    halfRangeX?: number;
+    halfRangeY?: number;
+  } | null>(null);
   const [viewPoseStatus, setViewPoseStatus] = useState<{
     connected: boolean;
     lastUpdate: number | null;
@@ -182,9 +193,10 @@ export function useGame02(
     }));
   }, [viewWindow.h, viewWindow.w]);
 
-  // Python Vision WebSocket: GAME02_PAUSE 수신 시 PAUSE 오버레이 표시 + 백엔드에 GAME02_PAUSE 전달
+  // Python Vision WebSocket: GAME02_PAUSE 수신 시 PAUSE 오버레이 + 백엔드 일시정지. fix 뷰 모드에서는 무시(로봇 그리드만 사용)
   useEffect(() => {
     const unsubscribe = getVisionWsService().onGame02Pause(() => {
+      if (GAME02_VIEW_MODE === 'fix') return;
       setPauseOverlayVisible(true);
       backendWsService.sendCommand(UIEventName.GAME02_PAUSE, {});
     });
@@ -295,43 +307,37 @@ export function useGame02(
     const unsub = backendWsService.addMessageListener((msg) => {
       const name = msg.header?.name;
       if (name === BackendMessageName.VIEW_POSE) {
-        const data = msg.data as { X?: number; Y?: number; PosX?: number; PosY?: number };
-        if (GAME02_VIEW_MODE === 'track' && data != null && Number.isFinite(data.X) && Number.isFinite(data.Y)) {
+        const data = msg.data as {
+          X?: number;
+          Y?: number;
+          PosX?: number;
+          PosY?: number;
+          viewRangeHalfX?: number;
+          viewRangeHalfY?: number;
+        };
+        if (data != null && Number.isFinite(data.X) && Number.isFinite(data.Y)) {
           const now = Date.now();
-          viewPoseRef.current = { X: data.X!, Y: data.Y!, atMs: now };
+          viewPoseRef.current = {
+            X: data.X!,
+            Y: data.Y!,
+            atMs: now,
+            halfRangeX: Number.isFinite(data.viewRangeHalfX) ? data.viewRangeHalfX : undefined,
+            halfRangeY: Number.isFinite(data.viewRangeHalfY) ? data.viewRangeHalfY : undefined,
+          };
           setViewPoseStatus({
             connected: true,
             lastUpdate: now,
             X: data.X!,
             Y: data.Y!,
           });
-        } else if (GAME02_VIEW_MODE === 'fix' && data != null && Number.isFinite(data.PosX) && Number.isFinite(data.PosY)) {
-          const now = Date.now();
-          const maxX = 1 - viewWindowRef.current.w;
-          const maxY = 1 - viewWindowRef.current.h;
-          // fix 모드: 송신측 PosX/PosY(-1~1)를 즉시 뷰포트 위치로 반영
-          const targetX = ((data.PosX! + 1) / 2) * maxX;
-          const targetY = ((data.PosY! + 1) / 2) * maxY;
-
-          setViewPoseStatus({
-            connected: true,
-            lastUpdate: now,
-            X: null,
-            Y: null,
-          });
-
-          if (stateRef.current === Game02State.PLAYING && !dragRef.current.active) {
-            setViewTopLeft({ x: targetX, y: targetY });
-          }
         }
       }
     });
     return () => { unsub(); };
   }, []);
 
-  // VIEW_POSE(헤드 포즈)로 뷰 이동. PAUSE 오버레이 표시 중에는 뷰도 멈춤
+  // VIEW_POSE(X,Y mm)로 뷰 이동 — track / fix 동일. PAUSE 오버레이 중에는 뷰도 멈춤
   useEffect(() => {
-    if (GAME02_VIEW_MODE !== 'track') return;
     if (state !== Game02State.PLAYING || pauseOverlayVisible) return;
     let raf = 0;
     const tick = () => {
@@ -348,8 +354,10 @@ export function useGame02(
       }
       const maxX = 1 - viewWindow.w;
       const maxY = 1 - viewWindow.h;
-      const nx = Math.abs(pose.X) < VIEW_MM_DEADZONE ? 0 : clamp(-pose.X / VIEW_MM_RANGE_X, -1, 1);
-      const ny = Math.abs(pose.Y) < VIEW_MM_DEADZONE ? 0 : clamp(pose.Y / VIEW_MM_RANGE_Y, -1, 1);
+      const rangeX = pose.halfRangeX ?? VIEW_MM_RANGE_X;
+      const rangeY = pose.halfRangeY ?? VIEW_MM_RANGE_Y;
+      const nx = Math.abs(pose.X) < VIEW_MM_DEADZONE ? 0 : clamp(-pose.X / rangeX, -1, 1);
+      const ny = Math.abs(pose.Y) < VIEW_MM_DEADZONE ? 0 : clamp(pose.Y / rangeY, -1, 1);
       const targetX = clamp(maxX / 2 + nx * (maxX / 2), 0, maxX);
       const targetY = clamp(maxY / 2 + ny * (maxY / 2), 0, maxY);
       setViewTopLeft((prev) => {
