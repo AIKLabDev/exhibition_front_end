@@ -24,7 +24,7 @@ const GameComplete: React.FC = () => {
 
       <div className="game-complete-content h-full w-full font-sans">
         <h1 className="game-complete-line game-complete-line--primary">Game Complete!</h1>
-        <p className="game-complete-line game-complete-line--secondary">Thank you For Playing</p>
+        <p className="game-complete-line game-complete-line--secondary">상품을 전달해 드리겠습니다</p>
       </div>
     </div>
   );
