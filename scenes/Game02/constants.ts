@@ -10,7 +10,7 @@ export const VIEW_AREA = 1 / (VIEW_ZOOM * VIEW_ZOOM);
 export const DEFAULT_SCENE_ASPECT = 16 / 9;
 
 // Game timer in seconds
-export const GAME_TIME_LIMIT = 120;
+export const GAME_TIME_LIMIT = 90;
 
 // Announcing screen duration in milliseconds
 export const ANNOUNCING_DURATION = 3000;
