@@ -1,0 +1,88 @@
+/* ─────────────────────────────────────────────────────
+   LaserStyle: 터치 제스처 힌트 오버레이 애니메이션
+───────────────────────────────────────────────────── */
+
+/*
+  손이 아래(멀리)에서 위(카드)로 올라와 탭하는 동작.
+  translateY: 0(쉬는 자리) → -42px(위로 탭) → 0(복귀)
+  scale: 0.82(멀리/작게) → 1.0(가까이/크게) → 0.82 — 원근감 표현
+*/
+@keyframes ls-tap {
+  0%,  15%  { transform: translateY(0px)   scale(0.82); }
+  40%, 60%  { transform: translateY(-42px) scale(1.0);  }
+  85%, 100% { transform: translateY(0px)   scale(0.82); }
+}
+
+/*
+  탭 시 손가락 끝(위쪽 접촉 지점)에서 퍼져나가는 리플.
+  40%: 손이 카드에 닿는 순간 → 리플 나타남
+*/
+@keyframes ls-ripple {
+  0%,  36%  { transform: translateX(-50%) scale(0.15); opacity: 0;    }
+  40%        { transform: translateX(-50%) scale(0.15); opacity: 0.85; }
+  80%, 100% { transform: translateX(-50%) scale(3.4);  opacity: 0;    }
+}
+
+/*
+  힌트 처음 나타날 때 페이드인.
+*/
+@keyframes ls-hint-appear {
+  from { opacity: 0; }
+  to   { opacity: 0.72; }
+}
+
+/*
+  힌트 래퍼:
+  - position absolute + top/margin으로 수직 중앙 정렬
+  - left는 JS(LaserStyle.tsx)에서 getBoundingClientRect()로 카드 중심을 측정해 직접 설정
+  - transition: left — 카드 간 이동 시 부드러운 슬라이드 효과
+  - ls-hint-appear: 처음 페이드인
+*/
+.ls-hint-wrapper {
+  position: absolute;
+  top: 50%;
+  margin-top: -90px;  /* height(180px)의 절반 — 수직 중앙 정렬 */
+  left: 0;            /* 초기값. JS가 실제 카드 위치로 덮어씀 */
+  width: 96px;
+  height: 180px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  opacity: 0;         /* ls-hint-appear 시작 전 숨김 */
+  transition: left 400ms ease-in-out;  /* 카드 간 슬라이드 — HINT_SLIDE_MS와 동일 */
+  animation: ls-hint-appear 0.6s ease-out 0.8s both;
+}
+
+/*
+  손 아이콘 탭 동작.
+  transform-origin: center bottom → 하단 기준으로 scale 변화 (멀리서 커지는 효과).
+*/
+.ls-tap-hand {
+  animation: ls-tap 2.6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  /* animation-delay 제거: HINT_DWELL_MS=2600ms와 동기화하여 JS 리셋 없이 타이밍을 맞춤 */
+  filter:
+    drop-shadow(0 0 4px rgba(255, 255, 255, 0.95))  /* 흰 글로우 — 어두운 배경(slate-900)에서 윤곽 */
+    drop-shadow(0 2px 6px rgba(0, 0, 0, 0.4));       /* 부드러운 그림자 — 흰 카드 위에서 입체감 */
+  will-change: transform;
+  transform-origin: center bottom;
+}
+
+/*
+  탭 접촉점 리플.
+  top: 16px → 손가락 끝이 최고점(-42px 이동)일 때 도달하는 y좌표에 정렬.
+  left: 30% → 손가락이 SVG 가로 약 30% 지점에 위치.
+  두 애니메이션(ls-tap, ls-ripple)은 모두 0.8s delay + 2.6s 주기로 동기화.
+*/
+.ls-tap-ripple {
+  position: absolute;
+  top: 16px;
+  left: 30%;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(30, 30, 30, 0.7);   /* 어두운 리플 — 흰 카드 위에서 잘 보임 */
+  animation: ls-ripple 2.6s ease-in-out infinite;
+  /* animation-delay 제거: ls-tap과 동일한 사이클, 동기화 유지 */
+  will-change: transform, opacity;
+}
