@@ -111,6 +111,10 @@ export const UIEventName = {
   GAME04_CHAIN_ROUND_START: 'GAME04_CHAIN_ROUND_START',
   /** 체인: GAME04→GAME05 전환 직후(Python sendScene과 동시). Exhibition SET_SCENE GAME05 */
   GAME05_CHAIN_ROUND_START: 'GAME05_CHAIN_ROUND_START',
+  /** Game05: mouse(터치) 모드에서 공격 판정 또는 주인공 피격(적 충돌·친구 오공격). Exhibition 연동용 */
+  GAME05_MOUSE_ATTACK_EVENT: 'GAME05_MOUSE_ATTACK_EVENT',
+  /** Game05: mouse(터치) 모드에서 친구(공주) 충돌로 체력 회복 시. Exhibition 연동용 */
+  GAME05_MOUSE_HEAL_EVENT: 'GAME05_MOUSE_HEAL_EVENT',
   /** Vision에서 QR 인식 시(QR 씬) 프론트가 백엔드에 전달. data, bbox 포함 */
   QR_SCANNED: 'QR_SCANNED',
   /** Exhibition_Drawing에서 레이저 가공 완료 수신 시 프론트가 백엔드(Exhibition)에 전달. data: { success: number } (1/0) */

@@ -1,5 +1,4 @@
 /* Game05 플래포머: 캔버스 픽셀 아트 스타일 */
-@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
 .game05-canvas {
   image-rendering: pixelated;
@@ -28,24 +27,4 @@
   left: 0;
   cursor: pointer;
   touch-action: manipulation;
-}
-
-/* 규칙 화면 PRESS START 점멸: 타이틀과 동일 (2.5회/초 → 0.4s 켜짐, 0.4s 꺼짐) */
-@keyframes game05-rule-press-start-blink {
-
-  0%,
-  50% {
-    opacity: 1;
-  }
-
-  50.01%,
-  100% {
-    opacity: 0;
-  }
-}
-
-/* Rule 화면 PRESS START: 타이틀 캔버스와 같은 도트 느낌 (픽셀 폰트) */
-.game05-rule-press-start {
-  font-family: 'Press Start 2P', monospace;
-  animation: game05-rule-press-start-blink 0.8s steps(1, end) infinite;
 }

@@ -14,6 +14,7 @@ import { backendWsService } from '../../services/backendWebSocketService';
 import { getVisionWsService } from '../../services/visionWebSocketService';
 import { BackendMessageName, UIEventName } from '../../protocol';
 import { useGameStartFromBackend, useResetResultReportRefWhenEnteringRound } from '../../hooks/useGameStartFromBackend';
+import { useGameStartCountdown } from '../../hooks/useGameStartCountdown';
 import ruleBgImg from '../../images/Game04 Rule.png';
 import './Game04.css';
 
@@ -23,6 +24,35 @@ const AIM_HALF_DEG = PLAYER_VIEW_ANGLE_DEGREES / 2;
 const MOUSE_YAW_RAD = (AIM_HALF_DEG * Math.PI) / 180;
 const MOUSE_PITCH_RAD = ((AIM_HALF_DEG * 0.7) * Math.PI) / 180;
 const RADAR_ANGLE_HALF_RAD = (RADAR_ANGLE_DEGREES / 2) * (Math.PI / 180);
+
+/** 룰 화면: 카운트다운 후 startGame (Press Start 터치 제거) */
+const Game04RuleOverlay: React.FC<{ startGame: () => void }> = ({ startGame }) => {
+  const secondsLeft = useGameStartCountdown(startGame, true);
+  return (
+    <div className="absolute inset-0 z-30 flex flex-col">
+      <div
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: `url(${ruleBgImg})` }}
+      />
+      <div
+        className="absolute left-[40%] right-[40%] top-[85%] h-[12%] flex items-center justify-center pointer-events-none select-none"
+        aria-live="polite"
+        aria-label={`게임 시작까지 ${secondsLeft}초`}
+      >
+        <span
+          className="text-white font-black tabular-nums"
+          style={{
+            fontSize: 'clamp(3rem, 10vw, 8rem)',
+            lineHeight: 1,
+            textShadow: '0 0 24px rgba(0,0,0,0.9), 0 4px 32px rgba(0,0,0,0.8)',
+          }}
+        >
+          {secondsLeft}
+        </span>
+      </div>
+    </div>
+  );
+};
 
 const Confetti = () => {
   const particles = Array.from({ length: 50 });
@@ -542,30 +572,7 @@ const Game04: React.FC<Game04Props> = ({
         </div>
       )}
 
-      {!gameStarted && !gameOver && (
-        <div className="absolute inset-0 z-30 flex flex-col">
-          <div
-            className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-            style={{ backgroundImage: `url(${ruleBgImg})` }}
-          />
-          <button
-            type="button"
-            onClick={startGame}
-            className="absolute left-[40%] right-[40%] top-[85%] h-[12%] cursor-pointer flex items-center justify-center"
-            aria-label="게임 시작"
-          >
-            <span
-              className="absolute w-24 h-24 rounded-full border-4 border-white/40 animate-game04-start-pulse pointer-events-none"
-              aria-hidden
-            />
-            <span
-              className="absolute w-20 h-20 rounded-full border-2 border-green-400/50 animate-game04-start-pulse pointer-events-none"
-              style={{ animationDelay: '0.4s' }}
-              aria-hidden
-            />
-          </button>
-        </div>
-      )}
+      {!gameStarted && !gameOver && <Game04RuleOverlay startGame={startGame} />}
 
       {gameOver && (
         <div className={`absolute inset-0 z-30 flex flex-col justify-center backdrop-blur-md text-white ${isVictory ? 'bg-green-900/90' : 'bg-red-900/90'}`}>

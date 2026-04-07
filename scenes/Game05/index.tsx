@@ -4,13 +4,23 @@
  */
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { Game05Props, GameState, GameAssets, GameSounds, GameStateType } from './Game05.types';
+import {
+  Game05Props,
+  GameState,
+  GameAssets,
+  GameSounds,
+  GameStateType,
+  Game05MouseBackendExtra,
+} from './Game05.types';
 import { CHAR_X, MAX_HP, GAME_DURATION, CANVAS_WIDTH as W, CANVAS_HEIGHT as H, ASSET_BASE } from './constants';
 import { loadAllAssets } from './assets';
 import { initSounds, playSfx, stopAllSounds } from './sounds';
 import { stateHandlers, checkAttackHit } from './states';
 import { useGameStartFromBackend, isStartableState, useResetResultReportRefWhenEnteringRound } from '../../hooks/useGameStartFromBackend';
+import { useGameStartCountdown } from '../../hooks/useGameStartCountdown';
 import { getVisionWsService } from '../../services/visionWebSocketService';
+import { backendWsService } from '../../services/backendWebSocketService';
+import { UIEventName } from '../../protocol';
 import ruleBgImg from '../../images/Game05 Rule.png';
 import './Game05.css';
 
@@ -58,6 +68,20 @@ const Game05: React.FC<Game05Props> = ({
   const stateRef = useRef<GameState>(createInitialState());
   const resultReportedRef = useRef(false);
   const hitSfxIndexRef = useRef(0);
+  const forceInputModeRef = useRef(forceInputMode);
+  forceInputModeRef.current = forceInputMode;
+
+  const getMouseBackendExtra = useCallback((): Game05MouseBackendExtra | undefined => {
+    if (forceInputModeRef.current !== 'mouse') return undefined;
+    return {
+      onHitJudgment: () => {
+        backendWsService.sendCommand(UIEventName.GAME05_MOUSE_ATTACK_EVENT, {});
+      },
+      onFriendHeal: () => {
+        backendWsService.sendCommand(UIEventName.GAME05_MOUSE_HEAL_EVENT, {});
+      },
+    };
+  }, []);
 
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -124,8 +148,8 @@ const Game05: React.FC<Game05Props> = ({
       playSfx(sounds.attackSfx);
       playSfx(sounds.attackVoice);
     }
-    checkAttackHit(s, assets, sounds, hitSfxIndexRef);
-  }, []);
+    checkAttackHit(s, assets, sounds, hitSfxIndexRef, getMouseBackendExtra());
+  }, [getMouseBackendExtra]);
 
   // 게임 시작 (타이틀 터치/클릭 또는 백엔드 GAME_START 시 호출)
   const startGame = useCallback(() => {
@@ -140,6 +164,8 @@ const Game05: React.FC<Game05Props> = ({
   });
 
   useResetResultReportRefWhenEnteringRound(gameStateUI === 'playing', resultReportedRef);
+
+  const ruleCountdownSeconds = useGameStartCountdown(startGame, gameStateUI === 'rule');
 
   // Vision 모드: Python GAME05_ATTACK 수신 시 공격만 실행 (이벤트성, data 무시)
   useEffect(() => {
@@ -156,20 +182,18 @@ const Game05: React.FC<Game05Props> = ({
     };
   }, [forceInputMode, startAttack]);
 
-  // 입력 처리 (타이틀: rule로 / 규칙: startGame / 플레이 중: 공격)
+  // 입력 처리 (타이틀: rule로 / 규칙: 카운트다운 자동 시작 / 플레이 중: 공격)
   const handleInput = useCallback(
     (e?: React.MouseEvent | React.TouchEvent | KeyboardEvent) => {
       e?.preventDefault();
       const s = stateRef.current;
       if (s.gameState === 'title') {
         changeState('rule');
-      } else if (s.gameState === 'rule') {
-        startGame();
       } else if (s.gameState === 'playing' && forceInputMode === 'mouse') {
         startAttack();
       }
     },
-    [changeState, startGame, startAttack, forceInputMode]
+    [changeState, startAttack, forceInputMode]
   );
 
   // 재시작 (result → 바로 본게임). win/defeat 후 다시시작 시 Rule·title 없이 즉시 playing
@@ -228,7 +252,7 @@ const Game05: React.FC<Game05Props> = ({
       const currentHandler = stateHandlers[state.gameState];
 
       // Update
-      const nextState = currentHandler.update(state, dt, assets, soundsRef.current);
+      const nextState = currentHandler.update(state, dt, assets, soundsRef.current, getMouseBackendExtra());
 
       // Render
       currentHandler.render(state, ctx, assets, W, H);
@@ -237,7 +261,7 @@ const Game05: React.FC<Game05Props> = ({
       if (nextState && nextState !== state.gameState) {
         // 공격 히트 체크 (playing 상태에서)
         if (state.gameState === 'playing' && state.isAttacking) {
-          checkAttackHit(state, assets, soundsRef.current, hitSfxIndexRef);
+          checkAttackHit(state, assets, soundsRef.current, hitSfxIndexRef, getMouseBackendExtra());
         }
 
         changeState(nextState);
@@ -254,7 +278,7 @@ const Game05: React.FC<Game05Props> = ({
 
     rafId = requestAnimationFrame(gameLoop);
     return () => cancelAnimationFrame(rafId);
-  }, [loading, loadError, onGameResult, changeState]);
+  }, [loading, loadError, onGameResult, changeState, getMouseBackendExtra]);
 
   // 캔버스 표시 크기 측정 → Rule 화면 PRESS START를 타이틀(14px 캔버스 픽셀)과 동일 시각 크기로
   useEffect(() => {
@@ -314,33 +338,23 @@ const Game05: React.FC<Game05Props> = ({
         tabIndex={0}
         aria-label="게임 입력"
       />
-      {/* 규칙 화면: title 터치 후 표시. Game05 Rule.png + PRESS START(타이틀과 동일 폰트/점멸). 터치 시 본게임 시작 */}
+      {/* 규칙 화면: title 터치 후 표시. 카운트다운 후 자동으로 본게임 시작 */}
       {gameStateUI === 'rule' && (
         <div
-          className="absolute inset-0 z-20 flex flex-col items-center justify-end cursor-pointer bg-cover bg-center bg-no-repeat"
+          className="absolute inset-0 z-20 flex flex-col items-center justify-end pointer-events-none select-none bg-cover bg-center bg-no-repeat"
           style={{ backgroundImage: `url(${ruleBgImg})` }}
-          onClick={(e) => {
-            e.stopPropagation();
-            startGame();
-          }}
-          onTouchEnd={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            startGame();
-          }}
-          role="button"
-          tabIndex={0}
-          aria-label="PRESS START - 게임 시작"
+          aria-live="polite"
+          aria-label={`게임 시작까지 ${ruleCountdownSeconds}초`}
         >
           <span
-            className="game05-rule-press-start text-white text-center"
+            className="text-white font-black text-center tabular-nums"
             style={{
-              fontSize: `${10 * canvasScale}px`,
-              textShadow: '0 0 4px #000',
+              fontSize: `${Math.max(10 * canvasScale, 48)}px`,
+              textShadow: '0 0 8px #000, 0 4px 24px rgba(0,0,0,0.85)',
               paddingBottom: `${10 * canvasScale}px`,
             }}
           >
-            PRESS START
+            {ruleCountdownSeconds}
           </span>
         </div>
       )}
