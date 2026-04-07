@@ -2,14 +2,21 @@
  * Rule(규칙) 상태: title 터치 후 표시. 캔버스는 검정만 그림. 실제 규칙 UI는 React 오버레이(Game05 Rule.png + PRESS START).
  */
 
-import { StateHandler, GameState, GameAssets, GameSounds, GameStateType } from '../Game05.types';
+import {
+  StateHandler,
+  GameState,
+  GameAssets,
+  GameSounds,
+  GameStateType,
+  Game05MouseBackendExtra,
+} from '../Game05.types';
 
 export const ruleState: StateHandler = {
   onEnter: (_state: GameState, _sounds: GameSounds | null) => { },
 
   onExit: (_state: GameState, _sounds: GameSounds | null) => { },
 
-  update: (_state: GameState, _dt: number): GameStateType | null => {
+  update: (_state: GameState, _dt: number, _assets: GameAssets, _sounds: GameSounds | null, _mouse?: Game05MouseBackendExtra): GameStateType | null => {
     return null;
   },
 

@@ -2,7 +2,14 @@
  * Victory 상태 핸들러
  */
 
-import { StateHandler, GameState, GameAssets, GameSounds, GameStateType } from '../Game05.types';
+import {
+  StateHandler,
+  GameState,
+  GameAssets,
+  GameSounds,
+  GameStateType,
+  Game05MouseBackendExtra,
+} from '../Game05.types';
 import {
   drawFarBackground,
   drawTreeLayer,
@@ -38,7 +45,7 @@ export const victoryState: StateHandler = {
     }
   },
 
-  update: (state: GameState, dt: number, assets: GameAssets): GameStateType | null => {
+  update: (state: GameState, dt: number, assets: GameAssets, _sounds: GameSounds | null, _mouse?: Game05MouseBackendExtra): GameStateType | null => {
     // 달리기 애니메이션
     state.animTimer += dt;
     if (state.animTimer >= 1 / ANIM_FPS) {

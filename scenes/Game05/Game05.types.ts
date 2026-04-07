@@ -114,11 +114,23 @@ export interface GameAssets {
   groundImg: HTMLImageElement;
 }
 
+/** mouse 모드일 때만 Game05 index에서 주입 (ATTACK: 공격·피격 / HEAL: 친구·체력 회복) */
+export type Game05MouseBackendExtra = {
+  onHitJudgment?: () => void;
+  onFriendHeal?: () => void;
+};
+
 // ── State Handler 인터페이스 ──
 export interface StateHandler {
   onEnter?: (state: GameState, sounds: GameSounds | null) => void;
   onExit?: (state: GameState, sounds: GameSounds | null) => void;
-  update: (state: GameState, dt: number, assets: GameAssets, sounds: GameSounds | null) => GameStateType | null;
+  update: (
+    state: GameState,
+    dt: number,
+    assets: GameAssets,
+    sounds: GameSounds | null,
+    mouseBackend?: Game05MouseBackendExtra
+  ) => GameStateType | null;
   render: (state: GameState, ctx: CanvasRenderingContext2D, assets: GameAssets, W: number, H: number) => void;
 }
 

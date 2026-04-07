@@ -2,7 +2,14 @@
  * Result 상태 핸들러
  */
 
-import { StateHandler, GameState, GameAssets, GameSounds, GameStateType } from '../Game05.types';
+import {
+  StateHandler,
+  GameState,
+  GameAssets,
+  GameSounds,
+  GameStateType,
+  Game05MouseBackendExtra,
+} from '../Game05.types';
 import { drawResult } from '../renderers';
 import { stopAudio } from '../sounds';
 
@@ -29,7 +36,7 @@ export const resultState: StateHandler = {
     }
   },
 
-  update: (): GameStateType | null => {
+  update: (_state: GameState, _dt: number, _assets: GameAssets, _sounds: GameSounds | null, _mouse?: Game05MouseBackendExtra): GameStateType | null => {
     // result 화면에서는 자동 전환 없음 (버튼 클릭으로만 전환)
     return null;
   },
