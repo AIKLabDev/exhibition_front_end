@@ -5,7 +5,7 @@
 import React from 'react';
 import { DEBUG_MODE } from '../../../appConstants';
 import { Game02State, GameScenario } from '../Game02.types';
-import { SETTINGS } from '../constants';
+import { SETTINGS, GAME02_VIEW_MODE } from '../constants';
 import ResultOverlay from '../ResultOverlay';
 
 export interface Game02PlayProps {
@@ -224,8 +224,8 @@ const Game02Play: React.FC<Game02PlayProps> = ({
               </div>
             )}
 
-            {/* 뷰가 전체 이미지 끝에 닿았을 때 해당 쪽에 연한 빨간 경계선 표시 (그라데이션) */}
-            {atLeft && (
+            {/* Track: 뷰가 이미지 끝에 닿으면 빨간 엣지 힌트. Fix(3×3 그리드)에서는 표시 안 함 */}
+            {GAME02_VIEW_MODE !== 'fix' && atLeft && (
               <div
                 className="absolute left-0 top-0 bottom-0 w-5 z-10 pointer-events-none"
                 style={{
@@ -234,7 +234,7 @@ const Game02Play: React.FC<Game02PlayProps> = ({
                 aria-hidden
               />
             )}
-            {atRight && (
+            {GAME02_VIEW_MODE !== 'fix' && atRight && (
               <div
                 className="absolute right-0 top-0 bottom-0 w-5 z-10 pointer-events-none"
                 style={{
@@ -243,7 +243,7 @@ const Game02Play: React.FC<Game02PlayProps> = ({
                 aria-hidden
               />
             )}
-            {atTop && (
+            {GAME02_VIEW_MODE !== 'fix' && atTop && (
               <div
                 className="absolute top-0 left-0 right-0 h-5 z-10 pointer-events-none"
                 style={{
@@ -252,7 +252,7 @@ const Game02Play: React.FC<Game02PlayProps> = ({
                 aria-hidden
               />
             )}
-            {atBottom && (
+            {GAME02_VIEW_MODE !== 'fix' && atBottom && (
               <div
                 className="absolute bottom-0 left-0 right-0 h-5 z-10 pointer-events-none"
                 style={{
