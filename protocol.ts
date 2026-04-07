@@ -89,6 +89,8 @@ export const UIEventName = {
   HUMAN_DETECTED: 'HUMAN_DETECTED',
   /** Game02: 본게임 시작 시점(찾을 이미지 3초 표시 후). Exhibition에서 얼굴 추적/로봇 본게임 시작 */
   GAME02_MAINGAME_START: 'GAME02_MAINGAME_START',
+  /** Game02 Fix: 플레이 화면 표시 직후. 백엔드가 그리드 (-1,-1)로 MovJ */
+  GAME02_FIX_PLAY_VIEW_READY: 'GAME02_FIX_PLAY_VIEW_READY',
   /** Game02: 대기 상태(씬 이탈 또는 목표 찾음/제한시간 실패로 종료). Exhibition에서 추적/로봇 대기 */
   GAME02_IDLE: 'GAME02_IDLE',
   /** Game02: 미니게임 체인 중 한 판 종료 직후(GAME02_IDLE 다음). Exhibition에서 ref(start) MovJ */
