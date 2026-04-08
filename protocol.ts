@@ -113,6 +113,8 @@ export const UIEventName = {
   GAME05_CHAIN_ROUND_START: 'GAME05_CHAIN_ROUND_START',
   /** Vision에서 QR 인식 시(QR 씬) 프론트가 백엔드에 전달. data, bbox 포함 */
   QR_SCANNED: 'QR_SCANNED',
+  /** Python이 GAME_ID 수신 시 프론트가 백엔드(C++)에 전달. data: { data, game_id } — C++는 dataObj["game_id"] 문자열 사용 */
+  GAME_ID: 'GAME_ID',
   /** Exhibition_Drawing에서 레이저 가공 완료 수신 시 프론트가 백엔드(Exhibition)에 전달. data: { success: number } (1/0) */
   MACHINING_COMPLETE: 'MACHINING_COMPLETE',
   /** CAPTURE 씬: 카운트다운 종료 후 Python에 SKETCH_CAPTURE와 동시에 전송. Exhibition에서 선물 픽 프리컴퓨트(SAM3 등) 시작 */
@@ -202,6 +204,8 @@ export const VisionMessageName = {
   HUMAN_OUT: 'HUMAN_OUT',
   /** QR 씬에서 Python이 QR 인식 시 → 프론트는 백엔드에 QR_SCANNED 전달 */
   QR_SCANNED: 'QR_SCANNED',
+  /** Python이 세션/티켓 식별자 전송 → 프론트는 백엔드에 GAME_ID 전달 (data, game_id) */
+  GAME_ID: 'GAME_ID',
   /** QR 씬에서 스캔 영역(ROI) 전달. left/top/width/height 비율(0~1). 프론트는 파란 상자 위치·크기에 반영 */
   QR_ROI: 'QR_ROI',
   /** GAME05 씬에서 Python이 공격 이벤트 전송. 수신 시 공격 애니메이션만 실행 (data는 더미) */
@@ -272,6 +276,12 @@ export interface VisionQRScannedData {
   type?: string;
 }
 
+/** GAME_ID 메시지의 data (Python → 프론트). 프론트는 백엔드 UI 이벤트 GAME_ID로 동일 키 전달. */
+export interface VisionGameIdData {
+  data: string;
+  game_id: string;
+}
+
 /** QR_ROI 메시지의 data (Python → 프론트). 비율(0~1). left/top = 영역 왼쪽·위 기준, width/height = 영역 크기. */
 export interface VisionQRROIData {
   left: number;
@@ -309,6 +319,7 @@ export const VisionMessageType = {
   GAME_STOP: VisionMessageName.GAME_STOP,
   HUMAN_DETECTED: VisionMessageName.HUMAN_DETECTED,
   QR_SCANNED: VisionMessageName.QR_SCANNED,
+  GAME_ID: VisionMessageName.GAME_ID,
   QR_ROI: VisionMessageName.QR_ROI,
   GAME05_ATTACK: VisionMessageName.GAME05_ATTACK,
 } as const;

@@ -17,6 +17,7 @@ import type {
   VisionHumanDetectedData,
   VisionHumanOutData,
   VisionQRScannedData,
+  VisionGameIdData,
   VisionQRROIData,
   VisionSketchResultData,
   VisionMachiningCompleteData,
@@ -106,6 +107,7 @@ export class VisionWebSocketService {
   private onHumanDetectedCallback?: (data: VisionHumanDetectedData) => void;
   private onHumanOutCallback?: (data: VisionHumanOutData) => void;
   private onQRScannedCallback?: (data: VisionQRScannedData) => void;
+  private onGameIdCallback?: (data: VisionGameIdData) => void;
   private onQRROICallback?: (data: VisionQRROIData) => void;
   private onGame05AttackCallback?: () => void;
   private onGame02PauseCallback?: () => void;
@@ -407,6 +409,19 @@ export class VisionWebSocketService {
           this.onQRScannedCallback?.(qrData);
           console.log('[VisionWS] QR_SCANNED (forward to backend)', qrData.data);
         }
+      } else if (name === VisionMessageName.GAME_ID) {
+        const gameIdData = payload as VisionGameIdData;
+        if (
+          gameIdData &&
+          typeof gameIdData.data === 'string' &&
+          typeof gameIdData.game_id === 'string' &&
+          gameIdData.game_id.length > 0
+        ) {
+          this.onGameIdCallback?.(gameIdData);
+          console.log('[VisionWS] GAME_ID (forward to backend)', gameIdData.game_id);
+        } else {
+          console.warn('[VisionWS] GAME_ID invalid payload', payload);
+        }
       } else if (name === VisionMessageName.QR_ROI) {
         const roiData = payload as VisionQRROIData;
         if (
@@ -513,6 +528,12 @@ export class VisionWebSocketService {
   onQRROI(cb: (data: VisionQRROIData) => void): () => void {
     this.onQRROICallback = cb;
     return () => { this.onQRROICallback = undefined; };
+  }
+
+  /** Python이 GAME_ID 수신 시 구독. 프론트가 백엔드에 GAME_ID 전달. */
+  onGameId(cb: (data: VisionGameIdData) => void): () => void {
+    this.onGameIdCallback = cb;
+    return () => { this.onGameIdCallback = undefined; };
   }
 
   /** GAME05 씬에서 Python이 GAME05_ATTACK 수신 시 구독. 공격 애니메이션만 실행 (data 무시). */

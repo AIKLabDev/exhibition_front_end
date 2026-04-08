@@ -215,6 +215,20 @@ const App: React.FC = () => {
     return () => { unsubscribe(); };
   }, []);
 
+  // Python(Vision) GAME_ID 수신 → 백엔드(C++)에 전달 + 리더보드용 플레이어 ID 저장
+  useEffect(() => {
+    const vision = getVisionWsService();
+    const unsubscribe = vision.onGameId((payload) => {
+      setCurrentGameId(payload.game_id);
+      backendWsService.sendCommand('GAME_ID' as UIEventName, {
+        data: payload.data,
+        game_id: payload.game_id,
+      });
+      console.log('[App] GAME_ID 수신 → 백엔드 전달', payload.game_id);
+    });
+    return () => { unsubscribe(); };
+  }, []);
+
   // Python SKETCH_RESULT 수신: Capture 씬에서 스케치 생성 완료 → LASER_STYLE로 전환
   useEffect(() => {
     const vision = getVisionWsService();
