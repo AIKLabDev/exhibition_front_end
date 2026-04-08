@@ -397,7 +397,7 @@ const RankRow: React.FC<{ row: DisplayRow }> = ({ row }) => {
             className="font-black tabular-nums"
             style={{ color: row.isMe ? '#f6ad55' : '#4a5568', fontSize: '30px' }}
           >
-            {row.rank}
+            {row.isMe && row.rank > 10 ? '-' : row.rank}
           </span>
         )}
       </div>
