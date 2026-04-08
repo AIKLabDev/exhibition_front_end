@@ -145,13 +145,13 @@ const App: React.FC = () => {
           }
           // Python 공통 모듈에 현재 씬 전달 (백엔드 SET_SCENE → 프론트가 중간다리, 체인 중 직접 sendScene 안 함)
           getVisionWsService().sendScene(sceneData);
-          // 체인: GAME02는 보통 직후 GAME_START로 시작. GAME04/05는 체인 전환 시 백엔드 SET_SCENE만 오므로 Python game_start 동기화
+          // 체인: GAME02는 보통 직후 GAME_START로 시작. GAME04/05는 SET_SCENE만 오므로 Python에 game_start만 맞춤.
+          // gameStartTrigger는 올리지 않음 → Game04/05 타이틀 카운트다운 후 startGame이 본게임 진입(자동 스타트와 충돌 방지).
           if (
             minigameChainActiveRef.current &&
             (sceneData.scene === SceneDefine.GAME04 || sceneData.scene === SceneDefine.GAME05)
           ) {
             getVisionWsService().sendGameStart();
-            setGameStartTrigger((t) => t + 1);
           }
           break;
         }
