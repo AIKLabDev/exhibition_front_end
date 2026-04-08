@@ -89,6 +89,8 @@ export const UIEventName = {
   HUMAN_DETECTED: 'HUMAN_DETECTED',
   /** Game02: 본게임 시작 시점(찾을 이미지 3초 표시 후). Exhibition에서 얼굴 추적/로봇 본게임 시작 */
   GAME02_MAINGAME_START: 'GAME02_MAINGAME_START',
+  /** Game02 Fix: 플레이 화면 표시 직후. 백엔드가 그리드 (-1,-1)로 MovJ */
+  GAME02_FIX_PLAY_VIEW_READY: 'GAME02_FIX_PLAY_VIEW_READY',
   /** Game02: 대기 상태(씬 이탈 또는 목표 찾음/제한시간 실패로 종료). Exhibition에서 추적/로봇 대기 */
   GAME02_IDLE: 'GAME02_IDLE',
   /** Game02: 미니게임 체인 중 한 판 종료 직후(GAME02_IDLE 다음). Exhibition에서 ref(start) MovJ */
@@ -111,6 +113,10 @@ export const UIEventName = {
   GAME04_CHAIN_ROUND_START: 'GAME04_CHAIN_ROUND_START',
   /** 체인: GAME04→GAME05 전환 직후(Python sendScene과 동시). Exhibition SET_SCENE GAME05 */
   GAME05_CHAIN_ROUND_START: 'GAME05_CHAIN_ROUND_START',
+  /** Game05: mouse(터치) 모드에서 공격 판정 또는 주인공 피격(적 충돌·친구 오공격). Exhibition 연동용 */
+  GAME05_MOUSE_ATTACK_EVENT: 'GAME05_MOUSE_ATTACK_EVENT',
+  /** Game05: mouse(터치) 모드에서 친구(공주) 충돌로 체력 회복 시. Exhibition 연동용 */
+  GAME05_MOUSE_HEAL_EVENT: 'GAME05_MOUSE_HEAL_EVENT',
   /** Vision에서 QR 인식 시(QR 씬) 프론트가 백엔드에 전달. data, bbox 포함 */
   QR_SCANNED: 'QR_SCANNED',
   /** Python이 GAME_ID 수신 시 프론트가 백엔드(C++)에 전달. data: { data, game_id } — C++는 dataObj["game_id"] 문자열 사용 */

@@ -81,25 +81,6 @@
   }
 }
 
-/* 시작 화면 버튼 영역 펄스 (Game02와 동일 패턴) */
-@keyframes game04-start-pulse {
-
-  0%,
-  100% {
-    transform: scale(0.9);
-    opacity: 0.6;
-  }
-
-  50% {
-    transform: scale(1.1);
-    opacity: 1;
-  }
-}
-
-.animate-game04-start-pulse {
-  animation: game04-start-pulse 1.5s ease-in-out infinite;
-}
-
 @keyframes game04-headshot-pop {
   0% {
     opacity: 0;

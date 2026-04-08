@@ -2,7 +2,14 @@
  * Playing 상태 핸들러
  */
 
-import { StateHandler, GameState, GameAssets, GameSounds, GameStateType } from '../Game05.types';
+import {
+  StateHandler,
+  GameState,
+  GameAssets,
+  GameSounds,
+  GameStateType,
+  Game05MouseBackendExtra,
+} from '../Game05.types';
 import {
   drawFarBackground,
   drawTreeLayer,
@@ -83,7 +90,8 @@ export const playingState: StateHandler = {
     state: GameState,
     dt: number,
     assets: GameAssets,
-    sounds: GameSounds | null
+    sounds: GameSounds | null,
+    mouseBackend?: Game05MouseBackendExtra
   ): GameStateType | null => {
     // 스크롤
     state.scrollX += TREE_SPEED * dt;
@@ -145,12 +153,14 @@ export const playingState: StateHandler = {
         if (enemy.isFriend) {
           state.hp = Math.min(MAX_HP, state.hp + 1);
           state.friendOkTimer = FRIEND_OK_DURATION;
+          mouseBackend?.onFriendHeal?.();
           if (sounds) playSfx(sounds.energySfx);
         } else {
           state.hp = Math.max(0, state.hp - 1);
           state.damageShakeTimer = DAMAGE_SHAKE_DURATION;
           state.damageRedTimer = DAMAGE_RED_DURATION;
           state.heroHitTimer = HERO_HIT_DURATION;
+          mouseBackend?.onHitJudgment?.();
           if (sounds) playSfx(sounds.heroHitSfx);
         }
       }
@@ -212,7 +222,8 @@ export function checkAttackHit(
   state: GameState,
   assets: GameAssets,
   sounds: GameSounds | null,
-  hitSfxIndex: { current: number }
+  hitSfxIndex: { current: number },
+  options?: Game05MouseBackendExtra
 ): void {
   if (state.attackHitProcessed) return;
   for (const enemy of state.enemies) {
@@ -224,6 +235,7 @@ export function checkAttackHit(
     if (enemy.x - eHalfW < state.charX + HIT_RANGE && enemy.x > state.charX - 80) {
       enemy.alive = false;
       state.attackHitProcessed = true;
+      options?.onHitJudgment?.();
       if (enemy.isFriend) {
         state.hp = Math.max(0, state.hp - 1);
         state.damageShakeTimer = DAMAGE_SHAKE_DURATION;

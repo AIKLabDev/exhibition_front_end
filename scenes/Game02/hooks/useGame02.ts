@@ -245,6 +245,13 @@ export function useGame02(
     }
   }, [state]);
 
+  // Fix 모드: 「찾아라!」3초 안내(ANNOUNCING) 시작 시 백엔드가 그리드 (-1,-1)로 로봇 이동
+  useEffect(() => {
+    if (state !== Game02State.ANNOUNCING) return;
+    if (GAME02_VIEW_MODE !== 'fix') return;
+    backendWsService.sendCommand(UIEventName.GAME02_FIX_PLAY_VIEW_READY, {});
+  }, [state]);
+
   // PLAYING일 때만 타이머 진행. PAUSE 오버레이 표시 중에는 멈춤 (Game04처럼)
   useEffect(() => {
     if (state === Game02State.PLAYING && !pauseOverlayVisible) {

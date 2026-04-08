@@ -24,12 +24,14 @@ const Welcome: React.FC<WelcomeProps> = ({ onStart, text: _sceneText, showGreeti
 
   const [phraseIndex, setPhraseIndex] = useState(0);
 
+  // 인사 오버레이(showGreeting) 중에는 회전 문구를 그리지 않으므로 타이머도 멈춤
   useEffect(() => {
+    if (showGreeting) return;
     const id = window.setInterval(() => {
       setPhraseIndex((i) => (i + 1) % PHRASES.length);
     }, PHRASE_INTERVAL_MS);
     return () => clearInterval(id);
-  }, []);
+  }, [showGreeting]);
 
   const current = PHRASES[phraseIndex];
 
@@ -60,14 +62,16 @@ const Welcome: React.FC<WelcomeProps> = ({ onStart, text: _sceneText, showGreeti
         </div>
       )}
 
-      <div className="welcome-phrase-stage" aria-live="polite">
-        <p
-          key={phraseIndex}
-          className={`welcome-phrase-line${current.accent ? ' welcome-phrase-line--accent' : ''}`}
-        >
-          {current.text}
-        </p>
-      </div>
+      {!showGreeting && (
+        <div className="welcome-phrase-stage" aria-live="polite">
+          <p
+            key={phraseIndex}
+            className={`welcome-phrase-line${current.accent ? ' welcome-phrase-line--accent' : ''}`}
+          >
+            {current.text}
+          </p>
+        </div>
+      )}
     </div>
   );
 };
