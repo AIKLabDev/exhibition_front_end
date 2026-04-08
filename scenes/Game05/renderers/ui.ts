@@ -57,23 +57,27 @@ export function drawTimer(
 export function drawTitle(
   ctx: CanvasRenderingContext2D,
   assets: GameAssets,
-  state: GameState,
-  dt: number,
+  _state: GameState,
+  _dt: number,
   W: number,
-  H: number
+  H: number,
+  countdownSeconds: number
 ): void {
   if (!assets.titleImg?.naturalWidth) return;
   ctx.imageSmoothingEnabled = true;
   ctx.drawImage(assets.titleImg, 0, 0, W, H);
-  state.titleBlinkTimer += dt;
-  if (Math.floor(state.titleBlinkTimer * 2.5) % 2 === 0) {
+  // 예전 PRESS START와 동일 위치(H-25 부근)에 타이틀 이미지 위로 덧그리기 (별도 검은 영역 없음)
+  if (countdownSeconds > 0) {
+    ctx.save();
     ctx.fillStyle = '#fff';
-    ctx.font = 'bold 14px monospace';
+    ctx.font = `bold ${Math.min(32, Math.floor(H * 0.28))}px monospace`;
     ctx.textAlign = 'center';
-    ctx.shadowColor = '#000';
-    ctx.shadowBlur = 4;
-    ctx.fillText('PRESS START', W / 2, H - 25);
-    ctx.shadowBlur = 0;
+    ctx.textBaseline = 'bottom';
+    ctx.shadowColor = 'rgba(0,0,0,0.85)';
+    ctx.shadowBlur = 8;
+    ctx.shadowOffsetY = 2;
+    ctx.fillText(String(countdownSeconds), W / 2, H - 14);
+    ctx.restore();
   }
 }
 

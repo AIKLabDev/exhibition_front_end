@@ -21,8 +21,8 @@ import { useGameStartCountdown } from '../../hooks/useGameStartCountdown';
 import { getVisionWsService } from '../../services/visionWebSocketService';
 import { backendWsService } from '../../services/backendWebSocketService';
 import { UIEventName } from '../../protocol';
-import ruleBgImg from '../../images/Game05 Rule.png';
 import './Game05.css';
+import { game05TitleCountdownRef } from './titleCountdownBridge';
 
 function createInitialState(): GameState {
   return {
@@ -86,8 +86,6 @@ const Game05: React.FC<Game05Props> = ({
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [gameStateUI, setGameStateUI] = useState<GameStateType>('title');
-  /** 캔버스 표시 스케일 (object-fit contain). Rule 화면 PRESS START를 타이틀과 동일 크기로 쓰기 위함 */
-  const [canvasScale, setCanvasScale] = useState(1);
 
   // 상태 전환 함수
   const changeState = useCallback((newState: GameStateType) => {
@@ -151,21 +149,29 @@ const Game05: React.FC<Game05Props> = ({
     checkAttackHit(s, assets, sounds, hitSfxIndexRef, getMouseBackendExtra());
   }, [getMouseBackendExtra]);
 
-  // 게임 시작 (타이틀 터치/클릭 또는 백엔드 GAME_START 시 호출)
+  // 게임 시작 (타이틀 카운트다운 종료 또는 백엔드 GAME_START 시 호출)
   const startGame = useCallback(() => {
     resetGame();
     changeState('playing');
   }, [resetGame, changeState]);
 
-  // 타이틀/규칙 또는 결과 화면에서 백엔드 GAME_START 시 시작/재시작 (3판 진행 시 재시작 포함)
-  const game05StartableStates: readonly GameStateType[] = ['title', 'rule', 'result'];
+  // 타이틀 또는 결과 화면에서 백엔드 GAME_START 시 시작/재시작 (3판 진행 시 재시작 포함)
+  const game05StartableStates: readonly GameStateType[] = ['title', 'result'];
   useGameStartFromBackend(triggerStartFromBackend, startGame, {
     onlyWhen: () => isStartableState(gameStateUI, game05StartableStates),
   });
 
   useResetResultReportRefWhenEnteringRound(gameStateUI === 'playing', resultReportedRef);
 
-  const ruleCountdownSeconds = useGameStartCountdown(startGame, gameStateUI === 'rule');
+  const titleCountdownSeconds = useGameStartCountdown(
+    startGame,
+    gameStateUI === 'title' && !loading
+  );
+
+  useEffect(() => {
+    game05TitleCountdownRef.current =
+      gameStateUI === 'title' && !loading ? titleCountdownSeconds : 0;
+  }, [gameStateUI, loading, titleCountdownSeconds]);
 
   // Vision 모드: Python GAME05_ATTACK 수신 시 공격만 실행 (이벤트성, data 무시)
   useEffect(() => {
@@ -182,21 +188,19 @@ const Game05: React.FC<Game05Props> = ({
     };
   }, [forceInputMode, startAttack]);
 
-  // 입력 처리 (타이틀: rule로 / 규칙: 카운트다운 자동 시작 / 플레이 중: 공격)
+  // 입력 처리 (플레이 중 mouse 모드만 공격; 타이틀은 카운트다운 후 자동 시작)
   const handleInput = useCallback(
     (e?: React.MouseEvent | React.TouchEvent | KeyboardEvent) => {
       e?.preventDefault();
       const s = stateRef.current;
-      if (s.gameState === 'title') {
-        changeState('rule');
-      } else if (s.gameState === 'playing' && forceInputMode === 'mouse') {
+      if (s.gameState === 'playing' && forceInputMode === 'mouse') {
         startAttack();
       }
     },
-    [changeState, startAttack, forceInputMode]
+    [startAttack, forceInputMode]
   );
 
-  // 재시작 (result → 바로 본게임). win/defeat 후 다시시작 시 Rule·title 없이 즉시 playing
+  // 재시작 (result → 바로 본게임). win/defeat 후 다시시작 시 타이틀 없이 즉시 playing
   const handleRestart = useCallback(() => {
     const sounds = soundsRef.current;
     if (sounds) {
@@ -280,21 +284,6 @@ const Game05: React.FC<Game05Props> = ({
     return () => cancelAnimationFrame(rafId);
   }, [loading, loadError, onGameResult, changeState, getMouseBackendExtra]);
 
-  // 캔버스 표시 크기 측정 → Rule 화면 PRESS START를 타이틀(14px 캔버스 픽셀)과 동일 시각 크기로
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const measure = () => {
-      const rect = canvas.getBoundingClientRect();
-      const scale = Math.min(rect.width / W, rect.height / H);
-      setCanvasScale(scale);
-    };
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(canvas);
-    return () => ro.disconnect();
-  }, [loading]);
-
   // 키보드 이벤트
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => handleInput(e);
@@ -338,25 +327,10 @@ const Game05: React.FC<Game05Props> = ({
         tabIndex={0}
         aria-label="게임 입력"
       />
-      {/* 규칙 화면: title 터치 후 표시. 카운트다운 후 자동으로 본게임 시작 */}
-      {gameStateUI === 'rule' && (
-        <div
-          className="absolute inset-0 z-20 flex flex-col items-center justify-end pointer-events-none select-none bg-cover bg-center bg-no-repeat"
-          style={{ backgroundImage: `url(${ruleBgImg})` }}
-          aria-live="polite"
-          aria-label={`게임 시작까지 ${ruleCountdownSeconds}초`}
-        >
-          <span
-            className="text-white font-black text-center tabular-nums"
-            style={{
-              fontSize: `${Math.max(10 * canvasScale, 48)}px`,
-              textShadow: '0 0 8px #000, 0 4px 24px rgba(0,0,0,0.85)',
-              paddingBottom: `${10 * canvasScale}px`,
-            }}
-          >
-            {ruleCountdownSeconds}
-          </span>
-        </div>
+      {gameStateUI === 'title' && !loading && (
+        <span className="sr-only" aria-live="polite">
+          게임 시작까지 {titleCountdownSeconds}초
+        </span>
       )}
       {gameStateUI === 'result' && !hideResultRestart && (
         <div className="absolute inset-0 z-20 flex items-end justify-center pb-8 pointer-events-none">
