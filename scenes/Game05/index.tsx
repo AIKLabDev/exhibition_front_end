@@ -245,7 +245,7 @@ const Game05: React.FC<Game05Props> = ({
         // 결과 보고
         if (nextState === 'result' && !resultReportedRef.current && onGameResult) {
           resultReportedRef.current = true;
-          onGameResult(state.resultType === 'win' ? 'WIN' : 'LOSE');
+          onGameResult(state.resultType === 'win' ? 'WIN' : 'LOSE', state.score);
         }
       }
 

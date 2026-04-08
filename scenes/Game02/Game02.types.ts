@@ -21,7 +21,8 @@ export interface GameScenario {
 }
 
 export interface Game02Props {
-  onGameResult: (result: 'WIN' | 'LOSE') => void;
+  /** 종료 시 남은 제한시간(초). App이 백엔드 GAME_RESULT에 remainingTime으로 전달 */
+  onGameResult: (result: 'WIN' | 'LOSE', remainingTimeSeconds: number) => void;
   /** 백엔드 GAME_START 수신 시 App이 증가시켜 전달. 0 → N 되면 버튼 없이 게임 시작 */
   triggerStartFromBackend?: number;
   /** 체인 모드: GAME02_IDLE 직후 호출 → App이 GAME02_CHAIN_ROUND_END 전송 여부 결정 */

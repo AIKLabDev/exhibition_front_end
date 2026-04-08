@@ -389,12 +389,12 @@ const Game04: React.FC<Game04Props> = ({
     getVisionWsService().sendGame04MainGameStart();
   }, []);
 
-  // 게임 종료 시 한 번만 백엔드에 전달
+  // 게임 종료 시 한 번만 App → 백엔드 GAME_RESULT(점수 포함)
   useEffect(() => {
     if (!gameOver || resultReportedRef.current || !onGameResult) return;
     resultReportedRef.current = true;
-    onGameResult(isVictory ? 'WIN' : 'LOSE');
-  }, [gameOver, isVictory, onGameResult]);
+    onGameResult(isVictory ? 'WIN' : 'LOSE', finalScore);
+  }, [gameOver, isVictory, onGameResult, finalScore]);
 
   const hudFontSize = Math.round(20 * scaleH);
   const timerFontSize = Math.round(140 * scaleH);

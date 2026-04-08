@@ -42,7 +42,7 @@ const DEFAULT_CENTER_TOP_LEFT = {
 };
 
 export function useGame02(
-  onGameResult: (result: 'WIN' | 'LOSE') => void,
+  onGameResult: (result: 'WIN' | 'LOSE', remainingTimeSeconds: number) => void,
   triggerStartFromBackend: number,
   options?: {
     /** 체인 모드에서만 App이 GAME02_CHAIN_ROUND_END 전송 */
@@ -271,14 +271,14 @@ export function useGame02(
       resultReportedRef.current = true;
       backendWsService.sendCommand('GAME02_IDLE', {});
       notifyChainRoundEndIfNeeded?.();
-      onGameResult('WIN');
+      onGameResult('WIN', timeLeft);
     } else if (state === Game02State.FAILURE && !resultReportedRef.current) {
       resultReportedRef.current = true;
       backendWsService.sendCommand('GAME02_IDLE', {});
       notifyChainRoundEndIfNeeded?.();
-      onGameResult('LOSE');
+      onGameResult('LOSE', timeLeft);
     }
-  }, [state, onGameResult, notifyChainRoundEndIfNeeded]);
+  }, [state, timeLeft, onGameResult, notifyChainRoundEndIfNeeded]);
 
   useResetResultReportRefWhenEnteringRound(
     state === Game02State.GENERATING ||
