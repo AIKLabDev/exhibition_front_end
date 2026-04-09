@@ -9,6 +9,7 @@ import { getVisionWsService } from './services/visionWebSocketService';
 import logoUrl from './resources/AIK_logo_white.png';
 import { DEBUG_MODE } from './appConstants';
 import { sceneVoiceService } from './services/sceneVoiceService';
+import { backgroundMusicService } from './services/backgroundMusicService';
 
 // Scenes
 import Welcome from './scenes/Welcome';
@@ -116,6 +117,12 @@ const App: React.FC = () => {
   useEffect(() => {
     sceneVoiceService.applyScene(currentScene);
     return () => sceneVoiceService.stop();
+  }, [currentScene]);
+
+  // 배경 BGM: GAME02/04/05·알 수 없는 씬(Offline) 제외, 나머지 loop (덕킹은 sceneVoiceService)
+  useEffect(() => {
+    backgroundMusicService.updateScene(currentScene);
+    return () => backgroundMusicService.stop();
   }, [currentScene]);
 
   // Python(Vision) 연결 상태 구독

@@ -5,6 +5,7 @@
 
 import { SceneDefine } from '../protocol';
 import { WELCOME_VOICE_GAP_MS } from '../appConstants';
+import { backgroundMusicService } from './backgroundMusicService';
 
 type VoiceMode = 'loop' | 'once' | 'welcome_gap';
 
@@ -51,6 +52,7 @@ class SceneVoiceService {
   stop(): void {
     this.stopPlaybackOnly();
     this.activeScene = null;
+    backgroundMusicService.setVoiceDucking(false);
   }
 
   /**
@@ -61,19 +63,25 @@ class SceneVoiceService {
     this.activeScene = scene;
 
     const cfg = SCENE_VOICE[scene];
-    if (!cfg) return;
+    if (!cfg) {
+      backgroundMusicService.setVoiceDucking(false);
+      return;
+    }
 
     const el = this.ensureAudio();
 
     if (cfg.mode === 'welcome_gap') {
+      backgroundMusicService.setVoiceDucking(true);
       el.src = cfg.path;
       el.loop = false;
       el.load();
       el.onended = () => {
+        backgroundMusicService.setVoiceDucking(false);
         if (this.activeScene !== SceneDefine.WELCOME) return;
         this.welcomeGapTimer = setTimeout(() => {
           this.welcomeGapTimer = null;
           if (this.activeScene !== SceneDefine.WELCOME) return;
+          backgroundMusicService.setVoiceDucking(true);
           el.currentTime = 0;
           el.play().catch(() => {});
         }, WELCOME_VOICE_GAP_MS);
@@ -82,7 +90,14 @@ class SceneVoiceService {
       return;
     }
 
-    el.onended = null;
+    backgroundMusicService.setVoiceDucking(true);
+    if (cfg.mode === 'once') {
+      el.onended = () => {
+        backgroundMusicService.setVoiceDucking(false);
+      };
+    } else {
+      el.onended = null;
+    }
     el.src = cfg.path;
     el.loop = cfg.mode === 'loop';
     el.load();
