@@ -17,6 +17,7 @@ import {
   VIEW_MM_DEADZONE,
   VIEW_POSE_SMOOTH_ALPHA,
   VIEW_POSE_STALE_MS,
+  WRONG_CLICK_MARKER_MS,
 } from '../constants';
 import { generateLocalGameScenario } from '../localScenarioService';
 import { backendWsService } from '../../../services/backendWebSocketService';
@@ -73,6 +74,8 @@ export function useGame02(
   const [pauseOverlayVisible, setPauseOverlayVisible] = useState(false);
   const [rockProgress, setRockProgress] = useState(0); // 0~100, Python GAME02_PROGRESS_ANSWER
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  /** 브라우저 setTimeout id (Node Timeout 타입과 구분) */
+  const lastClickClearTimeoutRef = useRef<number | null>(null);
   const resultReportedRef = useRef(false);
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const prevRockProgressRef = useRef(0);
@@ -122,6 +125,15 @@ export function useGame02(
     moved: false,
   });
 
+  const clearLastClickFeedbackTimer = useCallback(() => {
+    if (lastClickClearTimeoutRef.current !== null) {
+      clearTimeout(lastClickClearTimeoutRef.current);
+      lastClickClearTimeoutRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => () => clearLastClickFeedbackTimer(), [clearLastClickFeedbackTimer]);
+
   const viewPoseRef = useRef<{
     X: number;
     Y: number;
@@ -149,6 +161,7 @@ export function useGame02(
     state === Game02State.FAILURE;
 
   const startGame = useCallback(async () => {
+    clearLastClickFeedbackTimer();
     getVisionWsService().sendGame02MainGameStart();
     setState(Game02State.GENERATING);
     setLastClick(null);
@@ -169,7 +182,7 @@ export function useGame02(
       setGenerationError(normalizeError(error));
       setState(Game02State.INTRO);
     }
-  }, [centerTopLeft]);
+  }, [centerTopLeft, clearLastClickFeedbackTimer]);
 
   const onIntroStartClick = useCallback(() => {
     startGame();
@@ -178,8 +191,9 @@ export function useGame02(
   useEffect(() => {
     if (!scenario) return;
     setViewTopLeft(centerTopLeft);
+    clearLastClickFeedbackTimer();
     setLastClick(null);
-  }, [centerTopLeft, scenario]);
+  }, [centerTopLeft, scenario, clearLastClickFeedbackTimer]);
 
   useEffect(() => {
     const el = viewportRef.current;
@@ -397,21 +411,35 @@ export function useGame02(
       const x01 = (clientX - rect.left) / rect.width;
       const y01 = (clientY - rect.top) / rect.height;
       if (x01 < 0 || x01 > 1 || y01 < 0 || y01 > 1) return;
-      setLastClick({ x: x01, y: y01 });
+      clearLastClickFeedbackTimer();
       const xFull = viewTopLeft.x + x01 * viewWindow.w;
       const yFull = viewTopLeft.y + y01 * viewWindow.h;
       const success = isClickOnTarget(scenario, xFull, yFull);
       if (success) {
+        setLastClick(null);
         playGame02Sfx('success');
         setState(Game02State.SUCCESS);
         confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
       } else {
+        setLastClick({ x: x01, y: y01 });
         playGame02Sfx('failure');
         setReasoning('거기가 아닙니다!');
         setTimeout(() => setReasoning(''), 2000);
+        lastClickClearTimeoutRef.current = window.setTimeout(() => {
+          lastClickClearTimeoutRef.current = null;
+          setLastClick(null);
+        }, WRONG_CLICK_MARKER_MS);
       }
     },
-    [scenario, state, viewTopLeft.x, viewTopLeft.y, viewWindow.h, viewWindow.w]
+    [
+      scenario,
+      state,
+      viewTopLeft.x,
+      viewTopLeft.y,
+      viewWindow.h,
+      viewWindow.w,
+      clearLastClickFeedbackTimer,
+    ]
   );
 
   const onViewportPointerDown = useCallback(
@@ -427,9 +455,10 @@ export function useGame02(
       dragRef.current.startTopLeftX = viewTopLeft.x;
       dragRef.current.startTopLeftY = viewTopLeft.y;
       dragRef.current.moved = false;
+      clearLastClickFeedbackTimer();
       setLastClick(null);
     },
-    [state, scenario, viewTopLeft.x, viewTopLeft.y]
+    [state, scenario, viewTopLeft.x, viewTopLeft.y, clearLastClickFeedbackTimer]
   );
 
   const onViewportPointerMove = useCallback(

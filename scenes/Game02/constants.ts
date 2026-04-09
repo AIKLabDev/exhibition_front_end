@@ -15,6 +15,9 @@ export const GAME_TIME_LIMIT = 90;
 // Announcing screen duration in milliseconds
 export const ANNOUNCING_DURATION = 3000;
 
+// 오답 터치 마커(흰 원) 표시 시간(ms) — 이후 자동 제거
+export const WRONG_CLICK_MARKER_MS = 1000;
+
 // Click tolerance padding (percentage of box size)
 export const CLICK_PADDING_RATIO = 0.6;
 export const CLICK_PADDING_MIN = 20;
