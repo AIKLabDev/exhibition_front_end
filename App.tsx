@@ -8,6 +8,7 @@ import { backend2WsService } from './services/backend2WebSocketService';
 import { getVisionWsService } from './services/visionWebSocketService';
 import logoUrl from './resources/AIK_logo_white.png';
 import { DEBUG_MODE } from './appConstants';
+import { sceneVoiceService } from './services/sceneVoiceService';
 
 // Scenes
 import Welcome from './scenes/Welcome';
@@ -110,6 +111,12 @@ const App: React.FC = () => {
   useEffect(() => {
     getVisionWsService().connect().catch(() => { });
   }, []);
+
+  // 씬별 안내 음성(WAV): 진입 시 재생, 다른 씬으로 나가면 즉시 정지
+  useEffect(() => {
+    sceneVoiceService.applyScene(currentScene);
+    return () => sceneVoiceService.stop();
+  }, [currentScene]);
 
   // Python(Vision) 연결 상태 구독
   useEffect(() => {
