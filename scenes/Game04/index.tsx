@@ -15,6 +15,8 @@ import { getVisionWsService } from '../../services/visionWebSocketService';
 import { BackendMessageName, UIEventName } from '../../protocol';
 import { useGameStartFromBackend, useResetResultReportRefWhenEnteringRound } from '../../hooks/useGameStartFromBackend';
 import { useGameStartCountdown } from '../../hooks/useGameStartCountdown';
+import { GameTutorialVideoOverlay } from '../../components/GameTutorialVideoOverlay';
+import { TUTORIAL_VIDEO_URLS } from '../../appConstants';
 import ruleBgImg from '../../images/Game04 Title.png';
 import './Game04.css';
 
@@ -25,9 +27,9 @@ const MOUSE_YAW_RAD = (AIM_HALF_DEG * Math.PI) / 180;
 const MOUSE_PITCH_RAD = ((AIM_HALF_DEG * 0.7) * Math.PI) / 180;
 const RADAR_ANGLE_HALF_RAD = (RADAR_ANGLE_DEGREES / 2) * (Math.PI / 180);
 
-/** 룰 화면: 카운트다운 후 startGame (Press Start 터치 제거) */
-const Game04RuleOverlay: React.FC<{ startGame: () => void }> = ({ startGame }) => {
-  const secondsLeft = useGameStartCountdown(startGame, true);
+/** 룰 화면: 카운트다운 후 튜토리얼 단계로 전환 (Press Start 터치 제거) */
+const Game04RuleOverlay: React.FC<{ onCountdownDone: () => void }> = ({ onCountdownDone }) => {
+  const secondsLeft = useGameStartCountdown(onCountdownDone, true);
   return (
     <div className="absolute inset-0 z-30 flex flex-col">
       <div
@@ -168,6 +170,7 @@ const Game04: React.FC<Game04Props> = ({
   const [headshotPopups, setHeadshotPopups] = useState<HeadshotPopup[]>([]);
   const resultReportedRef = useRef(false);
   const [pauseOverlayVisible, setPauseOverlayVisible] = useState(false);
+  const [preGamePhase, setPreGamePhase] = useState<'countdown' | 'tutorial'>('countdown');
 
   const headRotationRef = useRef({ yaw: 0, pitch: 0 });
   const bossWarningTimerRef = useRef<number | null>(null);
@@ -570,7 +573,12 @@ const Game04: React.FC<Game04Props> = ({
         </div>
       )}
 
-      {!gameStarted && !gameOver && <Game04RuleOverlay startGame={startGame} />}
+      {!gameStarted && !gameOver && preGamePhase === 'countdown' && (
+        <Game04RuleOverlay onCountdownDone={() => setPreGamePhase('tutorial')} />
+      )}
+      {!gameStarted && !gameOver && preGamePhase === 'tutorial' && (
+        <GameTutorialVideoOverlay src={TUTORIAL_VIDEO_URLS.game04} onEnded={startGame} />
+      )}
 
       {gameOver && (
         <div className={`absolute inset-0 z-30 flex flex-col justify-center backdrop-blur-md text-white ${isVictory ? 'bg-green-900/90' : 'bg-red-900/90'}`}>

@@ -1,5 +1,5 @@
 /**
- * Game02 인트로 화면: 룰 배경 + GAME_START_COUNTDOWN 카운트다운 후 게임 시작 + 에러 표시
+ * Game02 인트로 화면: 룰 배경 + GAME_START_COUNTDOWN 카운트다운 후 onStart(튜토리얼 단계로 전환) + 에러 표시
  */
 
 import React from 'react';

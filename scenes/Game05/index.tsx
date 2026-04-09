@@ -18,6 +18,8 @@ import { initSounds, playSfx, stopAllSounds } from './sounds';
 import { stateHandlers, checkAttackHit } from './states';
 import { useGameStartFromBackend, isStartableState, useResetResultReportRefWhenEnteringRound } from '../../hooks/useGameStartFromBackend';
 import { useGameStartCountdown } from '../../hooks/useGameStartCountdown';
+import { GameTutorialVideoOverlay } from '../../components/GameTutorialVideoOverlay';
+import { TUTORIAL_VIDEO_URLS } from '../../appConstants';
 import { getVisionWsService } from '../../services/visionWebSocketService';
 import { backendWsService } from '../../services/backendWebSocketService';
 import { UIEventName } from '../../protocol';
@@ -86,6 +88,7 @@ const Game05: React.FC<Game05Props> = ({
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [gameStateUI, setGameStateUI] = useState<GameStateType>('title');
+  const [titlePhase, setTitlePhase] = useState<'countdown' | 'tutorial'>('countdown');
 
   // 상태 전환 함수
   const changeState = useCallback((newState: GameStateType) => {
@@ -164,14 +167,16 @@ const Game05: React.FC<Game05Props> = ({
   useResetResultReportRefWhenEnteringRound(gameStateUI === 'playing', resultReportedRef);
 
   const titleCountdownSeconds = useGameStartCountdown(
-    startGame,
-    gameStateUI === 'title' && !loading
+    () => setTitlePhase('tutorial'),
+    gameStateUI === 'title' && !loading && titlePhase === 'countdown'
   );
 
   useEffect(() => {
     game05TitleCountdownRef.current =
-      gameStateUI === 'title' && !loading ? titleCountdownSeconds : 0;
-  }, [gameStateUI, loading, titleCountdownSeconds]);
+      gameStateUI === 'title' && !loading && titlePhase === 'countdown'
+        ? titleCountdownSeconds
+        : 0;
+  }, [gameStateUI, loading, titleCountdownSeconds, titlePhase]);
 
   // Vision 모드: Python GAME05_ATTACK 수신 시 공격만 실행 (이벤트성, data 무시)
   useEffect(() => {
@@ -327,10 +332,13 @@ const Game05: React.FC<Game05Props> = ({
         tabIndex={0}
         aria-label="게임 입력"
       />
-      {gameStateUI === 'title' && !loading && (
+      {gameStateUI === 'title' && !loading && titlePhase === 'countdown' && (
         <span className="sr-only" aria-live="polite">
           게임 시작까지 {titleCountdownSeconds}초
         </span>
+      )}
+      {gameStateUI === 'title' && !loading && titlePhase === 'tutorial' && (
+        <GameTutorialVideoOverlay src={TUTORIAL_VIDEO_URLS.game05} onEnded={startGame} />
       )}
       {gameStateUI === 'result' && !hideResultRestart && (
         <div className="absolute inset-0 z-20 flex items-end justify-center pb-8 pointer-events-none">

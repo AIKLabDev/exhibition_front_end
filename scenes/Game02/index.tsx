@@ -9,9 +9,11 @@
  * 구조: useGame02 훅(상태/효과/핸들러) + 화면별 컴포넌트(Intro, Generating, Announcing, Play)
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Game02State, Game02Props } from './Game02.types';
 import { useGame02 } from './hooks/useGame02';
+import { GameTutorialVideoOverlay } from '../../components/GameTutorialVideoOverlay';
+import { TUTORIAL_VIDEO_URLS } from '../../appConstants';
 import {
   Game02Intro,
   Game02Generating,
@@ -54,6 +56,12 @@ const Game02: React.FC<Game02Props> = ({
     rockProgress,
   } = useGame02(onGameResult, triggerStartFromBackend);
 
+  const [introPhase, setIntroPhase] = useState<'countdown' | 'tutorial'>('countdown');
+
+  useEffect(() => {
+    if (state === Game02State.INTRO) setIntroPhase('countdown');
+  }, [state]);
+
   useEffect(() => {
     const audio = new Audio(GAME02_BGM_URL);
     audio.loop = true;
@@ -94,10 +102,17 @@ const Game02: React.FC<Game02Props> = ({
         </div>
       )}
 
-      {state === Game02State.INTRO && (
+      {state === Game02State.INTRO && introPhase === 'countdown' && (
         <Game02Intro
-          onStart={onIntroStartClick}
+          onStart={() => setIntroPhase('tutorial')}
           generationError={generationError}
+        />
+      )}
+
+      {state === Game02State.INTRO && introPhase === 'tutorial' && (
+        <GameTutorialVideoOverlay
+          src={TUTORIAL_VIDEO_URLS.game02}
+          onEnded={onIntroStartClick}
         />
       )}
 
