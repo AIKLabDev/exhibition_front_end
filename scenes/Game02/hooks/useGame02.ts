@@ -41,6 +41,21 @@ const DEFAULT_CENTER_TOP_LEFT = {
   y: (1 - 1 / VIEW_ZOOM) / 2,
 };
 
+/** public/sounds/game02/ — 정답/오답 1회 효과음 (BGM과 별도 인스턴스) */
+const GAME02_SFX = {
+  success: '/sounds/game02/success.wav',
+  failure: '/sounds/game02/failure.wav',
+} as const;
+
+function playGame02Sfx(kind: keyof typeof GAME02_SFX): void {
+  try {
+    const audio = new Audio(GAME02_SFX[kind]);
+    audio.play().catch(() => {});
+  } catch {
+    /* ignore */
+  }
+}
+
 export function useGame02(
   onGameResult: (result: 'WIN' | 'LOSE', score: number) => void,
   triggerStartFromBackend: number
@@ -209,9 +224,11 @@ export function useGame02(
         if (s && vt && vw) {
           const hit = isViewContainingTarget(s, vt, vw);
           if (hit) {
+            playGame02Sfx('success');
             setState(Game02State.SUCCESS);
             confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
           } else {
+            playGame02Sfx('failure');
             setReasoning('거기가 아닙니다!');
             setTimeout(() => setReasoning(''), 2000);
           }
@@ -254,6 +271,7 @@ export function useGame02(
         setTimeLeft((prev) => {
           if (prev <= 1) {
             if (timerRef.current) clearInterval(timerRef.current);
+            playGame02Sfx('failure');
             setState(Game02State.FAILURE);
             return 0;
           }
@@ -384,9 +402,11 @@ export function useGame02(
       const yFull = viewTopLeft.y + y01 * viewWindow.h;
       const success = isClickOnTarget(scenario, xFull, yFull);
       if (success) {
+        playGame02Sfx('success');
         setState(Game02State.SUCCESS);
         confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
       } else {
+        playGame02Sfx('failure');
         setReasoning('거기가 아닙니다!');
         setTimeout(() => setReasoning(''), 2000);
       }

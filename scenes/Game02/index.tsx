@@ -9,7 +9,7 @@
  * 구조: useGame02 훅(상태/효과/핸들러) + 화면별 컴포넌트(Intro, Generating, Announcing, Play)
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Game02State, Game02Props } from './Game02.types';
 import { useGame02 } from './hooks/useGame02';
 import {
@@ -19,6 +19,11 @@ import {
   Game02Play,
 } from './screens';
 import './Game02.css';
+
+/** public/sounds/game02/background.mp3 — 씬 전용 loop BGM */
+const GAME02_BGM_URL = '/sounds/game02/background.mp3';
+/** 0~1, 필요 시 여기만 조절 */
+const GAME02_BGM_VOLUME = 0.7;
 
 const Game02: React.FC<Game02Props> = ({
   onGameResult,
@@ -48,6 +53,22 @@ const Game02: React.FC<Game02Props> = ({
     handlePauseCancel,
     rockProgress,
   } = useGame02(onGameResult, triggerStartFromBackend);
+
+  useEffect(() => {
+    const audio = new Audio(GAME02_BGM_URL);
+    audio.loop = true;
+    audio.preload = 'auto';
+    audio.volume = GAME02_BGM_VOLUME;
+    audio.play().catch((err) => {
+      console.warn('[Game02] background BGM play failed:', err);
+    });
+    return () => {
+      audio.pause();
+      audio.currentTime = 0;
+      audio.removeAttribute('src');
+      audio.load();
+    };
+  }, []);
 
   return (
     <div
