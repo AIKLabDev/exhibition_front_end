@@ -15,7 +15,7 @@ import { getVisionWsService } from '../../services/visionWebSocketService';
 import { BackendMessageName, UIEventName } from '../../protocol';
 import { useGameStartFromBackend, useResetResultReportRefWhenEnteringRound } from '../../hooks/useGameStartFromBackend';
 import { useGameStartCountdown } from '../../hooks/useGameStartCountdown';
-import ruleBgImg from '../../images/Game04 Rule.png';
+import ruleBgImg from '../../images/Game04 Title.png';
 import './Game04.css';
 
 const BASE_WIDTH = 2560;

@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import ruleBgImg from '../../../images/Game02 Rule.png';
+import ruleBgImg from '../../../images/Game02 Title.png';
 import { useGameStartCountdown } from '../../../hooks/useGameStartCountdown';
 
 export interface Game02IntroProps {
