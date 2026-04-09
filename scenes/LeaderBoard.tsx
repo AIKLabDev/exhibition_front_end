@@ -18,7 +18,7 @@ export type LeaderBoardGameType = 'game02' | 'game04' | 'game05';
 
 export interface LeaderBoardProps {
   gameType: LeaderBoardGameType;
-  /** onGameResult에서 받은 내 점수. game02는 남은 시간(초), game04/05는 포인트 */
+  /** onGameResult에서 받은 내 점수. game02는 남은 제한시간(초, GAME_RESULT의 score), game04/05는 포인트 */
   myScore: number;
   /** Python GAME_ID로 수신한 플레이어 식별자. 없으면 'YOU' */
   myGameId: string;

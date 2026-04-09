@@ -13,6 +13,4 @@ export interface Game04Props {
   triggerStartFromBackend?: number;
   /** 체인 모드 등: 결과 화면에서 "다시 시작" 숨김(자동 다음 씬만 사용) */
   hideResultRestart?: boolean;
-  /** 체인 모드: handleGameOver에서 GAME04_IDLE 직후 호출 → GAME04_CHAIN_ROUND_END 전송 */
-  notifyChainRoundEndIfNeeded?: () => void;
 }

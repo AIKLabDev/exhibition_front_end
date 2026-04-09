@@ -279,19 +279,22 @@ const App: React.FC = () => {
     backendWsService.sendCommand(name, data);
   }, []);
 
-  /** 체인 세션일 때만 백엔드에 GAME02_CHAIN_ROUND_END (로봇 ref 이동용) */
-  const notifyGame02ChainRoundEndIfNeeded = useCallback(() => {
-    if (minigameChainActiveRef.current) {
-      backendWsService.sendCommand('GAME02_CHAIN_ROUND_END' as UIEventName, {});
-    }
-  }, []);
-
-  /** 체인 세션일 때만 백엔드에 GAME04_CHAIN_ROUND_END */
-  const notifyGame04ChainRoundEndIfNeeded = useCallback(() => {
-    if (minigameChainActiveRef.current) {
-      backendWsService.sendCommand('GAME04_CHAIN_ROUND_END' as UIEventName, {});
-    }
-  }, []);
+  /** 체인 세션일 때만 라운드 종료 + 해당 게임 GAME_RESULT를 같은 타이밍에 전송 */
+  const sendChainRoundEndWithResultIfNeeded = useCallback(
+    (scene: 'GAME02' | 'GAME04' | 'GAME05', result: 'WIN' | 'LOSE', score: number) => {
+      if (!minigameChainActiveRef.current) return;
+      const roundEndNameByScene: Record<'GAME02' | 'GAME04' | 'GAME05', UIEventName> = {
+        GAME02: 'GAME02_CHAIN_ROUND_END' as UIEventName,
+        GAME04: 'GAME04_CHAIN_ROUND_END' as UIEventName,
+        GAME05: 'GAME05_CHAIN_ROUND_END' as UIEventName,
+      };
+      handleUIEvent(roundEndNameByScene[scene], {});
+      if (sendGameResultMessage) {
+        handleUIEvent('GAME_RESULT', { game: scene, result, score });
+      }
+    },
+    [sendGameResultMessage, handleUIEvent]
+  );
 
   /** 체인: 타이머(또는 리더보드 3초) 후 실제 백엔드 요청 */
   const executeMinigameChainAdvance = useCallback((sceneWhenScheduled: SceneDefine) => {
@@ -425,17 +428,17 @@ const App: React.FC = () => {
       case SceneDefine.GAME02:
         return (
           <Game02
-            onGameResult={(result, remainingTime) => {
-              if (openChainLeaderboardIfNeeded('game02', remainingTime)) return;
+            onGameResult={(result, score) => {
+              sendChainRoundEndWithResultIfNeeded('GAME02', result, score);
+              if (openChainLeaderboardIfNeeded('game02', score)) return;
               setLeaderboardOverlay({
                 mode: 'solo',
                 gameType: 'game02',
-                myScore: remainingTime,
-                pendingResult: () => sendGameResult({ result, remainingTime }),
+                myScore: score,
+                pendingResult: () => sendGameResult({ result, score }),
               });
             }}
             triggerStartFromBackend={gameStartTrigger}
-            notifyChainRoundEndIfNeeded={notifyGame02ChainRoundEndIfNeeded}
           />
         );
       case SceneDefine.GAME03:
@@ -453,6 +456,7 @@ const App: React.FC = () => {
           <Game04
             inputMode={game04InputMode}
             onGameResult={(result, score) => {
+              sendChainRoundEndWithResultIfNeeded('GAME04', result, score);
               if (openChainLeaderboardIfNeeded('game04', score)) return;
               setLeaderboardOverlay({
                 mode: 'solo',
@@ -463,7 +467,6 @@ const App: React.FC = () => {
             }}
             triggerStartFromBackend={gameStartTrigger}
             hideResultRestart={hideChainResultRestart}
-            notifyChainRoundEndIfNeeded={notifyGame04ChainRoundEndIfNeeded}
           />
         );
       case SceneDefine.GAME05:
@@ -471,6 +474,7 @@ const App: React.FC = () => {
           <Game05
             inputMode={game05InputMode}
             onGameResult={(result, score) => {
+              sendChainRoundEndWithResultIfNeeded('GAME05', result, score);
               if (openChainLeaderboardIfNeeded('game05', score)) return;
               setLeaderboardOverlay({
                 mode: 'solo',

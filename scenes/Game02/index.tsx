@@ -23,7 +23,6 @@ import './Game02.css';
 const Game02: React.FC<Game02Props> = ({
   onGameResult,
   triggerStartFromBackend = 0,
-  notifyChainRoundEndIfNeeded,
 }) => {
   const {
     state,
@@ -48,7 +47,7 @@ const Game02: React.FC<Game02Props> = ({
     pauseOverlayVisible,
     handlePauseCancel,
     rockProgress,
-  } = useGame02(onGameResult, triggerStartFromBackend, { notifyChainRoundEndIfNeeded });
+  } = useGame02(onGameResult, triggerStartFromBackend);
 
   return (
     <div

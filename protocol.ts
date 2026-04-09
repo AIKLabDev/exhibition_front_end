@@ -113,6 +113,8 @@ export const UIEventName = {
   GAME04_CHAIN_ROUND_START: 'GAME04_CHAIN_ROUND_START',
   /** 체인: GAME04→GAME05 전환 직후(Python sendScene과 동시). Exhibition SET_SCENE GAME05 */
   GAME05_CHAIN_ROUND_START: 'GAME05_CHAIN_ROUND_START',
+  /** Game05: 미니게임 체인 중 한 판 종료 직후. Exhibition에서 라운드 종료 후속 처리 */
+  GAME05_CHAIN_ROUND_END: 'GAME05_CHAIN_ROUND_END',
   /** Game05: mouse(터치) 모드에서 공격 판정 또는 주인공 피격(적 충돌·친구 오공격). Exhibition 연동용 */
   GAME05_MOUSE_ATTACK_EVENT: 'GAME05_MOUSE_ATTACK_EVENT',
   /** Game05: mouse(터치) 모드에서 친구(공주) 충돌로 체력 회복 시. Exhibition 연동용 */
