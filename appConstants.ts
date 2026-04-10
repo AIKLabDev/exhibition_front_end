@@ -6,7 +6,7 @@
 export const DEBUG_MODE = false;
 
 /** 튜토리얼(룰) 화면에서 본게임(또는 Game02 생성) 시작 전 카운트다운 초 수 (예: 5 → 5,4,3,2,1 표시 후 시작) */
-export const GAME_START_COUNTDOWN = 5;
+export const GAME_START_COUNTDOWN = 2;
 
 /**
  * 프로젝트 루트 `movie/*.mp4` — dev/빌드 시 `/movie`로 제공 (vite.config movie-static 플러그인)
