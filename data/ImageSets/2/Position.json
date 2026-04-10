@@ -1,10 +1,10 @@
 {
   "targetBox": [
-    734,
-    588,
-    865,
-    647
+    811,
+    427,
+    834,
+    450
   ],
-  "theme": "우주 정거장 내부(패널/케이블/모듈/로봇팔) / vintage storybook linework with rich shading / golden hour sunlight with complex shadows",
-  "targetObject": "초소형 로봇 장난감(손톱 크기)"
+  "theme": "불러온 이미지",
+  "targetObject": "불러온 이미지"
 }
