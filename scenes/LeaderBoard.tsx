@@ -110,7 +110,19 @@ function buildDisplayRows(
       merged.push({ ...meRow, rank: displayRank });
     }
 
-    return merged.slice(0, 10);
+    const topSlice = merged.slice(0, 10);
+    // 역대 데이터가 적을 때도 좌 5 / 우 5 슬롯을 항상 채워 패널 높이 유지
+    const emptySlot: DisplayRow = {
+      rank: 0,
+      game_id: '',
+      score: 0,
+      isMe: false,
+      isSeparator: false,
+    };
+    while (topSlice.length < 10) {
+      topSlice.push({ ...emptySlot });
+    }
+    return topSlice;
   } else {
     // 역대 8위까지 + 구분선 + 내 행 = 10슬롯
     const top8 = sorted.slice(0, 8).map((e, i) => ({
