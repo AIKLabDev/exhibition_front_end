@@ -15,6 +15,8 @@ export interface Game05Props {
   inputMode?: Game05InputMode;
   /** 체인 모드 등: 결과 화면에서 "다시 시작" 숨김(자동 다음 씬만 사용) */
   hideResultRestart?: boolean;
+  /** 백엔드 GAME_TOP_SCORE로 수신한 역대 최고 점수(포인트). 현재 점수가 초과하면 신기록 효과 표시 */
+  topScore?: number;
 }
 
 // ── 게임 상태 타입 ──

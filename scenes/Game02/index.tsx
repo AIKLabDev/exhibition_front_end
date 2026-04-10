@@ -9,7 +9,7 @@
  * 구조: useGame02 훅(상태/효과/핸들러) + 화면별 컴포넌트(Intro, Generating, Announcing, Play)
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Game02State, Game02Props } from './Game02.types';
 import { useGame02 } from './hooks/useGame02';
 import { GameTutorialVideoOverlay } from '../../components/GameTutorialVideoOverlay';
@@ -30,6 +30,7 @@ const GAME02_BGM_VOLUME = 0.7;
 const Game02: React.FC<Game02Props> = ({
   onGameResult,
   triggerStartFromBackend = 0,
+  topScore,
 }) => {
   const {
     state,
@@ -54,7 +55,28 @@ const Game02: React.FC<Game02Props> = ({
     pauseOverlayVisible,
     handlePauseCancel,
     rockProgress,
-  } = useGame02(onGameResult, triggerStartFromBackend);
+    newRecord,
+  } = useGame02(onGameResult, triggerStartFromBackend, topScore);
+
+  // 신기록 배너: 3초 후 자동 숨김
+  const [newRecordVisible, setNewRecordVisible] = React.useState(false);
+  const [newRecordExiting, setNewRecordExiting] = React.useState(false);
+  const newRecordTimerRef = React.useRef<number | null>(null);
+
+  React.useEffect(() => {
+    if (!newRecord) return;
+    setNewRecordVisible(true);
+    setNewRecordExiting(false);
+    if (newRecordTimerRef.current) clearTimeout(newRecordTimerRef.current);
+    // 2.5초 후 퇴장 애니메이션 시작, 0.4초 후 숨김
+    newRecordTimerRef.current = window.setTimeout(() => {
+      setNewRecordExiting(true);
+      newRecordTimerRef.current = window.setTimeout(() => setNewRecordVisible(false), 400);
+    }, 2500);
+    return () => {
+      if (newRecordTimerRef.current) clearTimeout(newRecordTimerRef.current);
+    };
+  }, [newRecord]);
 
   const [introPhase, setIntroPhase] = useState<'countdown' | 'tutorial'>('countdown');
 
@@ -84,6 +106,32 @@ const Game02: React.FC<Game02Props> = ({
         isGameScreen ? 'flex flex-row' : 'flex flex-col items-center justify-center p-4'
       }`}
     >
+      {/* 신기록 배너: SUCCESS 시 topScore 초과한 경우 표시 */}
+      {newRecordVisible && (
+        <div className="absolute inset-x-0 top-6 z-50 flex justify-center pointer-events-none">
+          <div
+            className={`new-record-banner${newRecordExiting ? ' exiting' : ''} flex items-center gap-4 px-10 py-4 rounded-2xl border-2 border-yellow-400/80`}
+            style={{
+              background: 'linear-gradient(135deg, rgba(120,53,15,0.95) 0%, rgba(180,83,9,0.95) 50%, rgba(120,53,15,0.95) 100%)',
+            }}
+          >
+            <span style={{ fontSize: '2.4rem' }}>★</span>
+            <div className="flex flex-col items-center">
+              <span
+                className="new-record-shimmer-text font-black tracking-widest uppercase"
+                style={{ fontSize: '2rem', letterSpacing: '0.15em' }}
+              >
+                NEW RECORD!
+              </span>
+              <span className="text-yellow-200 font-bold text-sm tracking-wider mt-0.5">
+                신기록 달성!
+              </span>
+            </div>
+            <span style={{ fontSize: '2.4rem' }}>★</span>
+          </div>
+        </div>
+      )}
+
       {/* PAUSE 오버레이: Python에서 GAME02_PAUSE 수신 시 표시, 터치로 해제 */}
       {pauseOverlayVisible && (
         <div

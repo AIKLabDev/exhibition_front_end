@@ -22,6 +22,7 @@ export type {
   VisionMessageTypeValue,
   VisionSketchResultData,
   VisionMachiningCompleteData,
+  BackendGameTopScoreData,
 } from './protocol';
 
 /** 연결 상태 (프로토콜이 아닌 UI/상태용) */

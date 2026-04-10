@@ -153,6 +153,7 @@ const Game04: React.FC<Game04Props> = ({
   inputMode: forceInputMode,
   triggerStartFromBackend = 0,
   hideResultRestart = false,
+  topScore,
 }) => {
   const [gameStarted, setGameStarted] = useState(false);
   const [gameOver, setGameOver] = useState(false);
@@ -171,6 +172,13 @@ const Game04: React.FC<Game04Props> = ({
   const resultReportedRef = useRef(false);
   const [pauseOverlayVisible, setPauseOverlayVisible] = useState(false);
   const [preGamePhase, setPreGamePhase] = useState<'countdown' | 'tutorial'>('countdown');
+  /** 신기록 배너 표시 상태 */
+  const [newRecord, setNewRecord] = useState(false);
+  const [newRecordExiting, setNewRecordExiting] = useState(false);
+  const newRecordTriggeredRef = useRef(false);
+  const newRecordTimerRef = useRef<number | null>(null);
+  const topScoreRef = useRef(topScore);
+  topScoreRef.current = topScore;
 
   const headRotationRef = useRef({ yaw: 0, pitch: 0 });
   const bossWarningTimerRef = useRef<number | null>(null);
@@ -213,7 +221,24 @@ const Game04: React.FC<Game04Props> = ({
   useEffect(() => {
     scoreRef.current = score;
   }, [score]);
-  
+
+  // 게임 중 점수가 역대 최고 점수를 처음 초과하면 신기록 배너 표시
+  useEffect(() => {
+    if (!gameStarted || newRecordTriggeredRef.current) return;
+    if (topScoreRef.current === undefined) return;
+    if (score > topScoreRef.current) {
+      newRecordTriggeredRef.current = true;
+      setNewRecord(true);
+      setNewRecordExiting(false);
+      if (newRecordTimerRef.current) clearTimeout(newRecordTimerRef.current);
+      newRecordTimerRef.current = window.setTimeout(() => {
+        setNewRecordExiting(true);
+        newRecordTimerRef.current = window.setTimeout(() => setNewRecord(false), 400);
+      }, 2500);
+      console.log('[Game04] 신기록 달성! score:', score, '> topScore:', topScoreRef.current);
+    }
+  }, [score, gameStarted]);
+
   // Python Vision WebSocket: GAME04_PAUSE 수신 시 PAUSE 오버레이 표시 + 백엔드에 GAME04_PAUSE 전달
   useEffect(() => {
     const unsubscribe = getVisionWsService().onGame04Pause(() => {
@@ -287,6 +312,11 @@ const Game04: React.FC<Game04Props> = ({
   const startGame = useCallback(() => {
     clearBossWarningTimer();
     clearHeadshotPopups();
+    // 새 판 시작 시 신기록 상태 초기화
+    newRecordTriggeredRef.current = false;
+    setNewRecord(false);
+    setNewRecordExiting(false);
+    if (newRecordTimerRef.current) { clearTimeout(newRecordTimerRef.current); newRecordTimerRef.current = null; }
     roundActiveRef.current = true;
     healthRef.current = PLAYER_MAX_HEALTH;
     scoreRef.current = 0;
@@ -434,6 +464,32 @@ const Game04: React.FC<Game04Props> = ({
 
   return (
     <div className="relative w-full h-full bg-black overflow-hidden select-none">
+      {/* 신기록 배너: 게임 중 topScore 초과 시 표시 */}
+      {newRecord && (
+        <div className="absolute inset-x-0 top-6 z-50 flex justify-center pointer-events-none">
+          <div
+            className={`new-record-banner${newRecordExiting ? ' exiting' : ''} flex items-center gap-4 px-10 py-4 rounded-2xl border-2 border-yellow-400/80`}
+            style={{
+              background: 'linear-gradient(135deg, rgba(120,53,15,0.95) 0%, rgba(180,83,9,0.95) 50%, rgba(120,53,15,0.95) 100%)',
+            }}
+          >
+            <span style={{ fontSize: '2.4rem' }}>★</span>
+            <div className="flex flex-col items-center">
+              <span
+                className="new-record-shimmer-text font-black tracking-widest uppercase"
+                style={{ fontSize: '2rem', letterSpacing: '0.15em' }}
+              >
+                NEW RECORD!
+              </span>
+              <span className="text-yellow-200 font-bold text-sm tracking-wider mt-0.5">
+                신기록 달성!
+              </span>
+            </div>
+            <span style={{ fontSize: '2.4rem' }}>★</span>
+          </div>
+        </div>
+      )}
+
       {/* PAUSE 오버레이: Python에서 GAME04_PAUSE 수신 시 표시, 터치로 해제 */}
       {pauseOverlayVisible && (
         <div

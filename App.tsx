@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { SceneDefine, WSMessageV2, ConnectionStatus, UIEventName, BackendMessageName, Backend2MessageName, SceneData, ProgressData } from './types';
-import type { BackendGameStartData } from './types';
+import type { BackendGameStartData, BackendGameTopScoreData } from './types';
 import type { Backend2StyleSelectedData } from './types';
 import { backendWsService } from './services/backendWebSocketService';
 import { backend2WsService } from './services/backend2WebSocketService';
@@ -71,6 +71,8 @@ const App: React.FC = () => {
   const [chainSessionTotalRounds, setChainSessionTotalRounds] = useState(1);
   /** Python GAME_ID로 수신한 현재 플레이어 식별자 (리더보드 표시용) */
   const [currentGameId, setCurrentGameId] = useState<string>('');
+  /** GAME_TOP_SCORE로 수신한 게임별 역대 최고 점수. 키는 소문자 gameId (예: "game02") */
+  const [topScores, setTopScores] = useState<Record<string, number>>({});
   /** 리더보드 오버레이. 체인: 자동 3초 후 닫힘 + 체인 진행. 비체인: 탭으로만 닫고 GAME_RESULT */
   const [leaderboardOverlay, setLeaderboardOverlay] = useState<
     | {
@@ -203,6 +205,13 @@ const App: React.FC = () => {
           backend2WsService.sendCommand(Backend2MessageName.LASER_WORK_STANDBY, data ?? {});
           console.log('[App] LASER_WORK_STANDBY from Exhibition → forwarded to Backend2 (laser)');
           break;
+        case BackendMessageName.GAME_TOP_SCORE: {
+          const { gameId, topScore } = data as BackendGameTopScoreData;
+          const key = gameId.toLowerCase();
+          setTopScores(prev => ({ ...prev, [key]: topScore }));
+          console.log('[App] GAME_TOP_SCORE:', gameId, '→', topScore);
+          break;
+        }
       }
     });
 
@@ -453,6 +462,7 @@ const App: React.FC = () => {
               });
             }}
             triggerStartFromBackend={gameStartTrigger}
+            topScore={topScores['game02']}
           />
         );
       case SceneDefine.GAME03:
@@ -481,6 +491,7 @@ const App: React.FC = () => {
             }}
             triggerStartFromBackend={gameStartTrigger}
             hideResultRestart={hideChainResultRestart}
+            topScore={topScores['game04']}
           />
         );
       case SceneDefine.GAME05:
@@ -499,6 +510,7 @@ const App: React.FC = () => {
             }}
             triggerStartFromBackend={gameStartTrigger}
             hideResultRestart={hideChainResultRestart}
+            topScore={topScores['game05']}
           />
         );
       case SceneDefine.GAME_RESULT:

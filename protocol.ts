@@ -70,6 +70,8 @@ export const BackendMessageName = {
   QR_DUPLICATED: 'QR_DUPLICATED',
   /** 레이저 작업 대기(스탠바이) Frontend에서 Backend2(레이저)로 전달 */
   LASER_WORK_STANDBY: 'LASER_WORK_STANDBY',
+  /** 게임별 역대 최고 점수 전송. data: { gameId, topScore }. 씬 진입 시 또는 점수 갱신 시 백엔드가 전송 */
+  GAME_TOP_SCORE: 'GAME_TOP_SCORE',
 } as const;
 export type BackendMessageNameType = (typeof BackendMessageName)[keyof typeof BackendMessageName];
 
@@ -173,6 +175,14 @@ export interface SceneData {
 export interface ProgressData {
   value: number;
   label?: string;
+}
+
+/** Backend → Frontend: GAME_TOP_SCORE 의 data. 게임별 역대 최고 점수 */
+export interface BackendGameTopScoreData {
+  /** 게임 식별자 (예: "game02", "game04", "game05"). 소문자 비교 권장 */
+  gameId: string;
+  /** 역대 최고 점수. game02=남은 시간(초), game04/05=포인트 */
+  topScore: number;
 }
 
 /** Backend → Frontend: GAME_START 의 data (Exhibition sendGameStart) */

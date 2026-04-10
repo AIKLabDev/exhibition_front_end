@@ -51,7 +51,7 @@ const GAME02_SFX = {
 function playGame02Sfx(kind: keyof typeof GAME02_SFX): void {
   try {
     const audio = new Audio(GAME02_SFX[kind]);
-    audio.play().catch(() => {});
+    audio.play().catch(() => { });
   } catch {
     /* ignore */
   }
@@ -59,7 +59,8 @@ function playGame02Sfx(kind: keyof typeof GAME02_SFX): void {
 
 export function useGame02(
   onGameResult: (result: 'WIN' | 'LOSE', score: number) => void,
-  triggerStartFromBackend: number
+  triggerStartFromBackend: number,
+  topScore?: number
 ) {
   const [state, setState] = useState<Game02State>(Game02State.INTRO);
   const [scenario, setScenario] = useState<GameScenario | null>(null);
@@ -73,6 +74,9 @@ export function useGame02(
   const [lastClick, setLastClick] = useState<{ x: number; y: number } | null>(null);
   const [pauseOverlayVisible, setPauseOverlayVisible] = useState(false);
   const [rockProgress, setRockProgress] = useState(0); // 0~100, Python GAME02_PROGRESS_ANSWER
+  /** 이번 판에서 역대 최고 점수를 갱신하면 true → 신기록 배너 표시 */
+  const [newRecord, setNewRecord] = useState(false);
+  const newRecordTriggeredRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   /** 브라우저 setTimeout id (Node Timeout 타입과 구분) */
   const lastClickClearTimeoutRef = useRef<number | null>(null);
@@ -162,6 +166,9 @@ export function useGame02(
 
   const startGame = useCallback(async () => {
     clearLastClickFeedbackTimer();
+    // 새 판 시작 시 신기록 상태 초기화
+    newRecordTriggeredRef.current = false;
+    setNewRecord(false);
     getVisionWsService().sendGame02MainGameStart();
     setState(Game02State.GENERATING);
     setLastClick(null);
@@ -311,6 +318,20 @@ export function useGame02(
       onGameResult('LOSE', timeLeft);
     }
   }, [state, timeLeft, onGameResult]);
+
+  // 성공 시 남은 시간이 역대 최고 점수를 초과하면 신기록 배너 표시
+  useEffect(() => {
+    if (
+      state === Game02State.SUCCESS &&
+      !newRecordTriggeredRef.current &&
+      topScore !== undefined &&
+      timeLeft > topScore
+    ) {
+      newRecordTriggeredRef.current = true;
+      setNewRecord(true);
+      console.log('[Game02] 신기록 달성! timeLeft:', timeLeft, '> topScore:', topScore);
+    }
+  }, [state, timeLeft, topScore]);
 
   useResetResultReportRefWhenEnteringRound(
     state === Game02State.GENERATING ||
@@ -534,5 +555,6 @@ export function useGame02(
     pauseOverlayVisible,
     handlePauseCancel,
     rockProgress,
+    newRecord,
   };
 }

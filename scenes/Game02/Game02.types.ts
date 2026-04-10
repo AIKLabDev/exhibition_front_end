@@ -25,6 +25,8 @@ export interface Game02Props {
   onGameResult: (result: 'WIN' | 'LOSE', score: number) => void;
   /** 백엔드 GAME_START 수신 시 App이 증가시켜 전달. 0 → N 되면 버튼 없이 게임 시작 */
   triggerStartFromBackend?: number;
+  /** 백엔드 GAME_TOP_SCORE로 수신한 역대 최고 점수(남은 시간 초). 현재 점수가 초과하면 신기록 효과 표시 */
+  topScore?: number;
 }
 
 export interface VerificationResult {
