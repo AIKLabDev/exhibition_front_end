@@ -5,9 +5,9 @@
  *           우측에 안내+카운트다운 패널을 absolute 오버레이.
  * 카메라는 object-contain으로 잘림 없이 전체가 보인다.
  *
- * 흐름: countdown(5→1) → awaiting_sketch(SKETCH_CAPTURE) →
- *       성공 시 flash + FACE_CAPTURE_COMPLETED → done → App이 SKETCH_RESULT로 LASER_STYLE 전환.
- *       Python이 NO_LOCKED_FACE면 붉은 플래시 후 카운트다운 5초 재시작(SKETCH_RESULT success:false).
+ * 흐름: countdown(5→1) → 0초 시 flash.wav 1회 → awaiting_sketch(SKETCH_CAPTURE) →
+ *       성공 시 흰 플래시 + FACE_CAPTURE_COMPLETED → done → App이 SKETCH_RESULT로 LASER_STYLE 전환.
+ *       Python이 NO_LOCKED_FACE면 붉은 플래시 후 capture.wav 1회·카운트다운 5초 재시작(SKETCH_RESULT success:false).
  */
 
 import React, { useEffect, useState, useRef } from 'react';
@@ -22,6 +22,21 @@ type CapturePhase = 'countdown' | 'awaiting_sketch' | 'flash' | 'reject_flash' |
 const COUNTDOWN_START = 5;
 const COUNTDOWN_INTERVAL_MS = 1000;
 const FLASH_DURATION_MS = 350;
+
+/** 카운트다운 5→0 끝나는 순간(촬영 요청 직전) — public/sounds/capture/flash.wav */
+const FLASH_SFX_URL = '/sounds/capture/flash.wav';
+
+/** 실패 후 카운트다운 재시작 시 1회 — public/sounds/capture/capture.wav */
+const CAPTURE_GUIDE_SFX_URL = '/sounds/capture/capture.wav';
+
+function playSfxOnce(url: string): void {
+  try {
+    const audio = new Audio(url);
+    audio.play().catch(() => {});
+  } catch {
+    /* ignore */
+  }
+}
 
 /** 카메라 액자 크기(px). 2560x720 디스플레이 기준으로 여유 있게 배치 */
 const FRAME_WIDTH_PX = 1250;
@@ -55,6 +70,8 @@ const Capture: React.FC = () => {
 
   useEffect(() => {
     if (phase !== 'awaiting_sketch') return;
+    // 카운트다운이 0이 되는 순간(성공/실패와 무관, 매 라운드 동일)
+    playSfxOnce(FLASH_SFX_URL);
     getVisionWsService().sendSketchCapture();
     console.log('[Capture] SKETCH_CAPTURE 전송 (Python SKETCH_RESULT 대기)');
   }, [phase]);
@@ -97,6 +114,7 @@ const Capture: React.FC = () => {
     if (phase !== 'reject_flash') return;
 
     const t = setTimeout(() => {
+      playSfxOnce(CAPTURE_GUIDE_SFX_URL);
       setCount(COUNTDOWN_START);
       setPhase('countdown');
     }, FLASH_DURATION_MS);

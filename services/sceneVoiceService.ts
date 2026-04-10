@@ -10,7 +10,7 @@ import { backgroundMusicService } from './backgroundMusicService';
 type VoiceMode = 'loop' | 'once' | 'welcome_gap';
 
 const SCENE_VOICE: Partial<Record<SceneDefine, { path: string; mode: VoiceMode }>> = {
-  [SceneDefine.CAPTURE]: { path: '/sounds/capture/capture.wav', mode: 'loop' },
+  [SceneDefine.CAPTURE]: { path: '/sounds/capture/capture.wav', mode: 'once' },
   [SceneDefine.FAREWELL]: { path: '/sounds/farewell/farewell.wav', mode: 'loop' },
   [SceneDefine.GAME_COMPLETE]: { path: '/sounds/gamecomplete/gamecomplete.wav', mode: 'once' },
   [SceneDefine.LASER_STYLE]: { path: '/sounds/laserstyle/laserstyle.wav', mode: 'once' },
