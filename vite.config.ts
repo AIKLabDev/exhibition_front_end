@@ -4,27 +4,58 @@ import fs from 'fs';
 import path from 'path';
 
 const LEADERBOARD_DIR = 'C:/Log/exhibition/Visitor';
+const LEADERBOARD_READ_MAX_RETRIES = 3;
+const LEADERBOARD_READ_RETRY_MS = 50;
+
+// Windows SMB oplock / 외부 쓰기 충돌로 readFileSync가 간헐 실패할 수 있어
+// 마지막으로 성공한 JSON을 파일별로 캐시
+const lastGoodCache: Record<string, string> = {};
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function readJsonWithRetry(filepath: string, filename: string): Promise<string | null> {
+  for (let attempt = 1; attempt <= LEADERBOARD_READ_MAX_RETRIES; attempt++) {
+    try {
+      const data = fs.readFileSync(filepath, 'utf-8');
+      JSON.parse(data); // 불완전한 JSON(쓰기 도중 읽힘) 감지
+      lastGoodCache[filename] = data;
+      return data;
+    } catch (err) {
+      console.warn(`[leaderboard] read attempt ${attempt}/${LEADERBOARD_READ_MAX_RETRIES} failed: ${filepath}`, err);
+      if (attempt < LEADERBOARD_READ_MAX_RETRIES) await sleep(LEADERBOARD_READ_RETRY_MS);
+    }
+  }
+  if (lastGoodCache[filename]) {
+    console.warn(`[leaderboard] all retries failed, serving cached data: ${filename}`);
+    return lastGoodCache[filename];
+  }
+  return null;
+}
 
 // C:/Log/exhibition/Visitor/ 경로의 leaderboard JSON 파일을
 // /leaderboard/<filename> URL로 제공하는 Vite 플러그인
 function leaderboardServePlugin() {
   function addMiddleware(server: { middlewares: { use: (path: string, handler: (req: any, res: any, next: () => void) => void) => void } }) {
     server.middlewares.use('/leaderboard', (req: any, res: any, next: () => void) => {
-      const filename = (req.url ?? '/').replace(/^\//, '');
+      const filename = (req.url ?? '/').replace(/^\//, '').split('?')[0];
       if (!filename.endsWith('.json')) {
         next();
         return;
       }
       const filepath = path.join(LEADERBOARD_DIR, filename);
-      try {
-        const data = fs.readFileSync(filepath, 'utf-8');
-        res.setHeader('Content-Type', 'application/json; charset=utf-8');
-        res.setHeader('Access-Control-Allow-Origin', '*');
-        res.end(data);
-      } catch {
-        res.statusCode = 404;
-        res.end(JSON.stringify({ error: 'Not found', path: filepath }));
-      }
+      readJsonWithRetry(filepath, filename).then((data) => {
+        if (data) {
+          res.setHeader('Content-Type', 'application/json; charset=utf-8');
+          res.setHeader('Access-Control-Allow-Origin', '*');
+          res.setHeader('Cache-Control', 'no-store');
+          res.end(data);
+        } else {
+          res.statusCode = 404;
+          res.end(JSON.stringify({ error: 'Not found', path: filepath }));
+        }
+      });
     });
   }
 

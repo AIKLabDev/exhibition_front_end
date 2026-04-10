@@ -161,22 +161,38 @@ const LeaderBoard: React.FC<LeaderBoardProps> = ({
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
-  // leaderboard JSON fetch
+  // leaderboard JSON fetch (재시도 3회, 지수 백오프)
   useEffect(() => {
-    fetch(`/leaderboard/${gameType}_leaderboard.json`)
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json() as Promise<LeaderBoardJson>;
-      })
-      .then((json) => {
-        setEntries(json.entries ?? []);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error('[LeaderBoard] fetch 실패:', err);
-        setFetchError(true);
-        setLoading(false);
-      });
+    let cancelled = false;
+    const MAX_RETRIES = 3;
+    const BASE_DELAY_MS = 300;
+
+    async function load() {
+      for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        try {
+          const url = `/leaderboard/${gameType}_leaderboard.json?t=${Date.now()}`;
+          const res = await fetch(url);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const json: LeaderBoardJson = await res.json();
+          if (cancelled) return;
+          setEntries(json.entries ?? []);
+          setLoading(false);
+          return;
+        } catch (err) {
+          console.warn(`[LeaderBoard] fetch attempt ${attempt}/${MAX_RETRIES} failed:`, err);
+          if (attempt < MAX_RETRIES) {
+            await new Promise((r) => setTimeout(r, BASE_DELAY_MS * attempt));
+          }
+        }
+      }
+      if (cancelled) return;
+      console.error('[LeaderBoard] 모든 재시도 실패');
+      setFetchError(true);
+      setLoading(false);
+    }
+
+    load();
+    return () => { cancelled = true; };
   }, [gameType]);
 
   // 체인: N초 카운트다운 후 자동 onClose (App hold와 동일). 비체인(null): 타이머 없음
