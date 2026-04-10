@@ -68,3 +68,73 @@
 .animate-scale-in {
   animation: scale-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
+
+/* ── 신기록 배너 (Game02 / Game04 / Game05 공용) ─────────────────────────── */
+@keyframes new-record-enter {
+  0% {
+    transform: translateY(-40px) scale(0.7);
+    opacity: 0;
+  }
+  55% {
+    transform: translateY(6px) scale(1.06);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes new-record-exit {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-20px) scale(0.9);
+    opacity: 0;
+  }
+}
+
+@keyframes new-record-shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+@keyframes new-record-glow-pulse {
+  0%, 100% {
+    box-shadow: 0 0 30px rgba(250, 204, 21, 0.6), 0 0 60px rgba(250, 204, 21, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 50px rgba(250, 204, 21, 0.9), 0 0 100px rgba(250, 204, 21, 0.5);
+  }
+}
+
+.new-record-banner {
+  animation: new-record-enter 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards,
+             new-record-glow-pulse 1s ease-in-out infinite;
+}
+
+.new-record-banner.exiting {
+  animation: new-record-exit 0.4s ease-in forwards;
+}
+
+.new-record-shimmer-text {
+  background: linear-gradient(
+    90deg,
+    #fbbf24 0%,
+    #fef3c7 25%,
+    #f59e0b 50%,
+    #fef3c7 75%,
+    #fbbf24 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: new-record-shimmer 1.5s linear infinite;
+}
