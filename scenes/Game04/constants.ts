@@ -25,7 +25,7 @@ export const RADAR_ANGLE_DEGREES = 180;
  * - 머리/마우스 조준: 이 각도(±절반)로 제한
  * - 좀비 스폰: 정면 이 각도 안에서만 생성
  */
-export const PLAYER_VIEW_ANGLE_DEGREES = 70;
+export const PLAYER_VIEW_ANGLE_DEGREES = 80;
 
 /** Game04 UI 문자열 — 수정 시 이 객체만 편집 */
 export const GAME04_STRINGS = {

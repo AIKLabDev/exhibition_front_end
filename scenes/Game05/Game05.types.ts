@@ -7,17 +7,20 @@
 export type Game05InputMode = 'mouse' | 'vision';
 
 export interface Game05Props {
-  onGameResult?: (result: 'WIN' | 'LOSE') => void;
+  /** 결과 및 최종 점수 → App이 백엔드 GAME_RESULT에 포함 */
+  onGameResult?: (result: 'WIN' | 'LOSE', score: number) => void;
   /** 백엔드 GAME_START 수신 시 App이 증가시켜 전달. 0 → N 되면 버튼 없이 게임 시작 */
   triggerStartFromBackend?: number;
   /** 디버그 UI에서 지정 시 강제 입력 모드. mouse=클릭/키보드, vision=Python GAME05_ATTACK 수신 시 공격 */
   inputMode?: Game05InputMode;
   /** 체인 모드 등: 결과 화면에서 "다시 시작" 숨김(자동 다음 씬만 사용) */
   hideResultRestart?: boolean;
+  /** 백엔드 GAME_TOP_SCORE로 수신한 역대 최고 점수(포인트). 현재 점수가 초과하면 신기록 효과 표시 */
+  topScore?: number;
 }
 
 // ── 게임 상태 타입 ──
-export type GameStateType = 'title' | 'rule' | 'playing' | 'victory' | 'defeat' | 'result';
+export type GameStateType = 'title' | 'playing' | 'victory' | 'defeat' | 'result';
 
 // ── 적/친구 엔티티 ──
 export interface EnemyLike {
@@ -114,11 +117,23 @@ export interface GameAssets {
   groundImg: HTMLImageElement;
 }
 
+/** mouse 모드일 때만 Game05 index에서 주입 (ATTACK: 공격·피격 / HEAL: 친구·체력 회복) */
+export type Game05MouseBackendExtra = {
+  onHitJudgment?: () => void;
+  onFriendHeal?: () => void;
+};
+
 // ── State Handler 인터페이스 ──
 export interface StateHandler {
   onEnter?: (state: GameState, sounds: GameSounds | null) => void;
   onExit?: (state: GameState, sounds: GameSounds | null) => void;
-  update: (state: GameState, dt: number, assets: GameAssets, sounds: GameSounds | null) => GameStateType | null;
+  update: (
+    state: GameState,
+    dt: number,
+    assets: GameAssets,
+    sounds: GameSounds | null,
+    mouseBackend?: Game05MouseBackendExtra
+  ) => GameStateType | null;
   render: (state: GameState, ctx: CanvasRenderingContext2D, assets: GameAssets, W: number, H: number) => void;
 }
 

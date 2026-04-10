@@ -2,8 +2,16 @@
  * Title 상태 핸들러
  */
 
-import { StateHandler, GameState, GameAssets, GameSounds, GameStateType } from '../Game05.types';
+import {
+  StateHandler,
+  GameState,
+  GameAssets,
+  GameSounds,
+  GameStateType,
+  Game05MouseBackendExtra,
+} from '../Game05.types';
 import { drawTitle } from '../renderers';
+import { game05TitleCountdownRef } from '../titleCountdownBridge';
 
 export const titleState: StateHandler = {
   onEnter: (_state: GameState, sounds: GameSounds | null) => {
@@ -19,12 +27,11 @@ export const titleState: StateHandler = {
     }
   },
 
-  update: (state: GameState, _dt: number): GameStateType | null => {
-    // titleBlinkTimer는 render에서 업데이트
+  update: (state: GameState, _dt: number, _assets: GameAssets, _sounds: GameSounds | null, _mouse?: Game05MouseBackendExtra): GameStateType | null => {
     return null;
   },
 
   render: (state: GameState, ctx: CanvasRenderingContext2D, assets: GameAssets, W: number, H: number) => {
-    drawTitle(ctx, assets, state, 0.016, W, H); // dt는 근사값 사용
+    drawTitle(ctx, assets, state, 0.016, W, H, game05TitleCountdownRef.current);
   },
 };

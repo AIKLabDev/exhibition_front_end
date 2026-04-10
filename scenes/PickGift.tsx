@@ -55,10 +55,10 @@ const PickGift: React.FC<PickGiftProps> = ({ progress, label }) => {
           </div>
         </div>
 
-        {/* Visual Workflow */}
-        <div className="relative h-64 bg-black/40 rounded-[3rem] border-4 border-white/5 flex items-center px-12 overflow-hidden shadow-inner">
+        {/* Visual Workflow — overflow-visible: rotate된 로봇(🦾)·라벨이 잘리지 않음 */}
+        <div className="relative h-64 bg-black/40 rounded-[3rem] border-4 border-white/5 flex items-center pl-12 pr-20 shadow-inner">
           {/* Track Line */}
-          <div className="absolute top-1/2 left-24 right-24 h-2 bg-white/10 -translate-y-1/2" />
+          <div className="absolute top-1/2 left-24 right-32 h-2 bg-white/10 -translate-y-1/2" />
 
           {/* Start Point */}
           <div className={`relative z-10 w-24 h-24 rounded-full flex items-center justify-center border-4 transition-colors ${isPicking ? 'border-blue-500 bg-blue-500' : 'border-blue-500 bg-blue-500/20'}`}>
@@ -68,8 +68,11 @@ const PickGift: React.FC<PickGiftProps> = ({ progress, label }) => {
 
           {/* Robot Arm representation */}
           <div
-            className="absolute top-1/2 -translate-y-1/2 flex items-center transition-all duration-300 ease-out"
-            style={{ left: `calc(6rem + ${progress * (100 - 12)}%)` }}
+            className="absolute top-1/2 -translate-y-1/2 z-[5] flex items-center transition-all duration-300 ease-out pointer-events-none"
+            style={{
+              /* 6rem≈시작 원, 끝에서 배송 원·회전 박스 여유(약 15rem) 빼고 이동 */
+              left: `calc(6rem + (100% - 15rem) * ${progress})`,
+            }}
           >
             <div className="w-20 h-20 bg-blue-600 rounded-2xl flex items-center justify-center shadow-[0_0_30px_rgba(59,130,246,0.5)] rotate-45 border-4 border-white/20">
               <span className="-rotate-45 text-4xl">{ICON_ROBOT}</span>

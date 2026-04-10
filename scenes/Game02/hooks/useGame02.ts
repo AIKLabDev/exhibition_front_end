@@ -17,6 +17,7 @@ import {
   VIEW_MM_DEADZONE,
   VIEW_POSE_SMOOTH_ALPHA,
   VIEW_POSE_STALE_MS,
+  WRONG_CLICK_MARKER_MS,
 } from '../constants';
 import { generateLocalGameScenario } from '../localScenarioService';
 import { backendWsService } from '../../../services/backendWebSocketService';
@@ -41,15 +42,26 @@ const DEFAULT_CENTER_TOP_LEFT = {
   y: (1 - 1 / VIEW_ZOOM) / 2,
 };
 
-export function useGame02(
-  onGameResult: (result: 'WIN' | 'LOSE') => void,
-  triggerStartFromBackend: number,
-  options?: {
-    /** 체인 모드에서만 App이 GAME02_CHAIN_ROUND_END 전송 */
-    notifyChainRoundEndIfNeeded?: () => void;
+/** public/sounds/game02/ — 정답/오답 1회 효과음 (BGM과 별도 인스턴스) */
+const GAME02_SFX = {
+  success: '/sounds/game02/success.wav',
+  failure: '/sounds/game02/failure.wav',
+} as const;
+
+function playGame02Sfx(kind: keyof typeof GAME02_SFX): void {
+  try {
+    const audio = new Audio(GAME02_SFX[kind]);
+    audio.play().catch(() => { });
+  } catch {
+    /* ignore */
   }
+}
+
+export function useGame02(
+  onGameResult: (result: 'WIN' | 'LOSE', score: number) => void,
+  triggerStartFromBackend: number,
+  topScore?: number
 ) {
-  const notifyChainRoundEndIfNeeded = options?.notifyChainRoundEndIfNeeded;
   const [state, setState] = useState<Game02State>(Game02State.INTRO);
   const [scenario, setScenario] = useState<GameScenario | null>(null);
   const [targetCropUrl, setTargetCropUrl] = useState<string | null>(null);
@@ -62,7 +74,12 @@ export function useGame02(
   const [lastClick, setLastClick] = useState<{ x: number; y: number } | null>(null);
   const [pauseOverlayVisible, setPauseOverlayVisible] = useState(false);
   const [rockProgress, setRockProgress] = useState(0); // 0~100, Python GAME02_PROGRESS_ANSWER
+  /** 이번 판에서 역대 최고 점수를 갱신하면 true → 신기록 배너 표시 */
+  const [newRecord, setNewRecord] = useState(false);
+  const newRecordTriggeredRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  /** 브라우저 setTimeout id (Node Timeout 타입과 구분) */
+  const lastClickClearTimeoutRef = useRef<number | null>(null);
   const resultReportedRef = useRef(false);
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const prevRockProgressRef = useRef(0);
@@ -112,6 +129,15 @@ export function useGame02(
     moved: false,
   });
 
+  const clearLastClickFeedbackTimer = useCallback(() => {
+    if (lastClickClearTimeoutRef.current !== null) {
+      clearTimeout(lastClickClearTimeoutRef.current);
+      lastClickClearTimeoutRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => () => clearLastClickFeedbackTimer(), [clearLastClickFeedbackTimer]);
+
   const viewPoseRef = useRef<{
     X: number;
     Y: number;
@@ -139,6 +165,10 @@ export function useGame02(
     state === Game02State.FAILURE;
 
   const startGame = useCallback(async () => {
+    clearLastClickFeedbackTimer();
+    // 새 판 시작 시 신기록 상태 초기화
+    newRecordTriggeredRef.current = false;
+    setNewRecord(false);
     getVisionWsService().sendGame02MainGameStart();
     setState(Game02State.GENERATING);
     setLastClick(null);
@@ -159,7 +189,7 @@ export function useGame02(
       setGenerationError(normalizeError(error));
       setState(Game02State.INTRO);
     }
-  }, [centerTopLeft]);
+  }, [centerTopLeft, clearLastClickFeedbackTimer]);
 
   const onIntroStartClick = useCallback(() => {
     startGame();
@@ -168,8 +198,9 @@ export function useGame02(
   useEffect(() => {
     if (!scenario) return;
     setViewTopLeft(centerTopLeft);
+    clearLastClickFeedbackTimer();
     setLastClick(null);
-  }, [centerTopLeft, scenario]);
+  }, [centerTopLeft, scenario, clearLastClickFeedbackTimer]);
 
   useEffect(() => {
     const el = viewportRef.current;
@@ -214,9 +245,11 @@ export function useGame02(
         if (s && vt && vw) {
           const hit = isViewContainingTarget(s, vt, vw);
           if (hit) {
+            playGame02Sfx('success');
             setState(Game02State.SUCCESS);
             confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
           } else {
+            playGame02Sfx('failure');
             setReasoning('거기가 아닙니다!');
             setTimeout(() => setReasoning(''), 2000);
           }
@@ -245,6 +278,13 @@ export function useGame02(
     }
   }, [state]);
 
+  // Fix 모드: 「찾아라!」3초 안내(ANNOUNCING) 시작 시 백엔드가 그리드 (-1,-1)로 로봇 이동
+  useEffect(() => {
+    if (state !== Game02State.ANNOUNCING) return;
+    if (GAME02_VIEW_MODE !== 'fix') return;
+    backendWsService.sendCommand(UIEventName.GAME02_FIX_PLAY_VIEW_READY, {});
+  }, [state]);
+
   // PLAYING일 때만 타이머 진행. PAUSE 오버레이 표시 중에는 멈춤 (Game04처럼)
   useEffect(() => {
     if (state === Game02State.PLAYING && !pauseOverlayVisible) {
@@ -252,6 +292,7 @@ export function useGame02(
         setTimeLeft((prev) => {
           if (prev <= 1) {
             if (timerRef.current) clearInterval(timerRef.current);
+            playGame02Sfx('failure');
             setState(Game02State.FAILURE);
             return 0;
           }
@@ -270,15 +311,27 @@ export function useGame02(
     if (state === Game02State.SUCCESS && !resultReportedRef.current) {
       resultReportedRef.current = true;
       backendWsService.sendCommand('GAME02_IDLE', {});
-      notifyChainRoundEndIfNeeded?.();
-      onGameResult('WIN');
+      onGameResult('WIN', timeLeft);
     } else if (state === Game02State.FAILURE && !resultReportedRef.current) {
       resultReportedRef.current = true;
       backendWsService.sendCommand('GAME02_IDLE', {});
-      notifyChainRoundEndIfNeeded?.();
-      onGameResult('LOSE');
+      onGameResult('LOSE', timeLeft);
     }
-  }, [state, onGameResult, notifyChainRoundEndIfNeeded]);
+  }, [state, timeLeft, onGameResult]);
+
+  // 성공 시 남은 시간이 역대 최고 점수를 초과하면 신기록 배너 표시
+  useEffect(() => {
+    if (
+      state === Game02State.SUCCESS &&
+      !newRecordTriggeredRef.current &&
+      topScore !== undefined &&
+      timeLeft > topScore
+    ) {
+      newRecordTriggeredRef.current = true;
+      setNewRecord(true);
+      console.log('[Game02] 신기록 달성! timeLeft:', timeLeft, '> topScore:', topScore);
+    }
+  }, [state, timeLeft, topScore]);
 
   useResetResultReportRefWhenEnteringRound(
     state === Game02State.GENERATING ||
@@ -379,19 +432,35 @@ export function useGame02(
       const x01 = (clientX - rect.left) / rect.width;
       const y01 = (clientY - rect.top) / rect.height;
       if (x01 < 0 || x01 > 1 || y01 < 0 || y01 > 1) return;
-      setLastClick({ x: x01, y: y01 });
+      clearLastClickFeedbackTimer();
       const xFull = viewTopLeft.x + x01 * viewWindow.w;
       const yFull = viewTopLeft.y + y01 * viewWindow.h;
       const success = isClickOnTarget(scenario, xFull, yFull);
       if (success) {
+        setLastClick(null);
+        playGame02Sfx('success');
         setState(Game02State.SUCCESS);
         confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
       } else {
+        setLastClick({ x: x01, y: y01 });
+        playGame02Sfx('failure');
         setReasoning('거기가 아닙니다!');
         setTimeout(() => setReasoning(''), 2000);
+        lastClickClearTimeoutRef.current = window.setTimeout(() => {
+          lastClickClearTimeoutRef.current = null;
+          setLastClick(null);
+        }, WRONG_CLICK_MARKER_MS);
       }
     },
-    [scenario, state, viewTopLeft.x, viewTopLeft.y, viewWindow.h, viewWindow.w]
+    [
+      scenario,
+      state,
+      viewTopLeft.x,
+      viewTopLeft.y,
+      viewWindow.h,
+      viewWindow.w,
+      clearLastClickFeedbackTimer,
+    ]
   );
 
   const onViewportPointerDown = useCallback(
@@ -407,9 +476,10 @@ export function useGame02(
       dragRef.current.startTopLeftX = viewTopLeft.x;
       dragRef.current.startTopLeftY = viewTopLeft.y;
       dragRef.current.moved = false;
+      clearLastClickFeedbackTimer();
       setLastClick(null);
     },
-    [state, scenario, viewTopLeft.x, viewTopLeft.y]
+    [state, scenario, viewTopLeft.x, viewTopLeft.y, clearLastClickFeedbackTimer]
   );
 
   const onViewportPointerMove = useCallback(
@@ -485,5 +555,6 @@ export function useGame02(
     pauseOverlayVisible,
     handlePauseCancel,
     rockProgress,
+    newRecord,
   };
 }

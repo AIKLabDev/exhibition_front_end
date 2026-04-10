@@ -4,15 +4,27 @@
  */
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { Game05Props, GameState, GameAssets, GameSounds, GameStateType } from './Game05.types';
+import {
+  Game05Props,
+  GameState,
+  GameAssets,
+  GameSounds,
+  GameStateType,
+  Game05MouseBackendExtra,
+} from './Game05.types';
 import { CHAR_X, MAX_HP, GAME_DURATION, CANVAS_WIDTH as W, CANVAS_HEIGHT as H, ASSET_BASE } from './constants';
 import { loadAllAssets } from './assets';
 import { initSounds, playSfx, stopAllSounds } from './sounds';
 import { stateHandlers, checkAttackHit } from './states';
 import { useGameStartFromBackend, isStartableState, useResetResultReportRefWhenEnteringRound } from '../../hooks/useGameStartFromBackend';
+import { useGameStartCountdown } from '../../hooks/useGameStartCountdown';
+import { GameTutorialVideoOverlay } from '../../components/GameTutorialVideoOverlay';
+import { TUTORIAL_VIDEO_URLS } from '../../appConstants';
 import { getVisionWsService } from '../../services/visionWebSocketService';
-import ruleBgImg from '../../images/Game05 Rule.png';
+import { backendWsService } from '../../services/backendWebSocketService';
+import { UIEventName } from '../../protocol';
 import './Game05.css';
+import { game05TitleCountdownRef } from './titleCountdownBridge';
 
 function createInitialState(): GameState {
   return {
@@ -51,6 +63,7 @@ const Game05: React.FC<Game05Props> = ({
   triggerStartFromBackend = 0,
   inputMode: forceInputMode = 'mouse',
   hideResultRestart = false,
+  topScore,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const assetsRef = useRef<GameAssets | null>(null);
@@ -58,12 +71,33 @@ const Game05: React.FC<Game05Props> = ({
   const stateRef = useRef<GameState>(createInitialState());
   const resultReportedRef = useRef(false);
   const hitSfxIndexRef = useRef(0);
+  const forceInputModeRef = useRef(forceInputMode);
+  forceInputModeRef.current = forceInputMode;
+  /** 역대 최고 점수 ref — 게임루프에서 최신 값 참조 */
+  const topScoreRef = useRef(topScore);
+  topScoreRef.current = topScore;
+  /** 이번 판에서 신기록 이미 발동했는지 여부 */
+  const newRecordTriggeredRef = useRef(false);
+  const [newRecord, setNewRecord] = useState(false);
+  const [newRecordExiting, setNewRecordExiting] = useState(false);
+  const newRecordTimerRef = useRef<number | null>(null);
+
+  const getMouseBackendExtra = useCallback((): Game05MouseBackendExtra | undefined => {
+    if (forceInputModeRef.current !== 'mouse') return undefined;
+    return {
+      onHitJudgment: () => {
+        backendWsService.sendCommand(UIEventName.GAME05_MOUSE_ATTACK_EVENT, {});
+      },
+      onFriendHeal: () => {
+        backendWsService.sendCommand(UIEventName.GAME05_MOUSE_HEAL_EVENT, {});
+      },
+    };
+  }, []);
 
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [gameStateUI, setGameStateUI] = useState<GameStateType>('title');
-  /** 캔버스 표시 스케일 (object-fit contain). Rule 화면 PRESS START를 타이틀과 동일 크기로 쓰기 위함 */
-  const [canvasScale, setCanvasScale] = useState(1);
+  const [titlePhase, setTitlePhase] = useState<'countdown' | 'tutorial'>('countdown');
 
   // 상태 전환 함수
   const changeState = useCallback((newState: GameStateType) => {
@@ -124,22 +158,39 @@ const Game05: React.FC<Game05Props> = ({
       playSfx(sounds.attackSfx);
       playSfx(sounds.attackVoice);
     }
-    checkAttackHit(s, assets, sounds, hitSfxIndexRef);
-  }, []);
+    checkAttackHit(s, assets, sounds, hitSfxIndexRef, getMouseBackendExtra());
+  }, [getMouseBackendExtra]);
 
-  // 게임 시작 (타이틀 터치/클릭 또는 백엔드 GAME_START 시 호출)
+  // 게임 시작 (타이틀 카운트다운 종료 또는 백엔드 GAME_START 시 호출)
   const startGame = useCallback(() => {
     resetGame();
+    // 새 판 시작 시 신기록 상태 초기화
+    newRecordTriggeredRef.current = false;
+    setNewRecord(false);
+    setNewRecordExiting(false);
+    if (newRecordTimerRef.current) { clearTimeout(newRecordTimerRef.current); newRecordTimerRef.current = null; }
     changeState('playing');
   }, [resetGame, changeState]);
 
-  // 타이틀/규칙 또는 결과 화면에서 백엔드 GAME_START 시 시작/재시작 (3판 진행 시 재시작 포함)
-  const game05StartableStates: readonly GameStateType[] = ['title', 'rule', 'result'];
+  // 타이틀 또는 결과 화면에서 백엔드 GAME_START 시 시작/재시작 (3판 진행 시 재시작 포함)
+  const game05StartableStates: readonly GameStateType[] = ['title', 'result'];
   useGameStartFromBackend(triggerStartFromBackend, startGame, {
     onlyWhen: () => isStartableState(gameStateUI, game05StartableStates),
   });
 
   useResetResultReportRefWhenEnteringRound(gameStateUI === 'playing', resultReportedRef);
+
+  const titleCountdownSeconds = useGameStartCountdown(
+    () => setTitlePhase('tutorial'),
+    gameStateUI === 'title' && !loading && titlePhase === 'countdown'
+  );
+
+  useEffect(() => {
+    game05TitleCountdownRef.current =
+      gameStateUI === 'title' && !loading && titlePhase === 'countdown'
+        ? titleCountdownSeconds
+        : 0;
+  }, [gameStateUI, loading, titleCountdownSeconds, titlePhase]);
 
   // Vision 모드: Python GAME05_ATTACK 수신 시 공격만 실행 (이벤트성, data 무시)
   useEffect(() => {
@@ -156,23 +207,19 @@ const Game05: React.FC<Game05Props> = ({
     };
   }, [forceInputMode, startAttack]);
 
-  // 입력 처리 (타이틀: rule로 / 규칙: startGame / 플레이 중: 공격)
+  // 입력 처리 (플레이 중 mouse 모드만 공격; 타이틀은 카운트다운 후 자동 시작)
   const handleInput = useCallback(
     (e?: React.MouseEvent | React.TouchEvent | KeyboardEvent) => {
       e?.preventDefault();
       const s = stateRef.current;
-      if (s.gameState === 'title') {
-        changeState('rule');
-      } else if (s.gameState === 'rule') {
-        startGame();
-      } else if (s.gameState === 'playing' && forceInputMode === 'mouse') {
+      if (s.gameState === 'playing' && forceInputMode === 'mouse') {
         startAttack();
       }
     },
-    [changeState, startGame, startAttack, forceInputMode]
+    [startAttack, forceInputMode]
   );
 
-  // 재시작 (result → 바로 본게임). win/defeat 후 다시시작 시 Rule·title 없이 즉시 playing
+  // 재시작 (result → 바로 본게임). win/defeat 후 다시시작 시 타이틀 없이 즉시 playing
   const handleRestart = useCallback(() => {
     const sounds = soundsRef.current;
     if (sounds) {
@@ -228,16 +275,34 @@ const Game05: React.FC<Game05Props> = ({
       const currentHandler = stateHandlers[state.gameState];
 
       // Update
-      const nextState = currentHandler.update(state, dt, assets, soundsRef.current);
+      const nextState = currentHandler.update(state, dt, assets, soundsRef.current, getMouseBackendExtra());
 
       // Render
       currentHandler.render(state, ctx, assets, W, H);
+
+      // 게임 중 점수가 역대 최고를 처음 초과하면 신기록 배너 발동
+      if (
+        state.gameState === 'playing' &&
+        !newRecordTriggeredRef.current &&
+        topScoreRef.current !== undefined &&
+        state.score > topScoreRef.current
+      ) {
+        newRecordTriggeredRef.current = true;
+        setNewRecord(true);
+        setNewRecordExiting(false);
+        if (newRecordTimerRef.current) clearTimeout(newRecordTimerRef.current);
+        newRecordTimerRef.current = window.setTimeout(() => {
+          setNewRecordExiting(true);
+          newRecordTimerRef.current = window.setTimeout(() => setNewRecord(false), 400);
+        }, 2500);
+        console.log('[Game05] 신기록 달성! score:', state.score, '> topScore:', topScoreRef.current);
+      }
 
       // State Transition
       if (nextState && nextState !== state.gameState) {
         // 공격 히트 체크 (playing 상태에서)
         if (state.gameState === 'playing' && state.isAttacking) {
-          checkAttackHit(state, assets, soundsRef.current, hitSfxIndexRef);
+          checkAttackHit(state, assets, soundsRef.current, hitSfxIndexRef, getMouseBackendExtra());
         }
 
         changeState(nextState);
@@ -245,7 +310,7 @@ const Game05: React.FC<Game05Props> = ({
         // 결과 보고
         if (nextState === 'result' && !resultReportedRef.current && onGameResult) {
           resultReportedRef.current = true;
-          onGameResult(state.resultType === 'win' ? 'WIN' : 'LOSE');
+          onGameResult(state.resultType === 'win' ? 'WIN' : 'LOSE', state.score);
         }
       }
 
@@ -254,22 +319,7 @@ const Game05: React.FC<Game05Props> = ({
 
     rafId = requestAnimationFrame(gameLoop);
     return () => cancelAnimationFrame(rafId);
-  }, [loading, loadError, onGameResult, changeState]);
-
-  // 캔버스 표시 크기 측정 → Rule 화면 PRESS START를 타이틀(14px 캔버스 픽셀)과 동일 시각 크기로
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const measure = () => {
-      const rect = canvas.getBoundingClientRect();
-      const scale = Math.min(rect.width / W, rect.height / H);
-      setCanvasScale(scale);
-    };
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(canvas);
-    return () => ro.disconnect();
-  }, [loading]);
+  }, [loading, loadError, onGameResult, changeState, getMouseBackendExtra]);
 
   // 키보드 이벤트
   useEffect(() => {
@@ -290,6 +340,32 @@ const Game05: React.FC<Game05Props> = ({
 
   return (
     <div className="game05-container relative w-full h-full bg-black select-none">
+      {/* 신기록 배너: 게임 중 topScore 초과 시 표시 */}
+      {newRecord && (
+        <div className="absolute inset-x-0 top-6 z-50 flex justify-center pointer-events-none">
+          <div
+            className={`new-record-banner${newRecordExiting ? ' exiting' : ''} flex items-center gap-4 px-10 py-4 rounded-2xl border-2 border-yellow-400/80`}
+            style={{
+              background: 'linear-gradient(135deg, rgba(120,53,15,0.95) 0%, rgba(180,83,9,0.95) 50%, rgba(120,53,15,0.95) 100%)',
+            }}
+          >
+            <span style={{ fontSize: '2.4rem' }}>★</span>
+            <div className="flex flex-col items-center">
+              <span
+                className="new-record-shimmer-text font-black tracking-widest uppercase"
+                style={{ fontSize: '2rem', letterSpacing: '0.15em' }}
+              >
+                NEW RECORD!
+              </span>
+              <span className="text-yellow-200 font-bold text-sm tracking-wider mt-0.5">
+                신기록 달성!
+              </span>
+            </div>
+            <span style={{ fontSize: '2.4rem' }}>★</span>
+          </div>
+        </div>
+      )}
+
       {loading && (
         <div className="absolute inset-0 flex items-center justify-center text-white font-bold z-10">
           Loading...
@@ -314,35 +390,13 @@ const Game05: React.FC<Game05Props> = ({
         tabIndex={0}
         aria-label="게임 입력"
       />
-      {/* 규칙 화면: title 터치 후 표시. Game05 Rule.png + PRESS START(타이틀과 동일 폰트/점멸). 터치 시 본게임 시작 */}
-      {gameStateUI === 'rule' && (
-        <div
-          className="absolute inset-0 z-20 flex flex-col items-center justify-end cursor-pointer bg-cover bg-center bg-no-repeat"
-          style={{ backgroundImage: `url(${ruleBgImg})` }}
-          onClick={(e) => {
-            e.stopPropagation();
-            startGame();
-          }}
-          onTouchEnd={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            startGame();
-          }}
-          role="button"
-          tabIndex={0}
-          aria-label="PRESS START - 게임 시작"
-        >
-          <span
-            className="game05-rule-press-start text-white text-center"
-            style={{
-              fontSize: `${10 * canvasScale}px`,
-              textShadow: '0 0 4px #000',
-              paddingBottom: `${10 * canvasScale}px`,
-            }}
-          >
-            PRESS START
-          </span>
-        </div>
+      {gameStateUI === 'title' && !loading && titlePhase === 'countdown' && (
+        <span className="sr-only" aria-live="polite">
+          게임 시작까지 {titleCountdownSeconds}초
+        </span>
+      )}
+      {gameStateUI === 'title' && !loading && titlePhase === 'tutorial' && (
+        <GameTutorialVideoOverlay src={TUTORIAL_VIDEO_URLS.game05} onEnded={startGame} />
       )}
       {gameStateUI === 'result' && !hideResultRestart && (
         <div className="absolute inset-0 z-20 flex items-end justify-center pb-8 pointer-events-none">

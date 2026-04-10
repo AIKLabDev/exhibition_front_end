@@ -14,7 +14,10 @@ import { backendWsService } from '../../services/backendWebSocketService';
 import { getVisionWsService } from '../../services/visionWebSocketService';
 import { BackendMessageName, UIEventName } from '../../protocol';
 import { useGameStartFromBackend, useResetResultReportRefWhenEnteringRound } from '../../hooks/useGameStartFromBackend';
-import ruleBgImg from '../../images/Game04 Rule.png';
+import { useGameStartCountdown } from '../../hooks/useGameStartCountdown';
+import { GameTutorialVideoOverlay } from '../../components/GameTutorialVideoOverlay';
+import { TUTORIAL_VIDEO_URLS } from '../../appConstants';
+import ruleBgImg from '../../images/Game04 Title.png';
 import './Game04.css';
 
 const BASE_WIDTH = 2560;
@@ -23,6 +26,35 @@ const AIM_HALF_DEG = PLAYER_VIEW_ANGLE_DEGREES / 2;
 const MOUSE_YAW_RAD = (AIM_HALF_DEG * Math.PI) / 180;
 const MOUSE_PITCH_RAD = ((AIM_HALF_DEG * 0.7) * Math.PI) / 180;
 const RADAR_ANGLE_HALF_RAD = (RADAR_ANGLE_DEGREES / 2) * (Math.PI / 180);
+
+/** 룰 화면: 카운트다운 후 튜토리얼 단계로 전환 (Press Start 터치 제거) */
+const Game04RuleOverlay: React.FC<{ onCountdownDone: () => void }> = ({ onCountdownDone }) => {
+  const secondsLeft = useGameStartCountdown(onCountdownDone, true);
+  return (
+    <div className="absolute inset-0 z-30 flex flex-col">
+      <div
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: `url(${ruleBgImg})` }}
+      />
+      <div
+        className="absolute left-[40%] right-[40%] top-[85%] h-[12%] flex items-center justify-center pointer-events-none select-none"
+        aria-live="polite"
+        aria-label={`게임 시작까지 ${secondsLeft}초`}
+      >
+        <span
+          className="text-white font-black tabular-nums"
+          style={{
+            fontSize: 'clamp(3rem, 10vw, 8rem)',
+            lineHeight: 1,
+            textShadow: '0 0 24px rgba(0,0,0,0.9), 0 4px 32px rgba(0,0,0,0.8)',
+          }}
+        >
+          {secondsLeft}
+        </span>
+      </div>
+    </div>
+  );
+};
 
 const Confetti = () => {
   const particles = Array.from({ length: 50 });
@@ -121,7 +153,7 @@ const Game04: React.FC<Game04Props> = ({
   inputMode: forceInputMode,
   triggerStartFromBackend = 0,
   hideResultRestart = false,
-  notifyChainRoundEndIfNeeded,
+  topScore,
 }) => {
   const [gameStarted, setGameStarted] = useState(false);
   const [gameOver, setGameOver] = useState(false);
@@ -139,6 +171,14 @@ const Game04: React.FC<Game04Props> = ({
   const [headshotPopups, setHeadshotPopups] = useState<HeadshotPopup[]>([]);
   const resultReportedRef = useRef(false);
   const [pauseOverlayVisible, setPauseOverlayVisible] = useState(false);
+  const [preGamePhase, setPreGamePhase] = useState<'countdown' | 'tutorial'>('countdown');
+  /** 신기록 배너 표시 상태 */
+  const [newRecord, setNewRecord] = useState(false);
+  const [newRecordExiting, setNewRecordExiting] = useState(false);
+  const newRecordTriggeredRef = useRef(false);
+  const newRecordTimerRef = useRef<number | null>(null);
+  const topScoreRef = useRef(topScore);
+  topScoreRef.current = topScore;
 
   const headRotationRef = useRef({ yaw: 0, pitch: 0 });
   const bossWarningTimerRef = useRef<number | null>(null);
@@ -181,7 +221,24 @@ const Game04: React.FC<Game04Props> = ({
   useEffect(() => {
     scoreRef.current = score;
   }, [score]);
-  
+
+  // 게임 중 점수가 역대 최고 점수를 처음 초과하면 신기록 배너 표시
+  useEffect(() => {
+    if (!gameStarted || newRecordTriggeredRef.current) return;
+    if (topScoreRef.current === undefined) return;
+    if (score > topScoreRef.current) {
+      newRecordTriggeredRef.current = true;
+      setNewRecord(true);
+      setNewRecordExiting(false);
+      if (newRecordTimerRef.current) clearTimeout(newRecordTimerRef.current);
+      newRecordTimerRef.current = window.setTimeout(() => {
+        setNewRecordExiting(true);
+        newRecordTimerRef.current = window.setTimeout(() => setNewRecord(false), 400);
+      }, 2500);
+      console.log('[Game04] 신기록 달성! score:', score, '> topScore:', topScoreRef.current);
+    }
+  }, [score, gameStarted]);
+
   // Python Vision WebSocket: GAME04_PAUSE 수신 시 PAUSE 오버레이 표시 + 백엔드에 GAME04_PAUSE 전달
   useEffect(() => {
     const unsubscribe = getVisionWsService().onGame04Pause(() => {
@@ -255,6 +312,11 @@ const Game04: React.FC<Game04Props> = ({
   const startGame = useCallback(() => {
     clearBossWarningTimer();
     clearHeadshotPopups();
+    // 새 판 시작 시 신기록 상태 초기화
+    newRecordTriggeredRef.current = false;
+    setNewRecord(false);
+    setNewRecordExiting(false);
+    if (newRecordTimerRef.current) { clearTimeout(newRecordTimerRef.current); newRecordTimerRef.current = null; }
     roundActiveRef.current = true;
     healthRef.current = PLAYER_MAX_HEALTH;
     scoreRef.current = 0;
@@ -298,8 +360,7 @@ const Game04: React.FC<Game04Props> = ({
     setBossWarning(false);
     // 게임 종료 → 재시작 화면 진입 시 백엔드에 대기 상태 알림
     backendWsService.sendCommand(UIEventName.GAME04_IDLE, {});
-    notifyChainRoundEndIfNeeded?.();
-  }, [clearBossWarningTimer, notifyChainRoundEndIfNeeded]);
+  }, [clearBossWarningTimer]);
 
   const handlePlayerHit = useCallback(() => {
     if (!roundActiveRef.current) return;
@@ -389,12 +450,12 @@ const Game04: React.FC<Game04Props> = ({
     getVisionWsService().sendGame04MainGameStart();
   }, []);
 
-  // 게임 종료 시 한 번만 백엔드에 전달
+  // 게임 종료 시 한 번만 App → 백엔드 GAME_RESULT(점수 포함)
   useEffect(() => {
     if (!gameOver || resultReportedRef.current || !onGameResult) return;
     resultReportedRef.current = true;
-    onGameResult(isVictory ? 'WIN' : 'LOSE');
-  }, [gameOver, isVictory, onGameResult]);
+    onGameResult(isVictory ? 'WIN' : 'LOSE', finalScore);
+  }, [gameOver, isVictory, onGameResult, finalScore]);
 
   const hudFontSize = Math.round(20 * scaleH);
   const timerFontSize = Math.round(140 * scaleH);
@@ -403,6 +464,32 @@ const Game04: React.FC<Game04Props> = ({
 
   return (
     <div className="relative w-full h-full bg-black overflow-hidden select-none">
+      {/* 신기록 배너: 게임 중 topScore 초과 시 표시 */}
+      {newRecord && (
+        <div className="absolute inset-x-0 top-6 z-50 flex justify-center pointer-events-none">
+          <div
+            className={`new-record-banner${newRecordExiting ? ' exiting' : ''} flex items-center gap-4 px-10 py-4 rounded-2xl border-2 border-yellow-400/80`}
+            style={{
+              background: 'linear-gradient(135deg, rgba(120,53,15,0.95) 0%, rgba(180,83,9,0.95) 50%, rgba(120,53,15,0.95) 100%)',
+            }}
+          >
+            <span style={{ fontSize: '2.4rem' }}>★</span>
+            <div className="flex flex-col items-center">
+              <span
+                className="new-record-shimmer-text font-black tracking-widest uppercase"
+                style={{ fontSize: '2rem', letterSpacing: '0.15em' }}
+              >
+                NEW RECORD!
+              </span>
+              <span className="text-yellow-200 font-bold text-sm tracking-wider mt-0.5">
+                신기록 달성!
+              </span>
+            </div>
+            <span style={{ fontSize: '2.4rem' }}>★</span>
+          </div>
+        </div>
+      )}
+
       {/* PAUSE 오버레이: Python에서 GAME04_PAUSE 수신 시 표시, 터치로 해제 */}
       {pauseOverlayVisible && (
         <div
@@ -542,29 +629,11 @@ const Game04: React.FC<Game04Props> = ({
         </div>
       )}
 
-      {!gameStarted && !gameOver && (
-        <div className="absolute inset-0 z-30 flex flex-col">
-          <div
-            className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-            style={{ backgroundImage: `url(${ruleBgImg})` }}
-          />
-          <button
-            type="button"
-            onClick={startGame}
-            className="absolute left-[40%] right-[40%] top-[85%] h-[12%] cursor-pointer flex items-center justify-center"
-            aria-label="게임 시작"
-          >
-            <span
-              className="absolute w-24 h-24 rounded-full border-4 border-white/40 animate-game04-start-pulse pointer-events-none"
-              aria-hidden
-            />
-            <span
-              className="absolute w-20 h-20 rounded-full border-2 border-green-400/50 animate-game04-start-pulse pointer-events-none"
-              style={{ animationDelay: '0.4s' }}
-              aria-hidden
-            />
-          </button>
-        </div>
+      {!gameStarted && !gameOver && preGamePhase === 'countdown' && (
+        <Game04RuleOverlay onCountdownDone={() => setPreGamePhase('tutorial')} />
+      )}
+      {!gameStarted && !gameOver && preGamePhase === 'tutorial' && (
+        <GameTutorialVideoOverlay src={TUTORIAL_VIDEO_URLS.game04} onEnded={startGame} />
       )}
 
       {gameOver && (

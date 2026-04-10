@@ -1,10 +1,10 @@
 {
   "targetBox": [
-    769,
-    604,
-    820,
-    655
+    404,
+    797,
+    429,
+    822
   ],
-  "theme": "수천 마리 물고기가 있는 산호초 도시 / clean isometric-ish perspective with tons of props / golden hour sunlight with complex shadows",
-  "targetObject": "아주 작은 주황색 불가사리 한 마리"
+  "theme": "불러온 이미지",
+  "targetObject": "불러온 이미지"
 }

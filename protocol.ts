@@ -70,6 +70,8 @@ export const BackendMessageName = {
   QR_DUPLICATED: 'QR_DUPLICATED',
   /** 레이저 작업 대기(스탠바이) Frontend에서 Backend2(레이저)로 전달 */
   LASER_WORK_STANDBY: 'LASER_WORK_STANDBY',
+  /** 게임별 역대 최고 점수 전송. data: { gameId, topScore }. 씬 진입 시 또는 점수 갱신 시 백엔드가 전송 */
+  GAME_TOP_SCORE: 'GAME_TOP_SCORE',
 } as const;
 export type BackendMessageNameType = (typeof BackendMessageName)[keyof typeof BackendMessageName];
 
@@ -89,6 +91,8 @@ export const UIEventName = {
   HUMAN_DETECTED: 'HUMAN_DETECTED',
   /** Game02: 본게임 시작 시점(찾을 이미지 3초 표시 후). Exhibition에서 얼굴 추적/로봇 본게임 시작 */
   GAME02_MAINGAME_START: 'GAME02_MAINGAME_START',
+  /** Game02 Fix: 플레이 화면 표시 직후. 백엔드가 그리드 (-1,-1)로 MovJ */
+  GAME02_FIX_PLAY_VIEW_READY: 'GAME02_FIX_PLAY_VIEW_READY',
   /** Game02: 대기 상태(씬 이탈 또는 목표 찾음/제한시간 실패로 종료). Exhibition에서 추적/로봇 대기 */
   GAME02_IDLE: 'GAME02_IDLE',
   /** Game02: 미니게임 체인 중 한 판 종료 직후(GAME02_IDLE 다음). Exhibition에서 ref(start) MovJ */
@@ -111,8 +115,16 @@ export const UIEventName = {
   GAME04_CHAIN_ROUND_START: 'GAME04_CHAIN_ROUND_START',
   /** 체인: GAME04→GAME05 전환 직후(Python sendScene과 동시). Exhibition SET_SCENE GAME05 */
   GAME05_CHAIN_ROUND_START: 'GAME05_CHAIN_ROUND_START',
+  /** Game05: 미니게임 체인 중 한 판 종료 직후. Exhibition에서 라운드 종료 후속 처리 */
+  GAME05_CHAIN_ROUND_END: 'GAME05_CHAIN_ROUND_END',
+  /** Game05: mouse(터치) 모드에서 공격 판정 또는 주인공 피격(적 충돌·친구 오공격). Exhibition 연동용 */
+  GAME05_MOUSE_ATTACK_EVENT: 'GAME05_MOUSE_ATTACK_EVENT',
+  /** Game05: mouse(터치) 모드에서 친구(공주) 충돌로 체력 회복 시. Exhibition 연동용 */
+  GAME05_MOUSE_HEAL_EVENT: 'GAME05_MOUSE_HEAL_EVENT',
   /** Vision에서 QR 인식 시(QR 씬) 프론트가 백엔드에 전달. data, bbox 포함 */
   QR_SCANNED: 'QR_SCANNED',
+  /** Python이 GAME_ID 수신 시 프론트가 백엔드(C++)에 전달. data: { data, game_id } — C++는 dataObj["game_id"] 문자열 사용 */
+  GAME_ID: 'GAME_ID',
   /** Exhibition_Drawing에서 레이저 가공 완료 수신 시 프론트가 백엔드(Exhibition)에 전달. data: { success: number } (1/0) */
   MACHINING_COMPLETE: 'MACHINING_COMPLETE',
   /** CAPTURE 씬: 카운트다운 종료 후 Python에 SKETCH_CAPTURE와 동시에 전송. Exhibition에서 선물 픽 프리컴퓨트(SAM3 등) 시작 */
@@ -165,6 +177,14 @@ export interface ProgressData {
   label?: string;
 }
 
+/** Backend → Frontend: GAME_TOP_SCORE 의 data. 게임별 역대 최고 점수 */
+export interface BackendGameTopScoreData {
+  /** 게임 식별자 (예: "game02", "game04", "game05"). 소문자 비교 권장 */
+  gameId: string;
+  /** 역대 최고 점수. game02=남은 시간(초), game04/05=포인트 */
+  topScore: number;
+}
+
 /** Backend → Frontend: GAME_START 의 data (Exhibition sendGameStart) */
 export interface BackendGameStartData {
   gameId?: string;
@@ -202,6 +222,8 @@ export const VisionMessageName = {
   HUMAN_OUT: 'HUMAN_OUT',
   /** QR 씬에서 Python이 QR 인식 시 → 프론트는 백엔드에 QR_SCANNED 전달 */
   QR_SCANNED: 'QR_SCANNED',
+  /** Python이 세션/티켓 식별자 전송 → 프론트는 백엔드에 GAME_ID 전달 (data, game_id) */
+  GAME_ID: 'GAME_ID',
   /** QR 씬에서 스캔 영역(ROI) 전달. left/top/width/height 비율(0~1). 프론트는 파란 상자 위치·크기에 반영 */
   QR_ROI: 'QR_ROI',
   /** GAME05 씬에서 Python이 공격 이벤트 전송. 수신 시 공격 애니메이션만 실행 (data는 더미) */
@@ -272,6 +294,12 @@ export interface VisionQRScannedData {
   type?: string;
 }
 
+/** GAME_ID 메시지의 data (Python → 프론트). 프론트는 백엔드 UI 이벤트 GAME_ID로 동일 키 전달. */
+export interface VisionGameIdData {
+  data: string;
+  game_id: string;
+}
+
 /** QR_ROI 메시지의 data (Python → 프론트). 비율(0~1). left/top = 영역 왼쪽·위 기준, width/height = 영역 크기. */
 export interface VisionQRROIData {
   left: number;
@@ -309,6 +337,7 @@ export const VisionMessageType = {
   GAME_STOP: VisionMessageName.GAME_STOP,
   HUMAN_DETECTED: VisionMessageName.HUMAN_DETECTED,
   QR_SCANNED: VisionMessageName.QR_SCANNED,
+  GAME_ID: VisionMessageName.GAME_ID,
   QR_ROI: VisionMessageName.QR_ROI,
   GAME05_ATTACK: VisionMessageName.GAME05_ATTACK,
 } as const;
