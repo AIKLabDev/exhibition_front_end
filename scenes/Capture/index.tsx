@@ -5,9 +5,9 @@
  *           우측에 안내+카운트다운 패널을 absolute 오버레이.
  * 카메라는 object-contain으로 잘림 없이 전체가 보인다.
  *
- * 흐름: countdown(5→1) → 0초 시 flash.wav 1회 → awaiting_sketch(SKETCH_CAPTURE) →
- *       성공 시 흰 플래시 + FACE_CAPTURE_COMPLETED → done → App이 SKETCH_RESULT로 LASER_STYLE 전환.
- *       Python이 NO_LOCKED_FACE면 붉은 플래시 후 capture.wav 1회·카운트다운 5초 재시작(SKETCH_RESULT success:false).
+ * 흐름: countdown(5→1→0) → SKETCH_CAPTURE 전송 → capture_flash(흰 플래시 + flash.wav, 350ms) →
+ *       awaiting_sketch(블러+로딩바, "스케치 이미지 생성중") → 성공 시 FACE_CAPTURE_COMPLETED → done.
+ *       Python이 NO_LOCKED_FACE면 붉은 플래시 후 capture.wav 1회·카운트다운 5초 재시작.
  */
 
 import React, { useEffect, useState, useRef } from 'react';
@@ -17,13 +17,13 @@ import { backendWsService } from '../../services/backendWebSocketService';
 import { UIEventName, VISION_SKETCH_ERROR_NO_LOCKED_FACE } from '../../protocol';
 import './Capture.css';
 
-type CapturePhase = 'countdown' | 'awaiting_sketch' | 'flash' | 'reject_flash' | 'done';
+type CapturePhase = 'countdown' | 'capture_flash' | 'awaiting_sketch' | 'reject_flash' | 'done';
 
 const COUNTDOWN_START = 5;
 const COUNTDOWN_INTERVAL_MS = 1000;
 const FLASH_DURATION_MS = 350;
 
-/** 카운트다운 5→0 끝나는 순간(촬영 요청 직전) — public/sounds/capture/flash.wav */
+/** 카운트다운 종료 시 재생 — public/sounds/capture/flash.wav */
 const FLASH_SFX_URL = '/sounds/capture/flash.wav';
 
 /** 실패 후 카운트다운 재시작 시 1회 — public/sounds/capture/capture.wav */
@@ -51,6 +51,7 @@ const Capture: React.FC = () => {
 
   const { hasFrame } = useCameraFrameCanvas(canvasRef, { enabled: true });
 
+  /* ── Phase: countdown ── 5→1, count=0이면 capture_flash로 전환 */
   useEffect(() => {
     if (phase !== 'countdown') return;
 
@@ -58,7 +59,7 @@ const Capture: React.FC = () => {
       setCount((prev) => {
         if (prev <= 1) {
           clearInterval(id);
-          setPhase('awaiting_sketch');
+          setPhase('capture_flash');
           return 0;
         }
         return prev - 1;
@@ -68,18 +69,28 @@ const Capture: React.FC = () => {
     return () => clearInterval(id);
   }, [phase]);
 
+  /* ── Phase: capture_flash ── SKETCH_CAPTURE 전송 → flash.wav → 350ms 후 awaiting_sketch */
   useEffect(() => {
-    if (phase !== 'awaiting_sketch') return;
-    // 카운트다운이 0이 되는 순간(성공/실패와 무관, 매 라운드 동일)
-    playSfxOnce(FLASH_SFX_URL);
+    if (phase !== 'capture_flash') return;
+
     getVisionWsService().sendSketchCapture();
-    console.log('[Capture] SKETCH_CAPTURE 전송 (Python SKETCH_RESULT 대기)');
+    console.log('[Capture] SKETCH_CAPTURE 전송 + flash.wav 재생');
+    playSfxOnce(FLASH_SFX_URL);
+
+    const t = setTimeout(() => {
+      setPhase('awaiting_sketch');
+    }, FLASH_DURATION_MS);
+
+    return () => clearTimeout(t);
   }, [phase]);
 
+  /* ── Python 결과 구독 (성공 / NO_LOCKED_FACE) ── */
   useEffect(() => {
     const vision = getVisionWsService();
+
     const unsubFail = vision.onSketchCaptureFailure((data) => {
-      if (phaseRef.current !== 'awaiting_sketch') return;
+      const cur = phaseRef.current;
+      if (cur !== 'capture_flash' && cur !== 'awaiting_sketch') return;
       const code = data.error ?? data.error_message;
       if (code !== VISION_SKETCH_ERROR_NO_LOCKED_FACE) {
         console.warn('[Capture] SKETCH 실패(재시도 없음):', code);
@@ -88,28 +99,22 @@ const Capture: React.FC = () => {
       console.log('[Capture] NO_LOCKED_FACE → 붉은 플래시 후 카운트다운 재시작');
       setPhase('reject_flash');
     });
+
     const unsubOk = vision.onSketchResult(() => {
-      if (phaseRef.current !== 'awaiting_sketch') return;
+      const cur = phaseRef.current;
+      if (cur !== 'capture_flash' && cur !== 'awaiting_sketch') return;
       backendWsService.sendCommand(UIEventName.FACE_CAPTURE_COMPLETED, {});
-      console.log('[Capture] SKETCH 성공 → FACE_CAPTURE_COMPLETED + flash');
-      setPhase('flash');
+      console.log('[Capture] SKETCH 성공 → FACE_CAPTURE_COMPLETED → done');
+      setPhase('done');
     });
+
     return () => {
       unsubFail();
       unsubOk();
     };
   }, []);
 
-  useEffect(() => {
-    if (phase !== 'flash') return;
-
-    const t = setTimeout(() => {
-      setPhase('done');
-    }, FLASH_DURATION_MS);
-
-    return () => clearTimeout(t);
-  }, [phase]);
-
+  /* ── Phase: reject_flash ── 붉은 플래시 350ms 후 카운트다운 재시작 */
   useEffect(() => {
     if (phase !== 'reject_flash') return;
 
@@ -122,9 +127,11 @@ const Capture: React.FC = () => {
     return () => clearTimeout(t);
   }, [phase]);
 
+  /* ── 렌더링 플래그 ── */
   const showCountdown = phase === 'countdown' && count >= 1;
-  const showFlash = phase === 'flash';
+  const showCaptureFlash = phase === 'capture_flash';
   const showRejectFlash = phase === 'reject_flash';
+  const showLoadingOverlay = phase === 'awaiting_sketch' || phase === 'done';
 
   return (
     <div className="h-full relative w-full bg-slate-950 overflow-hidden">
@@ -183,14 +190,6 @@ const Capture: React.FC = () => {
               초 남았습니다
             </span>
           </div>
-        ) : phase === 'awaiting_sketch' ? (
-          <div className="flex flex-col items-center mb-8 gap-3">
-            <div className="w-14 h-14 border-4 border-slate-600 border-t-emerald-400 rounded-full animate-spin" />
-            <span className="text-xl font-bold text-slate-300 text-center">
-              얼굴을 맞춰 주세요
-            </span>
-            <span className="text-base text-slate-500">촬영 준비 중...</span>
-          </div>
         ) : phase === 'reject_flash' ? (
           <div className="flex flex-col items-center mb-8 gap-2" aria-live="assertive">
             <span className="text-5xl font-black text-red-500 tabular-nums">!</span>
@@ -198,11 +197,6 @@ const Capture: React.FC = () => {
               얼굴이 감지되지 않았어요
             </span>
             <span className="text-base text-slate-500">다시 맞춰 주세요</span>
-          </div>
-        ) : phase === 'done' ? (
-          <div className="flex flex-col items-center mb-8">
-            <span className="text-4xl font-bold text-emerald-400 uppercase tracking-widest">캡처 완료</span>
-            <span className="text-base text-slate-500 mt-2">처리 중...</span>
           </div>
         ) : (
           <div className="flex items-center gap-2 mb-8">
@@ -212,15 +206,15 @@ const Capture: React.FC = () => {
         )}
       </aside>
 
-      {/* 성공 촬영: 흰 플래시 */}
-      {showFlash && (
+      {/* 카운트다운 종료: 흰 플래시 (SKETCH_CAPTURE 전송 직후) */}
+      {showCaptureFlash && (
         <div
           className="absolute inset-0 bg-white pointer-events-none animate-capture-flash z-20"
           aria-hidden
         />
       )}
 
-      {/* 잠금 얼굴 없음: 붉은 플래시 */}
+      {/* NO_LOCKED_FACE: 붉은 플래시 */}
       {showRejectFlash && (
         <div
           className="absolute inset-0 pointer-events-none z-20 bg-red-600/75 animate-capture-flash-reject"
@@ -228,16 +222,20 @@ const Capture: React.FC = () => {
         />
       )}
 
-      {/* done: 로딩 오버레이 */}
-      {phase === 'done' && (
+      {/* awaiting_sketch / done: 블러 오버레이 + 로딩바 */}
+      {showLoadingOverlay && (
         <div
-          className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-slate-950/95 backdrop-blur-sm"
+          className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-slate-950/80 backdrop-blur-md animate-capture-overlay-fadein"
           aria-live="polite"
           aria-busy="true"
         >
-          <div className="w-24 h-24 border-4 border-slate-600 border-t-emerald-400 rounded-full animate-spin mb-8" />
-          <p className="text-2xl font-bold text-white mb-2">캡처 완료</p>
-          <p className="text-slate-400 text-lg">이미지 생성 중입니다. 잠시만 기다려 주세요.</p>
+          <div className="capture-loading-bar-track mb-8">
+            <div className="capture-loading-bar-fill" />
+          </div>
+          <p className="text-2xl font-bold text-white mb-2">
+            스케치 이미지 생성중 입니다.
+          </p>
+          <p className="text-slate-400 text-lg">잠시만 기다려주세요.</p>
         </div>
       )}
     </div>

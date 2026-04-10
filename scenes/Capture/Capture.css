@@ -1,14 +1,13 @@
-/* Capture Scene — 플래시 & 카운트다운 애니메이션 */
+/* Capture Scene — 플래시 & 카운트다운 & 로딩 애니메이션 */
 
+/* ── 흰 플래시 (카운트다운 종료 시) ── */
 @keyframes capture-flash {
   0% {
     opacity: 1;
   }
-
   40% {
     opacity: 1;
   }
-
   100% {
     opacity: 0;
   }
@@ -18,16 +17,14 @@
   animation: capture-flash 0.35s ease-out forwards;
 }
 
-/* 잠금 얼굴 없음(NO_LOCKED_FACE): 경고용 붉은 플래시(성공 시 흰 플래시와 동일 타이밍) */
+/* ── 붉은 플래시 (NO_LOCKED_FACE) ── */
 @keyframes capture-flash-reject {
   0% {
     opacity: 1;
   }
-
   40% {
     opacity: 1;
   }
-
   100% {
     opacity: 0;
   }
@@ -37,17 +34,16 @@
   animation: capture-flash-reject 0.35s ease-out forwards;
 }
 
+/* ── 카운트다운 숫자 팝 ── */
 @keyframes capture-count-pop {
   0% {
     transform: scale(1.3);
     opacity: 0;
   }
-
   40% {
     transform: scale(0.95);
     opacity: 1;
   }
-
   100% {
     transform: scale(1);
     opacity: 1;
@@ -56,4 +52,48 @@
 
 .animate-capture-count-pop {
   animation: capture-count-pop 0.35s ease-out;
+}
+
+/* ── 블러 오버레이 페이드인 ── */
+@keyframes capture-overlay-fadein {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-capture-overlay-fadein {
+  animation: capture-overlay-fadein 0.4s ease-out forwards;
+}
+
+/* ── 로딩 프로그레스 바 (indeterminate) ── */
+.capture-loading-bar-track {
+  width: 420px;
+  height: 8px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+  position: relative;
+}
+
+.capture-loading-bar-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 40%;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, #34d399, #6ee7b7, #34d399);
+  animation: capture-loading-slide 1.4s ease-in-out infinite;
+}
+
+@keyframes capture-loading-slide {
+  0% {
+    left: -40%;
+  }
+  100% {
+    left: 100%;
+  }
 }
