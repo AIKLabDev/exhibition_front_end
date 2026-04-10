@@ -63,6 +63,7 @@ const Game05: React.FC<Game05Props> = ({
   triggerStartFromBackend = 0,
   inputMode: forceInputMode = 'mouse',
   hideResultRestart = false,
+  topScore,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const assetsRef = useRef<GameAssets | null>(null);
@@ -72,6 +73,14 @@ const Game05: React.FC<Game05Props> = ({
   const hitSfxIndexRef = useRef(0);
   const forceInputModeRef = useRef(forceInputMode);
   forceInputModeRef.current = forceInputMode;
+  /** 역대 최고 점수 ref — 게임루프에서 최신 값 참조 */
+  const topScoreRef = useRef(topScore);
+  topScoreRef.current = topScore;
+  /** 이번 판에서 신기록 이미 발동했는지 여부 */
+  const newRecordTriggeredRef = useRef(false);
+  const [newRecord, setNewRecord] = useState(false);
+  const [newRecordExiting, setNewRecordExiting] = useState(false);
+  const newRecordTimerRef = useRef<number | null>(null);
 
   const getMouseBackendExtra = useCallback((): Game05MouseBackendExtra | undefined => {
     if (forceInputModeRef.current !== 'mouse') return undefined;
@@ -155,6 +164,11 @@ const Game05: React.FC<Game05Props> = ({
   // 게임 시작 (타이틀 카운트다운 종료 또는 백엔드 GAME_START 시 호출)
   const startGame = useCallback(() => {
     resetGame();
+    // 새 판 시작 시 신기록 상태 초기화
+    newRecordTriggeredRef.current = false;
+    setNewRecord(false);
+    setNewRecordExiting(false);
+    if (newRecordTimerRef.current) { clearTimeout(newRecordTimerRef.current); newRecordTimerRef.current = null; }
     changeState('playing');
   }, [resetGame, changeState]);
 
@@ -266,6 +280,24 @@ const Game05: React.FC<Game05Props> = ({
       // Render
       currentHandler.render(state, ctx, assets, W, H);
 
+      // 게임 중 점수가 역대 최고를 처음 초과하면 신기록 배너 발동
+      if (
+        state.gameState === 'playing' &&
+        !newRecordTriggeredRef.current &&
+        topScoreRef.current !== undefined &&
+        state.score > topScoreRef.current
+      ) {
+        newRecordTriggeredRef.current = true;
+        setNewRecord(true);
+        setNewRecordExiting(false);
+        if (newRecordTimerRef.current) clearTimeout(newRecordTimerRef.current);
+        newRecordTimerRef.current = window.setTimeout(() => {
+          setNewRecordExiting(true);
+          newRecordTimerRef.current = window.setTimeout(() => setNewRecord(false), 400);
+        }, 2500);
+        console.log('[Game05] 신기록 달성! score:', state.score, '> topScore:', topScoreRef.current);
+      }
+
       // State Transition
       if (nextState && nextState !== state.gameState) {
         // 공격 히트 체크 (playing 상태에서)
@@ -308,6 +340,32 @@ const Game05: React.FC<Game05Props> = ({
 
   return (
     <div className="game05-container relative w-full h-full bg-black select-none">
+      {/* 신기록 배너: 게임 중 topScore 초과 시 표시 */}
+      {newRecord && (
+        <div className="absolute inset-x-0 top-6 z-50 flex justify-center pointer-events-none">
+          <div
+            className={`new-record-banner${newRecordExiting ? ' exiting' : ''} flex items-center gap-4 px-10 py-4 rounded-2xl border-2 border-yellow-400/80`}
+            style={{
+              background: 'linear-gradient(135deg, rgba(120,53,15,0.95) 0%, rgba(180,83,9,0.95) 50%, rgba(120,53,15,0.95) 100%)',
+            }}
+          >
+            <span style={{ fontSize: '2.4rem' }}>★</span>
+            <div className="flex flex-col items-center">
+              <span
+                className="new-record-shimmer-text font-black tracking-widest uppercase"
+                style={{ fontSize: '2rem', letterSpacing: '0.15em' }}
+              >
+                NEW RECORD!
+              </span>
+              <span className="text-yellow-200 font-bold text-sm tracking-wider mt-0.5">
+                신기록 달성!
+              </span>
+            </div>
+            <span style={{ fontSize: '2.4rem' }}>★</span>
+          </div>
+        </div>
+      )}
+
       {loading && (
         <div className="absolute inset-0 flex items-center justify-center text-white font-bold z-10">
           Loading...
